@@ -16,7 +16,7 @@ The proto file and compiled proto buffers are located in
 
 ###### DeleteUser
 - Deletes a document in User MongoDB
-- Returns the deleted document (TODO decided what to do with it)
+- Returns the deleted document (TODO decide if we really need to return this to chrome)
 
 ###### UpdateUser
 - Updates a document in User MongoDB
