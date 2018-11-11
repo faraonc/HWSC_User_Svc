@@ -28,3 +28,11 @@
 [prune]
   go-tests = true
   unused-packages = true
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/faraonc/hwsc-api-blocks"
+
+[[constraint]]
+  name = "google.golang.org/grpc"
+  version = "1.16.0"
