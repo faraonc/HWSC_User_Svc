@@ -32,7 +32,7 @@ func main() {
 
 	// register our service implementation with gRPC server
 	pb.RegisterUserServiceServer(grpcServer, &svc.Service{})
-	log.Println(logtag.Info, "hws-user-svc at", connectAddress, "...")
+	log.Println(logtag.Info, "hwsc-user-svc at", connectAddress, "...")
 
 	// start gRPC server
 	if err := grpcServer.Serve(lis); err != nil {
