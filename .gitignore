@@ -1,8 +1,4 @@
-
 # Created by https://www.gitignore.io/api/go,macos
-
-#JetBrains
-.idea/*
 
 ### Go ###
 # Binaries for programs and plugins
@@ -49,6 +45,12 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# JetBrains
+.idea/*
+
+conf/json/*
+*.out
 
 
 # End of https://www.gitignore.io/api/go,macos

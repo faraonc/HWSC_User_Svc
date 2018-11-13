@@ -1,42 +1,34 @@
 package main
 
 import (
-	"github.com/faraonc/hwsc-user-svc/logtag"
-	"google.golang.org/grpc"
-	"log"
-	"net"
 	pb "github.com/faraonc/hwsc-api-blocks/int/hwsc-user-svc/proto"
+	log "github.com/faraonc/hwsc-logging/logger"
+	"github.com/faraonc/hwsc-user-svc/conf"
 	svc "github.com/faraonc/hwsc-user-svc/service"
-)
-
-const (
-	connectType = "tcp"
-	connectHost = "localhost"
-	connectPort = "50051"
-	connectAddress = connectHost + ":" + connectPort
+	"google.golang.org/grpc"
+	"net"
 )
 
 func main() {
-	log.Println(logtag.Info, "hwsc-user-svc initiating...")
+	log.Info("hwsc-user-svc initiating...")
 
 	// make TCP listener, listen for incoming client requests
-	lis, err := net.Listen(connectType, connectAddress)
+	lis, err := net.Listen(conf.GRPCHost.Network, conf.GRPCHost.String())
 	if err != nil {
-		log.Fatalf(logtag.Fatal,"Failed to intialize TCP listener %v\n", err)
+		log.Fatal("Failed to intialize TCP listener", err.Error())
 	}
 
-	// implement all our methods/services in service/service.go
+	// implement all our methods/services in service/service.go THEN,
 
 	// build: create an instance of gRPC server
 	grpcServer := grpc.NewServer()
 
 	// register our service implementation with gRPC server
 	pb.RegisterUserServiceServer(grpcServer, &svc.Service{})
-	log.Println(logtag.Info, "hwsc-user-svc at", connectAddress, "...")
+	log.Info("hwsc-user-svc at", conf.GRPCHost.Address, "...")
 
 	// start gRPC server
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf(logtag.Fatal, "Failted to serve %v\n", err)
+		log.Fatal("Failed to serve", err.Error())
 	}
-
 }

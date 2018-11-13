@@ -36,3 +36,11 @@
 [[constraint]]
   name = "google.golang.org/grpc"
   version = "1.16.0"
+
+[[constraint]]
+  name = "github.com/micro/go-config"
+  version = "0.9.0"
+
+[[constraint]]
+  name = "github.com/mongodb/mongo-go-driver"
+  version = "0.0.17"

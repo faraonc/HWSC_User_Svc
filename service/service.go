@@ -2,62 +2,65 @@ package service
 
 import (
 	pb "github.com/faraonc/hwsc-api-blocks/int/hwsc-user-svc/proto"
-	"github.com/faraonc/hwsc-user-svc/logtag"
+	log "github.com/faraonc/hwsc-logging/logger"
 	"golang.org/x/net/context"
-	"log"
 )
 
-// This Service struct type, implements the generated (pb file) UserServiceServer interface
+// Service struct type, implements the generated (pb file) UserServiceServer interface
 type Service struct{}
 
-func (s *Service) GetStatus (ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+// GetStatus gets the current status of the service
+func (s *Service) GetStatus(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	//TODO
-	logRequestService("GetStatus")
-	return nil, nil
+	log.RequestService("GetStatus")
+	return &pb.UserResponse{}, nil
 }
 
-func (s *Service) CreateUser (ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+// CreateUser creates a new user document and inserts it to user DB
+func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	// TODO
-	logRequestService("CreateUser")
-	return nil, nil
+	log.RequestService("CreateUser")
+	return &pb.UserResponse{}, nil
 }
 
-func (s *Service) DeleteUser (ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+// DeleteUser deletes a user document in user DB
+func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	//TODO
-	logRequestService("DeleteUser")
-	return nil, nil
+	log.RequestService("DeleteUser")
+	return &pb.UserResponse{}, nil
 }
 
-func (s *Service) UpdateUser (ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+// UpdateUser updates a user document in user DB
+func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	//TODO
-	logRequestService("UpdateUser")
-	return nil, nil
+	log.RequestService("UpdateUser")
+	return &pb.UserResponse{}, nil
 }
 
-func (s *Service) AuthenticateUser (ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+// AuthenticateUser goes through user DB collection and tries to find matching email/password
+func (s *Service) AuthenticateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	//TODO
-	logRequestService("AuthenticateUser")
-	return nil, nil
+	log.RequestService("AuthenticateUser")
+	return &pb.UserResponse{}, nil
 }
 
-func (s *Service) ListUsers (ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+// ListUsers returns the user DB collection
+func (s *Service) ListUsers(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	//TODO
-	logRequestService("ListUsers")
-	return nil, nil
+	log.RequestService("ListUsers")
+	return &pb.UserResponse{}, nil
 }
 
-func (s *Service) GetUser (ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+// GetUser returns a user document in user DB
+func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	//TODO
-	logRequestService("GetUser")
-	return nil, nil
+	log.RequestService("GetUser")
+	return &pb.UserResponse{}, nil
 }
 
-func (s *Service) ShareDocument (ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+// ShareDocument updates user/s documents shared_to_me field in user DB
+func (s *Service) ShareDocument(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	//TODO
-	logRequestService("ShareDocument")
-	return nil, nil
-}
-
-func logRequestService (svc string) {
-	log.Println(logtag.Info, "Requesting", svc, "service")
+	log.RequestService("ShareDocument")
+	return &pb.UserResponse{}, nil
 }
