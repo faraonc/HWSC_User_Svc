@@ -1,4 +1,4 @@
-# HWSC_User_Svc
+# hwsc-user-svc
 
 ## Purpose
 Provides services to hwsc-app-gateway-svc for CRUD documents and user metadata in Azure CosmosDB
