@@ -31,7 +31,7 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/faraonc/hwsc-api-blocks"
+  name = "github.com/hwsc-org/hwsc-api-blocks"
 
 [[constraint]]
   name = "google.golang.org/grpc"
