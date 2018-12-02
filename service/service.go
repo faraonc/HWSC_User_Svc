@@ -1,8 +1,8 @@
 package service
 
 import (
-	pb "github.com/faraonc/hwsc-api-blocks/int/hwsc-user-svc/proto"
-	log "github.com/faraonc/hwsc-logging/logger"
+	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
+	log "github.com/hwsc-org/hwsc-logging/logger"
 	"golang.org/x/net/context"
 )
 

@@ -1,10 +1,10 @@
 package main
 
 import (
-	pb "github.com/faraonc/hwsc-api-blocks/int/hwsc-user-svc/proto"
-	log "github.com/faraonc/hwsc-logging/logger"
-	"github.com/faraonc/hwsc-user-svc/conf"
-	svc "github.com/faraonc/hwsc-user-svc/service"
+	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
+	log "github.com/hwsc-org/hwsc-logging/logger"
+	"github.com/hwsc-org/hwsc-user-svc/conf"
+	svc "github.com/hwsc-org/hwsc-user-svc/service"
 	"google.golang.org/grpc"
 	"net"
 )

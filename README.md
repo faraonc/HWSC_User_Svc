@@ -5,7 +5,7 @@ Provides services to hwsc-app-gateway-svc for CRUD documents and user metadata i
 
 ## Proto Contract
 The proto file and compiled proto buffers are located in 
-[hwsc-api-blocks](https://github.com/faraonc/hwsc-api-blocks/tree/master/int/hwsc-user-svc/proto)
+[hwsc-api-blocks](https://github.com/hwsc-org/hwsc-api-blocks/tree/master/int/hwsc-user-svc/proto)
 
 ###### Get Status
 - Gets the current status of the service
