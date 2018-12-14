@@ -1,13 +1,24 @@
 package service
 
 import (
+	"flag"
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
-	log "github.com/hwsc-org/hwsc-logging/logger"
+	log "github.com/hwsc-org/hwsc-logger/logger"
 	"golang.org/x/net/context"
+)
+
+var (
+	// allows for command line changing of deadlines, default deadline: 20,000 ms = 20 sec
+	deadlineMsDB = flag.Int("deadline_ms", 20*1000, "Default deadline in milliseconds")
 )
 
 // Service struct type, implements the generated (pb file) UserServiceServer interface
 type Service struct{}
+
+func init() {
+	// executes command line parsing of deadlineMs, defaults to 20,000 ms
+	// flag.Parse();
+}
 
 // GetStatus gets the current status of the service
 func (s *Service) GetStatus(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
