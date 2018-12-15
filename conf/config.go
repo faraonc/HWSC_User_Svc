@@ -2,20 +2,22 @@ package conf
 
 import (
 	"fmt"
-	log "github.com/hwsc-org/hwsc-logging/logger"
+	log "github.com/hwsc-org/hwsc-logger/logger"
 	"github.com/micro/go-config"
-	"github.com/micro/go-config/source/file"
+	"github.com/micro/go-config/source/env"
 )
 
 const (
 	confFilePath = "conf/json/config.dev.json"
+	envPrefix    = "hosts"
 )
 
-// GRPCHost address and port of gRPC microservice
-// UserDB holds all DB information (c/n strings, dbName, collectionName)
 
 var (
+	// GRPCHost address and port of gRPC microservice
 	GRPCHost Host
+
+	// UserDB holds all DB information (c/n strings, dbName, collectionName)
 	UserDB   UserDBHost
 )
 
@@ -24,32 +26,36 @@ var (
 // i.e: creating c/n to DBs, loading config files, initializing variable, etc.
 // regardless of how many times package is imported, init is only called once
 func init() {
+	log.Info("Reading ENV variables")
+
+	// create a new config
+	conf := config.NewConfig()
+
+	// convert environment variables to json format
+	src := env.NewSource(
+		env.WithPrefix(envPrefix),
+	)
+
 	// config.Load(): Load config from a file source
-	// file extension determines config format
-	// in this case, load json config file
-	var err error
-	err = config.Load(file.NewSource(file.WithPath(confFilePath)))
-	if err != nil {
-		// TODO provide config path to use with unit test?
-		log.Fatal("Failed to initialize conf file", err.Error())
+	// which is src that took environment variables and convert to json format
+	// afterwards, conf is loaded with "src"
+	if err := conf.Load(src); err != nil {
+		log.Fatal("Failed to intialize configuration", err.Error())
 	}
 
-	// get gets the path target from config file
+	// get gets the path target from loaded file
 	// scan grabs the values from path target from the config file into a struct
 
-	// in this case, scan "hosts" "grpc-server" from config file
-	// and copy all "grpc-server" properties to GRPCHost (type struct Host)
-	// &GRPCHost = reference to GRPCHost (address), similar to pass-by-reference
-	err = config.Get("hosts", "grpc-server").Scan(&GRPCHost)
-	if err != nil {
-		log.Fatal("Failed to scan conf file", err.Error())
+	// in this case, scan "hosts" with "grpc"'s from config file
+	// and copy all "grpc" properties to GRPCHost (type struct Host)
+	if err := conf.Get("hosts", "grpc").Scan(&GRPCHost); err != nil {
+		log.Fatal("Failed to get grpc configuration", err.Error())
 	}
 
-	// scan "hosts" prop "mongodb-document" properties from config file
+	// scan "hosts" prop "mongodb" properties from config file
 	// and copy its props to UserDB struct
-	err = config.Get("hosts", "mongodb-user").Scan(&UserDB)
-	if err != nil {
-		log.Fatal("Failed to scan conf file", err.Error())
+	if err := conf.Get("hosts", "mongodb").Scan(&UserDB); err != nil {
+		log.Fatal("Failed to get mongodb configuration", err.Error())
 	}
 }
 
@@ -76,8 +82,8 @@ func (h *Host) String() string {
 // Name is the database name
 // Collection is the database's collection name
 type UserDBHost struct {
-	Writer     string `json:"mongodb-writer"`
-	Reader     string `json:"mongodb-reader"`
+	Writer     string `json:"writer"`
+	Reader     string `json:"reader"`
 	Name       string `json:"db"`
 	Collection string `json:"collection"`
 }
