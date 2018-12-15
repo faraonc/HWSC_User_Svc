@@ -91,11 +91,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:baa34397077e59b9460beb893632b40f1d1381155cb07e3a9d304f0e4231cb18"
+  digest = "1:6d9e620e99454e3aa8f5f41f14f57fb1e2524d22b637f866fb96d51231acc605"
   name = "github.com/hwsc-org/hwsc-logger"
   packages = ["logger"]
   pruneopts = "UT"
-  revision = "80a49a5a56af2c1b82cb1d04190dd8432106b5ec"
+  revision = "0158a67854b2a2090db0635c02a8e9a450a1c242"
 
 [[projects]]
   digest = "1:8eb1de8112c9924d59bf1d3e5c26f5eaa2bfc2a5fcbb92dc1c2e4546d695f277"
@@ -106,7 +106,7 @@
   version = "v0.3.6"
 
 [[projects]]
-  digest = "1:c71c193936b43fa79f81816e022b87a7691b9521bd5a3951caa0a14293fd4203"
+  digest = "1:65b96744a06e62dca68e9cd589554fcf248d1638d4cc086f339cd06590586a5a"
   name = "github.com/micro/go-config"
   packages = [
     ".",
@@ -124,49 +124,55 @@
     "source/env",
   ]
   pruneopts = "UT"
-  revision = "5257420bbbf11e151d5a44f031cc26fee3b12963"
-  version = "v0.9.0"
+  revision = "c6de52c5ef31e1c20bc9a563f2107ca16ac752e2"
+  version = "v0.12.0"
 
 [[projects]]
-  digest = "1:529f54d656a5240fc1af45f291eabbea6ce904659faac0fd0b0a4cd90c5c95f2"
+  digest = "1:820eeb72f78947f9b2e87bd99a57b5cc791c8fb47676a5c3824d408441ab1546"
   name = "github.com/mongodb/mongo-go-driver"
   packages = [
     "bson",
     "bson/bsoncodec",
     "bson/bsonrw",
     "bson/bsontype",
-    "bson/decimal",
-    "bson/objectid",
     "bson/primitive",
-    "core/address",
-    "core/auth",
-    "core/auth/internal/gssapi",
-    "core/command",
-    "core/compressor",
-    "core/connection",
-    "core/connstring",
-    "core/description",
-    "core/dispatch",
-    "core/event",
-    "core/result",
-    "core/session",
-    "core/tag",
-    "core/topology",
-    "core/uuid",
-    "core/version",
-    "core/wiremessage",
+    "event",
     "internal",
     "mongo",
+    "mongo/options",
     "mongo/readconcern",
     "mongo/readpref",
     "mongo/writeconcern",
-    "options",
+    "tag",
+    "version",
     "x/bsonx",
     "x/bsonx/bsoncore",
+    "x/mongo/driver",
+    "x/mongo/driver/auth",
+    "x/mongo/driver/auth/internal/gssapi",
+    "x/mongo/driver/session",
+    "x/mongo/driver/topology",
+    "x/mongo/driver/uuid",
+    "x/network/address",
+    "x/network/command",
+    "x/network/compressor",
+    "x/network/connection",
+    "x/network/connstring",
+    "x/network/description",
+    "x/network/result",
+    "x/network/wiremessage",
   ]
   pruneopts = "UT"
-  revision = "dbffb1c211bf96fbd721b4bd6911331e5c1886ab"
-  version = "v0.0.18"
+  revision = "29905d4bda472574c8b499e2f93b5b2747d8fbd7"
+  version = "v0.1.0"
+
+[[projects]]
+  digest = "1:4f5513cb656b73fb4c4f77ccd482c8366d6290278564d2b1d3285f45e45f4a1e"
+  name = "github.com/oklog/ulid"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "02a8604050d8466dd915307496174adb9be4593a"
+  version = "v1.3.1"
 
 [[projects]]
   digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
@@ -193,18 +199,22 @@
   revision = "7eeb5667e42c09cb51bf7b7c28aea8c56767da90"
 
 [[projects]]
-  digest = "1:577b99fc55ee19cbf1ffd072808c91ced78cd732bd9d0517bec9b90e532069cb"
+  branch = "master"
+  digest = "1:f5c1d04bc09c644c592b45b9f0bad4030521b1a7d11c7dadbb272d9439fa6e8e"
   name = "github.com/xdg/stringprep"
   packages = ["."]
   pruneopts = "UT"
-  revision = "bd625b8dc1e3b0f57412280ccbcc317f0c69d8db"
-  version = "v1.0.0"
+  revision = "73f8eece6fdcd902c185bf651de50f3828bed5ed"
 
 [[projects]]
   branch = "master"
-  digest = "1:f92f6956e4059f6a3efc14924d2dd58ba90da25cc57fe07ae3779ef2f5e0c5f2"
+  digest = "1:318fbcf92cf6f5f01a8e28059612a09671e8d446c1be41020171dd3eeb3dfb9e"
   name = "golang.org/x/crypto"
-  packages = ["pbkdf2"]
+  packages = [
+    "bcrypt",
+    "blowfish",
+    "pbkdf2",
+  ]
   pruneopts = "UT"
   revision = "505ab145d0a99da450461ae2c1a9f6cd10d1f447"
 
@@ -328,9 +338,12 @@
     "github.com/micro/go-config",
     "github.com/micro/go-config/source/env",
     "github.com/mongodb/mongo-go-driver/mongo",
+    "github.com/oklog/ulid",
     "github.com/stretchr/testify/assert",
+    "golang.org/x/crypto/bcrypt",
     "golang.org/x/net/context",
     "google.golang.org/grpc",
+    "google.golang.org/grpc/codes",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
