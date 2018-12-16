@@ -4,7 +4,6 @@ import (
 	"flag"
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
 	log "github.com/hwsc-org/hwsc-logger/logger"
-	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"sync"
@@ -72,26 +71,21 @@ func (s *Service) GetStatus(ctx context.Context, req *pb.UserRequest) (*pb.UserR
 	}
 
 	// Check if mongo clients are found and connected
-	if err := pingMongoClient(mongoClientReader, mongoReader); err != nil {
-		mongoClientReader, err = dialMongoDB(&conf.UserDB.Reader, mongoReader)
-		if err != nil {
-			log.Error("Failed to reconnect", mongoReader, "server:", err.Error())
-			return &pb.UserResponse{
-				Status:  &pb.UserResponse_Code{Code: uint32(codes.Unavailable)},
-				Message: codes.Unavailable.String(),
-			}, nil
-		}
-	}
-	if err := pingMongoClient(mongoClientWriter, mongoWriter); err != nil {
-		mongoClientWriter, err = dialMongoDB(&conf.UserDB.Writer, mongoWriter)
-		if err != nil {
-			log.Error("Failed to reconnect", mongoWriter, "server:", err.Error())
-			return &pb.UserResponse{
-				Status:  &pb.UserResponse_Code{Code: uint32(codes.Unavailable)},
-				Message: codes.Unavailable.String(),
-			}, nil
-		}
-	}
+	//if err := pingAndRefreshMongoConnection(mongoClientReader); err != nil {
+	//	log.Error("Failed to ping and reconnect mongo reader server:", err.Error())
+	//	return &pb.UserResponse{
+	//		Status:  &pb.UserResponse_Code{Code: uint32(codes.Unavailable)},
+	//		Message: codes.Unavailable.String(),
+	//	}, nil
+	//}
+	//
+	//if err := pingAndRefreshMongoConnection(mongoClientWriter); err != nil {
+	//	log.Error("Failed to ping and reconnect mongo writer server:", err.Error())
+	//	return &pb.UserResponse{
+	//		Status:  &pb.UserResponse_Code{Code: uint32(codes.Unavailable)},
+	//		Message: codes.Unavailable.String(),
+	//	}, nil
+	//}
 
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},

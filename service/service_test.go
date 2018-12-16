@@ -29,12 +29,12 @@ func TestGetStatus(t *testing.T) {
 	s := Service{}
 
 	// test disconnected mongo writer
-	_ = disconnectMongoClient(mongoClientWriter, mongoWriter)
+	_ = disconnectMongoClient(mongoClientWriter)
 	response, _ := s.GetStatus(context.TODO(), &pb.UserRequest{})
 	assert.Equal(t, codes.OK.String(), response.GetMessage())
 
 	// test disconnected mongo reader
-	_ = disconnectMongoClient(mongoClientReader, mongoReader)
+	_ = disconnectMongoClient(mongoClientReader)
 	response, _ = s.GetStatus(context.TODO(), &pb.UserRequest{})
 	assert.Equal(t, codes.OK.String(), response.GetMessage())
 }
