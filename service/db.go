@@ -1,15 +1,14 @@
 package service
 
 import (
-	"golang.org/x/net/context"
 	"fmt"
 	log "github.com/hwsc-org/hwsc-logger/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/mongodb/mongo-go-driver/mongo"
+	"golang.org/x/net/context"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 var (
@@ -52,10 +51,7 @@ func init() {
 // connectToMongo creates a new client, checks connection, & monitors the specified Mongo server
 // Returns connected client or errors
 func dialMongoDB(uri *string) (*mongo.Client, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-
-	client, err := mongo.Connect(ctx, *uri)
+	client, err := mongo.Connect(context.TODO(), *uri)
 	if err != nil {
 		return nil, err
 	}

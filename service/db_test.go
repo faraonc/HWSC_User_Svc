@@ -10,14 +10,14 @@ import (
 func TestDialMongoDB(t *testing.T) {
 	// define edge cases to test
 	cases := []struct {
-		uri        string
-		isExpErr   bool
-		errorStr   string
+		uri      string
+		isExpErr bool
+		errorStr string
 	}{
 		{conf.UserDB.Reader, false, ""},
 		{conf.UserDB.Writer, false, ""},
-		{"",  true, "error parsing uri (): scheme must be \"mongodb\" or \"mongodb+srv\""},
-		{"mongodb://",  true, "error parsing uri (mongodb://): must have at least 1 host"},
+		{"", true, "error parsing uri (): scheme must be \"mongodb\" or \"mongodb+srv\""},
+		{"mongodb://", true, "error parsing uri (mongodb://): must have at least 1 host"},
 	}
 
 	// loop through our edge cases
@@ -36,9 +36,9 @@ func TestDialMongoDB(t *testing.T) {
 
 func TestDisconnectMongoClient(t *testing.T) {
 	cases := []struct {
-		uri        string
-		isExpErr   bool
-		errorStr   string
+		uri      string
+		isExpErr bool
+		errorStr string
 	}{
 		{conf.UserDB.Reader, false, ""},
 		{conf.UserDB.Writer, false, ""},
@@ -61,13 +61,13 @@ func TestDisconnectMongoClient(t *testing.T) {
 
 func TestRefreshMongoConnection(t *testing.T) {
 	client, err := dialMongoDB(&conf.UserDB.Reader)
-	assert.Nil(t,err)
+	assert.Nil(t, err)
 
 	err = disconnectMongoClient(client)
 	assert.Nil(t, err)
 
 	err = client.Ping(context.TODO(), nil)
-	assert.NotNil(t,err)
+	assert.NotNil(t, err)
 
 	err = refreshMongoConnection(client)
 	assert.Nil(t, err)
