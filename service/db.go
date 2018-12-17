@@ -1,15 +1,14 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	log "github.com/hwsc-org/hwsc-logger/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/mongodb/mongo-go-driver/mongo"
+	"golang.org/x/net/context"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 var (
@@ -18,25 +17,22 @@ var (
 )
 
 const (
-	reader = "reader"
-	writer = "writer"
+	mongoReader = "mongo reader"
+	mongoWriter = "mongo writer"
 )
 
 func init() {
-	var err error
+	log.Info("Connecting to mongo databases")
 
+	var err error
 	mongoClientReader, err = dialMongoDB(&conf.UserDB.Reader)
 	if err != nil {
-		log.Fatal("Failed to connect to reader mongo server:", err.Error())
-	} else {
-		log.Info("Connected to reader mongo server")
+		log.Fatal("Failed to connect to mongo reader server:", err.Error())
 	}
 
 	mongoClientWriter, err = dialMongoDB(&conf.UserDB.Writer)
 	if err != nil {
 		log.Fatal("Failed to connect to mongo writer server:", err.Error())
-	} else {
-		log.Info("Connected to writer mongo server")
 	}
 
 	// Handle Terminate Signal(Ctrl + C)
@@ -44,8 +40,9 @@ func init() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		_ = disconnectMongoClient(mongoClientReader, reader)
-		_ = disconnectMongoClient(mongoClientWriter, writer)
+		log.Info("Disconnecting mongo databases")
+		_ = disconnectMongoClient(mongoClientReader)
+		_ = disconnectMongoClient(mongoClientWriter)
 		fmt.Println()
 		log.Fatal("hwsc-user-svc terminated")
 	}()
@@ -54,45 +51,42 @@ func init() {
 // connectToMongo creates a new client, checks connection, & monitors the specified Mongo server
 // Returns connected client or errors
 func dialMongoDB(uri *string) (*mongo.Client, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-
-	client, err := mongo.Connect(ctx, *uri)
-	if err == nil {
-		// connect is not a blocking call, ping confirms that db is indeed found and connected
-		err = pingMongoClient(client)
-		if err != nil {
-			return nil, err
-		}
+	client, err := mongo.Connect(context.TODO(), *uri)
+	if err != nil {
+		return nil, err
 	}
 
-	return client, err
+	if err := client.Ping(context.TODO(), nil); err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }
 
 // disconnectMongoClient closes clients connection to server
 // Returns disconnection errors
-func disconnectMongoClient(client *mongo.Client, clientType string) error {
+func disconnectMongoClient(client *mongo.Client) error {
 	if client == nil {
 		return errNilMongoClient
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	log.Info("Disconnecting", clientType, "mongo client")
-
-	return client.Disconnect(ctx)
+	return client.Disconnect(context.TODO())
 }
 
-// pingMongoClient checks if client is found and connected to server
-// Returns connection errors
-func pingMongoClient(client *mongo.Client) error {
+// pingAndRefreshMongoConnection pings for connection, tries to redial
+func refreshMongoConnection(client *mongo.Client) error {
 	if client == nil {
 		return errNilMongoClient
 	}
+	if err := client.Ping(context.TODO(), nil); err != nil {
+		if err := client.Connect(context.TODO()); err != nil {
+			return err
+		}
+	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	return client.Ping(ctx, nil)
+	// TODO gives error if used with disconnect
+	//if err := pingMongoClient(client); err != nil {
+	//	return err
+	//}
+	return nil
 }
