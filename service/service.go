@@ -70,22 +70,22 @@ func (s *Service) GetStatus(ctx context.Context, req *pb.UserRequest) (*pb.UserR
 		}, nil
 	}
 
-	// Check if mongo clients are found and connected
-	//if err := pingAndRefreshMongoConnection(mongoClientReader); err != nil {
-	//	log.Error("Failed to ping and reconnect mongo reader server:", err.Error())
-	//	return &pb.UserResponse{
-	//		Status:  &pb.UserResponse_Code{Code: uint32(codes.Unavailable)},
-	//		Message: codes.Unavailable.String(),
-	//	}, nil
-	//}
-	//
-	//if err := pingAndRefreshMongoConnection(mongoClientWriter); err != nil {
-	//	log.Error("Failed to ping and reconnect mongo writer server:", err.Error())
-	//	return &pb.UserResponse{
-	//		Status:  &pb.UserResponse_Code{Code: uint32(codes.Unavailable)},
-	//		Message: codes.Unavailable.String(),
-	//	}, nil
-	//}
+	//Check if mongo clients are found and connected
+	if err := refreshMongoConnection(mongoClientReader); err != nil {
+		log.Error("Failed to ping and reconnect mongo reader server:", err.Error())
+		return &pb.UserResponse{
+			Status:  &pb.UserResponse_Code{Code: uint32(codes.Unavailable)},
+			Message: codes.Unavailable.String(),
+		}, nil
+	}
+
+	if err := refreshMongoConnection(mongoClientWriter); err != nil {
+		log.Error("Failed to ping and reconnect mongo writer server:", err.Error())
+		return &pb.UserResponse{
+			Status:  &pb.UserResponse_Code{Code: uint32(codes.Unavailable)},
+			Message: codes.Unavailable.String(),
+		}, nil
+	}
 
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},

@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 	"testing"
 )
 
@@ -58,44 +59,16 @@ func TestDisconnectMongoClient(t *testing.T) {
 	}
 }
 
-func TestPingMongoClient(t *testing.T) {
-	cases := []struct {
-		uri        string
-		isExpErr   bool
-		errorStr   string
-	}{
-		{conf.UserDB.Reader, false, ""},
-		{conf.UserDB.Writer, false, ""},
-		{"", true, "nil Mongo Client"},
-	}
-
-	for _, c := range cases {
-		client, _ := dialMongoDB(&c.uri)
-		err := pingMongoClient(client)
-
-		if c.isExpErr {
-			assert.EqualError(t, err, c.errorStr)
-		} else {
-			assert.Nil(t, err)
-			assert.NotNil(t, client)
-		}
-	}
-
+func TestRefreshMongoConnection(t *testing.T) {
 	client, err := dialMongoDB(&conf.UserDB.Reader)
+	assert.Nil(t,err)
+
+	err = disconnectMongoClient(client)
 	assert.Nil(t, err)
-	err = pingMongoClient(client)
+
+	err = client.Ping(context.TODO(), nil)
+	assert.NotNil(t,err)
+
+	err = refreshMongoConnection(client)
 	assert.Nil(t, err)
 }
-
-//func TestPingAndRefreshMongoConnection(t *testing.T) {
-//	client, err := dialMongoDB(&conf.UserDB.Reader)
-//	assert.Nil(t, err)
-//	err = pingAndRefreshMongoConnection(client)
-//	assert.Nil(t, err)
-//	err = disconnectMongoClient(client)
-//	err = pingMongoClient(client)
-//	assert.NotNil(t, err)
-//	err = pingAndRefreshMongoConnection(client)
-//	assert.Nil(t, err)
-//
-//}

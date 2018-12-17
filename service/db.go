@@ -1,7 +1,7 @@
 package service
 
 import (
-	"context"
+	"golang.org/x/net/context"
 	"fmt"
 	log "github.com/hwsc-org/hwsc-logger/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
@@ -60,7 +60,7 @@ func dialMongoDB(uri *string) (*mongo.Client, error) {
 		return nil, err
 	}
 
-	if err := pingMongoClient(client); err != nil {
+	if err := client.Ping(context.TODO(), nil); err != nil {
 		return nil, err
 	}
 
@@ -74,42 +74,23 @@ func disconnectMongoClient(client *mongo.Client) error {
 		return errNilMongoClient
 	}
 
-	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	//defer cancel()
-
-	return client.Disconnect(context.Background())
-}
-
-// pingMongoClient checks if client is found and connected to server
-// Returns connection errors
-func pingMongoClient(client *mongo.Client) error {
-	if client == nil {
-		return errNilMongoClient
-	}
-
-	//ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	//defer cancel()
-
-	if err := client.Ping(context.Background(), nil); err != nil {
-		return err
-	}
-
-	return nil
+	return client.Disconnect(context.TODO())
 }
 
 // pingAndRefreshMongoConnection pings for connection, tries to redial
-//func pingAndRefreshMongoConnection(client *mongo.Client) error {
-//	if client == nil {
-//		return errNilMongoClient
-//	}
-//	if err := pingMongoClient(client); err == nil {
-//		return nil
-//	}
-//	if err := client.Connect(context.TODO()); err != nil {
-//		return err
-//	}
-//	if err := pingMongoClient(client); err != nil {
-//		return err
-//	}
-//	return nil
-//}
+func refreshMongoConnection(client *mongo.Client) error {
+	if client == nil {
+		return errNilMongoClient
+	}
+	if err := client.Ping(context.TODO(), nil); err != nil {
+		if err := client.Connect(context.TODO()); err != nil {
+			return err
+		}
+	}
+
+	// TODO gives error if used with disconnect
+	//if err := pingMongoClient(client); err != nil {
+	//	return err
+	//}
+	return nil
+}
