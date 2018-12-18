@@ -83,11 +83,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2e2afb18064ad0875aa9cf58dfb90035828c2869bf289e5de6a7e88f7fcfa0b5"
+  digest = "1:2c0364790ab3f99bb0eac8f1168e4f38b3b50eeb7a6267e5d851879437e280a5"
   name = "github.com/hwsc-org/hwsc-api-blocks"
   packages = ["int/hwsc-user-svc/proto"]
   pruneopts = "UT"
-  revision = "16b1f882a849ce787b35b653833147f8242626c6"
+  revision = "96b57b2c854d75bdc001f1915f4930ef46f7057e"
 
 [[projects]]
   branch = "master"
@@ -232,7 +232,7 @@
     "trace",
   ]
   pruneopts = "UT"
-  revision = "891ebc4b82d6e74f468c533b06f983c7be918a96"
+  revision = "e147a9138326bc0e9d4e179541ffd8af41cff8a9"
 
 [[projects]]
   branch = "master"
@@ -248,7 +248,7 @@
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "4d1cda033e0619309c606fc686de3adcf599539e"
+  revision = "dcdaa6325bcb8d3c07805583fe12153f08a41e2b"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
@@ -279,7 +279,7 @@
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   pruneopts = "UT"
-  revision = "bd91e49a0898e27abb88c339b432fa53d7497ac0"
+  revision = "67d6565462c5a0d99b88193d59fefa10ca7e3010"
 
 [[projects]]
   digest = "1:9edd250a3c46675d0679d87540b30c9ed253b19bd1fd1af08f4f5fb3c79fc487"
@@ -337,13 +337,16 @@
     "github.com/hwsc-org/hwsc-logger/logger",
     "github.com/micro/go-config",
     "github.com/micro/go-config/source/env",
+    "github.com/mongodb/mongo-go-driver/bson",
     "github.com/mongodb/mongo-go-driver/mongo",
+    "github.com/mongodb/mongo-go-driver/mongo/options",
     "github.com/oklog/ulid",
     "github.com/stretchr/testify/assert",
     "golang.org/x/crypto/bcrypt",
     "golang.org/x/net/context",
     "google.golang.org/grpc",
     "google.golang.org/grpc/codes",
+    "google.golang.org/grpc/status",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
