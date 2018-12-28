@@ -1,92 +1,85 @@
 package service
 
 import (
+	"database/sql"
 	"fmt"
+	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
 	log "github.com/hwsc-org/hwsc-logger/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
-	"github.com/mongodb/mongo-go-driver/mongo"
-	"golang.org/x/net/context"
+	"google.golang.org/grpc/codes"
+	// database/sql uses this library indirectly
+	_ "github.com/lib/pq"
 	"os"
 	"os/signal"
 	"syscall"
 )
 
-var (
-	mongoClientReader *mongo.Client
-	mongoClientWriter *mongo.Client
+const (
+	dbDriverName = "postgres"
 )
 
-const (
-	mongoReader = "mongo reader"
-	mongoWriter = "mongo writer"
+var (
+	connectionString    string
+	postgresDB          *sql.DB
+	postgresUnavailable *pb.UserResponse
 )
 
 func init() {
-	log.Info("Connecting to mongo databases")
+	postgresUnavailable = &pb.UserResponse{
+		Status:  &pb.UserResponse_Code{Code: uint32(codes.Unavailable)},
+		Message: codes.Unavailable.String(),
+	}
 
+	log.Info("Connecting to postgres DB")
+
+	// initialize connection string
+	connectionString = fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s sslmode=verify-full",
+		conf.UserDB.Host, conf.UserDB.User, conf.UserDB.Password, conf.UserDB.Name)
+
+	// intialize connection object
 	var err error
-	mongoClientReader, err = dialMongoDB(&conf.UserDB.Reader)
+	postgresDB, err = sql.Open(dbDriverName, connectionString)
 	if err != nil {
-		log.Fatal("Failed to connect to mongo reader server:", err.Error())
+		log.Fatal("Failed to intialize connection object:", err.Error())
 	}
 
-	mongoClientWriter, err = dialMongoDB(&conf.UserDB.Writer)
+	// verify connection is alive, establishing connection if necessary
+	err = postgresDB.Ping()
 	if err != nil {
-		log.Fatal("Failed to connect to mongo writer server:", err.Error())
+		log.Fatal("Ping failed, cannot establish connection:", err.Error())
 	}
 
-	// Handle Terminate Signal(Ctrl + C)
+	// Handle Terminate Signal(Ctrl + C) gracefully
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		log.Info("Disconnecting mongo databases")
-		_ = disconnectMongoClient(mongoClientReader)
-		_ = disconnectMongoClient(mongoClientWriter)
-		fmt.Println()
+		log.Info("Disconnecting postgres DB")
+		if postgresDB != nil {
+			_ = postgresDB.Close()
+		}
 		log.Fatal("hwsc-user-svc terminated")
 	}()
 }
 
-// connectToMongo creates a new client, checks connection, & monitors the specified Mongo server
-// Returns connected client or errors
-func dialMongoDB(uri *string) (*mongo.Client, error) {
-	client, err := mongo.Connect(context.TODO(), *uri)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := client.Ping(context.TODO(), nil); err != nil {
-		return nil, err
-	}
-
-	return client, nil
-}
-
-// disconnectMongoClient closes clients connection to server
-// Returns disconnection errors
-func disconnectMongoClient(client *mongo.Client) error {
-	if client == nil {
-		return errNilMongoClient
-	}
-
-	return client.Disconnect(context.TODO())
-}
-
-// pingAndRefreshMongoConnection pings for connection, tries to redial
-func refreshMongoConnection(client *mongo.Client) error {
-	if client == nil {
-		return errNilMongoClient
-	}
-	if err := client.Ping(context.TODO(), nil); err != nil {
-		if err := client.Connect(context.TODO()); err != nil {
-			return err
+// refreshDBConnection verifies if connection is alive, ping will establish c/n if necessary
+// Returns response object if ping failed to reconnect
+func refreshDBConnection() *pb.UserResponse {
+	if postgresDB == nil {
+		var err error
+		postgresDB, err = sql.Open(dbDriverName, connectionString)
+		if err != nil {
+			return postgresUnavailable
 		}
 	}
 
-	// TODO gives error if used with disconnect
-	//if err := pingMongoClient(client); err != nil {
-	//	return err
-	//}
+	if err := postgresDB.Ping(); err != nil {
+		_ = postgresDB.Close()
+		log.Error("Failed to ping and reconnect to postgres db:", err.Error())
+
+		return postgresUnavailable
+	}
+
 	return nil
 }

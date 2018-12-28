@@ -106,6 +106,17 @@
   version = "v0.3.6"
 
 [[projects]]
+  digest = "1:8ef506fc2bb9ced9b151dafa592d4046063d744c646c1bbe801982ce87e4bc24"
+  name = "github.com/lib/pq"
+  packages = [
+    ".",
+    "oid",
+  ]
+  pruneopts = "UT"
+  revision = "4ded0e9383f75c197b3a2aaa6d590ac52df6fd79"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:65b96744a06e62dca68e9cd589554fcf248d1638d4cc086f339cd06590586a5a"
   name = "github.com/micro/go-config"
   packages = [
@@ -335,6 +346,7 @@
   input-imports = [
     "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto",
     "github.com/hwsc-org/hwsc-logger/logger",
+    "github.com/lib/pq",
     "github.com/micro/go-config",
     "github.com/micro/go-config/source/env",
     "github.com/mongodb/mongo-go-driver/mongo",

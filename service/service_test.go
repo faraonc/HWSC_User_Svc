@@ -1,14 +1,15 @@
 package service
 
 import (
-	"context"
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"testing"
 )
 
 func TestGetStatus(t *testing.T) {
+	// test service state locker
 	cases := []struct {
 		request     *pb.UserRequest
 		serverState state
@@ -27,15 +28,16 @@ func TestGetStatus(t *testing.T) {
 
 	serviceStateLocker.currentServiceState = available
 	s := Service{}
-	// test disconnected mongo writer
-	err := disconnectMongoClient(mongoClientWriter)
-	assert.Nil(t, err)
-	response, _ := s.GetStatus(context.TODO(), &pb.UserRequest{})
-	assert.Equal(t, codes.OK.String(), response.GetMessage())
 
-	// test disconnected mongo reader
-	//err = disconnectMongoClient(mongoClientReader)
-	//assert.Nil(t,err)
-	//response, _ = s.GetStatus(context.TODO(), &pb.UserRequest{})
-	//assert.Equal(t, codes.OK.String(), response.GetMessage())
+	// test refreshDBConnection
+	err := postgresDB.Close()
+	assert.Nil(t, err)
+
+	response, _ := s.GetStatus(context.TODO(), &pb.UserRequest{})
+	assert.Equal(t, codes.Unavailable.String(), response.GetMessage())
+
+	// reconnect
+	postgresDB = nil
+	response = refreshDBConnection()
+	assert.Nil(t, response)
 }

@@ -8,58 +8,10 @@ import (
 )
 
 const (
-	confFilePath = "conf/json/config.dev.json"
-	envPrefix    = "hosts"
+	environmentVariablePrefix = "hosts"
 )
 
-
-var (
-	// GRPCHost address and port of gRPC microservice
-	GRPCHost Host
-
-	// UserDB holds all DB information (c/n strings, dbName, collectionName)
-	UserDB   UserDBHost
-)
-
-// init()
-// set up some form of state on the initial startup of our program
-// i.e: creating c/n to DBs, loading config files, initializing variable, etc.
-// regardless of how many times package is imported, init is only called once
-func init() {
-	log.Info("Reading ENV variables")
-
-	// create a new config
-	conf := config.NewConfig()
-
-	// convert environment variables to json format
-	src := env.NewSource(
-		env.WithPrefix(envPrefix),
-	)
-
-	// config.Load(): Load config from a file source
-	// which is src that took environment variables and convert to json format
-	// afterwards, conf is loaded with "src"
-	if err := conf.Load(src); err != nil {
-		log.Fatal("Failed to intialize configuration", err.Error())
-	}
-
-	// get gets the path target from loaded file
-	// scan grabs the values from path target from the config file into a struct
-
-	// in this case, scan "hosts" with "grpc"'s from config file
-	// and copy all "grpc" properties to GRPCHost (type struct Host)
-	if err := conf.Get("hosts", "grpc").Scan(&GRPCHost); err != nil {
-		log.Fatal("Failed to get grpc configuration", err.Error())
-	}
-
-	// scan "hosts" prop "mongodb" properties from config file
-	// and copy its props to UserDB struct
-	if err := conf.Get("hosts", "mongodb").Scan(&UserDB); err != nil {
-		log.Fatal("Failed to get mongodb configuration", err.Error())
-	}
-}
-
-// Host represents a server
+// Host contains server configuration
 // `json:"address"` are key:value tags that can add meta information to structs
 // there can be json tags, yaml tags, xml, bson, protobuf, etc.
 // When json.Unmarshaling JSON file,
@@ -70,20 +22,52 @@ type Host struct {
 	Network string `json:"network"`
 }
 
-// function that receives pointer to Host
-// Sprintf = string print format
-func (h *Host) String() string {
-	return fmt.Sprintf("%s:%s", h.Address, h.Port)
+// UserDBHost contains User database configurations
+type UserDBHost struct {
+	Host     string `json:"host"`
+	Name     string `json:"db"`
+	User     string `json:"user"`
+	Password string `json:"password"`
 }
 
-// UserDBHost represents the User database
-// Writer address (primary connection string) for writing to user MongoDB server
-// Reader connection string for reading from user MongoDB server
-// Name is the database name
-// Collection is the database's collection name
-type UserDBHost struct {
-	Writer     string `json:"writer"`
-	Reader     string `json:"reader"`
-	Name       string `json:"db"`
-	Collection string `json:"collection"`
+var (
+	// GRPCHost contains server configs grabbed from env vars
+	GRPCHost Host
+
+	// UserDB contains user database configs grabbed from env vars
+	UserDB UserDBHost
+)
+
+func init() {
+	log.Info("Reading ENV variables")
+
+	// create a new config
+	conf := config.NewConfig()
+
+	// convert environment variables to json format
+	src := env.NewSource(
+		env.WithPrefix(environmentVariablePrefix),
+	)
+
+	// config.Load(): Load config from a file source
+	if err := conf.Load(src); err != nil {
+		log.Fatal("Failed to intialize configuration", err.Error())
+	}
+
+	// get gets the path target from loaded file
+	// scan grabs the values from path target from the config file into a struct
+	// scan "hosts" with "grpc" props from config file & copy all "grpc" prop values to GRPCHost struct
+	if err := conf.Get("hosts", "grpc").Scan(&GRPCHost); err != nil {
+		log.Fatal("Failed to get grpc configuration", err.Error())
+	}
+
+	// scan "hosts" prop "postgres" from environmental variables & copy values to UserDB struct
+	if err := conf.Get("hosts", "postgres").Scan(&UserDB); err != nil {
+		log.Fatal("Failed to get postgres configuration", err.Error())
+	}
+}
+
+// String prints readable address and port using
+func (h *Host) String() string {
+	return fmt.Sprintf("%s:%s", h.Address, h.Port)
 }
