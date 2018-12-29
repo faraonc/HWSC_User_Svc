@@ -2,10 +2,12 @@ package service
 
 import (
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
-	log "github.com/hwsc-org/hwsc-logger/logger"
+	"github.com/hwsc-org/hwsc-logger/logger"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"sync"
+	"time"
 )
 
 // Service struct type, implements the generated (pb file) UserServiceServer interface
@@ -49,13 +51,13 @@ func init() {
 // GetStatus gets the current status of the service
 // Returns status code int and status code text, and any connection errors
 func (s *Service) GetStatus(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-	log.RequestService("GetStatus")
+	logger.RequestService("GetStatus")
 
 	// Lock the state for reading and defer unlocks the state before function exits
 	serviceStateLocker.lock.RLock()
 	defer serviceStateLocker.lock.RUnlock()
 
-	log.Info("Service state:", serviceStateMap[serviceStateLocker.currentServiceState])
+	logger.Info("Service state:", serviceStateMap[serviceStateLocker.currentServiceState])
 	if serviceStateLocker.currentServiceState == unavailable {
 		return &pb.UserResponse{
 			Status:  &pb.UserResponse_Code{Code: uint32(codes.Unavailable)},
@@ -75,49 +77,99 @@ func (s *Service) GetStatus(ctx context.Context, req *pb.UserRequest) (*pb.UserR
 
 // CreateUser creates a new user document and inserts it to user DB
 func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-	// TODO
-	log.RequestService("CreateUser")
-	return &pb.UserResponse{}, nil
+	logger.RequestService("CreateUser")
+
+	// get User Object
+	user := req.GetUser()
+	if user == nil {
+		logger.Error(errNilRequestUser.Error())
+		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+	}
+
+	// validate fields in user object
+	if str, err := validateUser(user); err != nil {
+		logger.Error(str, ":", err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	// generate uuid
+	id, err := generateUUID()
+	if err != nil {
+		logger.Error("CreateUser generateUUID:", err.Error())
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	user.Uuid = id
+
+	// hash password using bcrypt
+	hashedPassword, err := hashPassword(user.GetPassword())
+	if err != nil {
+		logger.Error("CreateUser hashPassword:", err.Error())
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	user.Password = hashedPassword
+	user.IsVerified = false
+
+	// insert into DB
+	command := `
+				INSERT INTO user_account(
+					uuid, first_name, last_name, email, password, organization, created_date, is_verified
+				) VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING first_name
+				`
+	_, err = postgresDB.Exec(command, user.GetUuid(), user.GetFirstName(), user.GetLastName(),
+		user.GetEmail(), user.GetPassword(), user.GetOrganization(), time.Now().UTC(), user.GetIsVerified())
+
+	if err != nil {
+		logger.Error("CreateUser Exec INSERT:", err.Error())
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	logger.Info("Success inserting new user:", user.GetFirstName(), user.GetLastName(), user.GetUuid())
+
+	// NOTE: I shouldn't be sending back user object, b/c user has to verify his account first
+	return &pb.UserResponse{
+		Status: &pb.UserResponse_Code{Code: uint32(codes.OK)},
+		Message: codes.OK.String(),
+	}, nil
 }
 
-// DeleteUser deletes a user document in user DB
-func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-	//TODO
-	log.RequestService("DeleteUser")
-	return &pb.UserResponse{}, nil
-}
-
-// UpdateUser updates a user document in user DB
-func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-	//TODO
-	log.RequestService("UpdateUser")
-	return &pb.UserResponse{}, nil
-}
-
-// AuthenticateUser goes through user DB collection and tries to find matching email/password
-func (s *Service) AuthenticateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-	//TODO
-	log.RequestService("AuthenticateUser")
-	return &pb.UserResponse{}, nil
-}
-
-// ListUsers returns the user DB collection
-func (s *Service) ListUsers(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-	//TODO
-	log.RequestService("ListUsers")
-	return &pb.UserResponse{}, nil
-}
-
-// GetUser returns a user document in user DB
-func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-	//TODO
-	log.RequestService("GetUser")
-	return &pb.UserResponse{}, nil
-}
-
-// ShareDocument updates user/s documents shared_to_me field in user DB
-func (s *Service) ShareDocument(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-	//TODO
-	log.RequestService("ShareDocument")
-	return &pb.UserResponse{}, nil
-}
+//// DeleteUser deletes a user document in user DB
+//func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+//	//TODO
+//	logger.RequestService("DeleteUser")
+//	return &pb.UserResponse{}, nil
+//}
+//
+//// UpdateUser updates a user document in user DB
+//func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+//	//TODO
+//	logger.RequestService("UpdateUser")
+//	return &pb.UserResponse{}, nil
+//}
+//
+//// AuthenticateUser goes through user DB collection and tries to find matching email/password
+//func (s *Service) AuthenticateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+//	//TODO
+//	logger.RequestService("AuthenticateUser")
+//	return &pb.UserResponse{}, nil
+//}
+//
+//// ListUsers returns the user DB collection
+//func (s *Service) ListUsers(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+//	//TODO
+//	logger.RequestService("ListUsers")
+//	return &pb.UserResponse{}, nil
+//}
+//
+//// GetUser returns a user document in user DB
+//func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+//	//TODO
+//	logger.RequestService("GetUser")
+//	return &pb.UserResponse{}, nil
+//}
+//
+//// ShareDocument updates user/s documents shared_to_me field in user DB
+//func (s *Service) ShareDocument(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+//	//TODO
+//	logger.RequestService("ShareDocument")
+//	return &pb.UserResponse{}, nil
+//}

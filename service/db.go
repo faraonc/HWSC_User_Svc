@@ -61,6 +61,49 @@ func init() {
 		}
 		log.Fatal("hwsc-user-svc terminated")
 	}()
+
+	// TODO delete after dev-ops working
+	devCreateUserTable()
+}
+
+// TODO delete after dev-ops working
+func devCheckError(err error) {
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+}
+
+// TODO delete after dev-ops working
+func devCreateUserTable() {
+	if postgresDB == nil {
+		log.Fatal("postgres connection is null for some reason")
+	}
+
+	const userSchema = `
+DROP TABLE IF EXISTS user_account;
+DROP DOMAIN IF EXISTS user_name;
+DROP DOMAIN IF EXISTS ulid;
+
+CREATE DOMAIN user_name AS
+  VARCHAR(32) NOT NULL CHECK (VALUE ~ '^[[:alpha:]]+(([''.\s-][[:alpha:]\s])?[[:alpha:]]*)*$');
+
+-- https://github.com/oklog/ulid
+CREATE DOMAIN ulid AS
+  VARCHAR(26) NOT NULL CHECK (LENGTH(VALUE) = 26);
+  
+CREATE TABLE user_account (
+	uuid              ULID PRIMARY KEY,
+	first_name        USER_NAME,
+	last_name         USER_NAME,
+	email             VARCHAR(320) NOT NULL UNIQUE,
+	password          VARCHAR(60) NOT NULL,
+	organization      TEXT,
+	created_date      TIMESTAMP NOT NULL,
+  	is_verified       BOOLEAN NOT NULL
+);`
+
+	_, err := postgresDB.Exec(userSchema)
+	devCheckError(err)
 }
 
 // refreshDBConnection verifies if connection is alive, ping will establish c/n if necessary
