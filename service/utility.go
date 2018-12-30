@@ -34,6 +34,9 @@ func validateUser(user *pb.User) (string, error) {
 	if str, err := validateEmail(user.GetEmail()); err != nil {
 		return str, err
 	}
+	if user.GetPassword() == "" {
+		return "User Password is blank", errInvalidPassword
+	}
 	if str, err := validateOrganization(user.GetOrganization()); err != nil {
 		return str, err
 	}
@@ -82,7 +85,7 @@ func validateEmail(email string) (string, error) {
 	}
 
 	if !emailRegex.MatchString(email) {
-		return "User Email either doesn't meet 3 min length or @ symbol is misplaced", errInvalidUserEmail
+		return "User Email is either: len < 3 || symbol @ is misplaced", errInvalidUserEmail
 	}
 	return "", nil
 }

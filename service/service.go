@@ -113,7 +113,7 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	command := `
 				INSERT INTO user_account(
 					uuid, first_name, last_name, email, password, organization, created_date, is_verified
-				) VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING first_name
+				) VALUES($1, $2, $3, $4, $5, $6, $7, $8)
 				`
 	_, err = postgresDB.Exec(command, user.GetUuid(), user.GetFirstName(), user.GetLastName(),
 		user.GetEmail(), user.GetPassword(), user.GetOrganization(), time.Now().UTC(), user.GetIsVerified())
@@ -127,7 +127,7 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 
 	// NOTE: I shouldn't be sending back user object, b/c user has to verify his account first
 	return &pb.UserResponse{
-		Status: &pb.UserResponse_Code{Code: uint32(codes.OK)},
+		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
 	}, nil
 }
