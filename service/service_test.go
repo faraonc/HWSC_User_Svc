@@ -37,9 +37,8 @@ func TestGetStatus(t *testing.T) {
 	assert.Equal(t, codes.Unavailable.String(), response.GetMessage())
 
 	// reconnect
-	postgresDB = nil
-	response = refreshDBConnection()
-	assert.Nil(t, response)
+	err = refreshDBConnection()
+	assert.Nil(t, err)
 }
 
 func TestCreateUser(t *testing.T) {

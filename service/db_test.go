@@ -9,21 +9,20 @@ func TestRefreshDBConnection(t *testing.T) {
 	assert.NotNil(t, postgresDB)
 
 	//verify connection on supposedly opened connection
-	response := refreshDBConnection()
-	assert.Nil(t, response)
+	err := refreshDBConnection()
+	assert.Nil(t, err)
+	assert.NotNil(t, postgresDB)
 
 	// close connection
-	err := postgresDB.Close()
+	err = postgresDB.Close()
 	assert.Nil(t, err)
 
 	// test on closed connection
-	response = refreshDBConnection()
-	assert.NotNil(t, response)
-
-	// test null
-	postgresDB = nil
+	err = refreshDBConnection()
+	assert.NotNil(t, err)
+	assert.Nil(t, postgresDB)
 
 	//verify initializing
-	response = refreshDBConnection()
-	assert.Nil(t, response)
+	err = refreshDBConnection()
+	assert.Nil(t, err)
 }

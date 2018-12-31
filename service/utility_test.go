@@ -63,26 +63,24 @@ func TestValidateUser(t *testing.T) {
 	}
 
 	cases := []struct {
-		user      *pb.User
-		isExpErr  bool
-		expMsg    string
-		expErrMsg string
+		user     *pb.User
+		isExpErr bool
+		expMsg   string
 	}{
-		{&validTest, false, "", ""},
-		{&invalidFirstName, true, "User first name is blank", errInvalidUserFirstName.Error()},
-		{&invalidLastName, true, "User last name is blank", errInvalidUserLastName.Error()},
-		{&invalidEmail, true, "User Email is either: len < 3 || symbol @ is misplaced", errInvalidUserEmail.Error()},
-		{&invalidPassword, true, "User Password is blank", errInvalidPassword.Error()},
-		{&invalidOrg, true, "User Organization is blank", errInvalidUserOrganization.Error()},
+		{&validTest, false, ""},
+		{&invalidFirstName, true, errInvalidUserFirstName.Error()},
+		{&invalidLastName, true, errInvalidUserLastName.Error()},
+		{&invalidEmail, true, errInvalidUserEmail.Error()},
+		{&invalidPassword, true, errInvalidPassword.Error()},
+		{&invalidOrg, true, errInvalidUserOrganization.Error()},
 	}
 
 	for _, c := range cases {
-		str, err := validateUser(c.user)
+		err := validateUser(c.user)
 		if c.isExpErr {
-			assert.EqualError(t, err, c.expErrMsg)
-			assert.Equal(t, str, c.expMsg)
+			assert.EqualError(t, err, c.expMsg)
 		} else {
-			assert.Equal(t, str, c.expMsg)
+			assert.Equal(t, "", c.expMsg)
 			assert.Nil(t, err)
 		}
 	}
@@ -93,37 +91,32 @@ func TestValidateFirstName(t *testing.T) {
 	reachMaxLengthTrailingSpaces := "   jjYnNXQewvJvyNNVeyZPSJRazTLAiFXk   "
 	reachMaxLengthSpacesBetween := "   jjYnNXQewvJvyN  VeyZPSJRaz  LAiFXk   "
 
-	regexFailMsg := "User first name contains invalid characters"
-
 	cases := []struct {
 		name     string
 		isExpErr bool
-		expMsg   string
 	}{
-		{"", true, "User first name is blank"},
-		{exceedMaxLengthName, true, "User first name exceeds max length"},
-		{"Hello-.", true, regexFailMsg},
-		{"Hell O .", true, regexFailMsg},
-		{"Hell O-", true, regexFailMsg},
-		{"Hello%f@k", true, regexFailMsg},
-		{"Hello", false, ""},
-		{"Hell-O", false, ""},
-		{"Hell O", false, ""},
-		{"He.llo Can You Hear Me", false, ""},
-		{"Hell'o World", false, ""},
-		{reachMaxLengthTrailingSpaces, false, ""},
-		{reachMaxLengthSpacesBetween, false, ""},
+		{"", true},
+		{exceedMaxLengthName, true},
+		{"Hello-.", true},
+		{"Hell O .", true},
+		{"Hell O-", true},
+		{"Hello%f@k", true},
+		{"Hello", false},
+		{"Hell-O", false},
+		{"Hell O", false},
+		{"He.llo Can You Hear Me", false},
+		{"Hell'o World", false},
+		{reachMaxLengthTrailingSpaces, false},
+		{reachMaxLengthSpacesBetween, false},
 	}
 
 	for _, c := range cases {
-		str, err := validateFirstName(c.name)
+		err := validateFirstName(c.name)
 
 		if c.isExpErr {
-			assert.Equal(t, c.expMsg, str)
 			assert.EqualError(t, err, errInvalidUserFirstName.Error())
 		} else {
 			assert.Nil(t, err)
-			assert.Equal(t, "", str)
 		}
 	}
 }
@@ -133,37 +126,32 @@ func TestValidateLastName(t *testing.T) {
 	reachMaxLengthTrailingSpaces := "   jjYnNXQewvJvyNNVeyZPSJRazTLAiFXk   "
 	reachMaxLengthSpacesBetween := "   jjYnNXQewvJvyN  VeyZPSJRaz  LAiFXk   "
 
-	regexFailMsg := "User last name contains invalid characters"
-
 	cases := []struct {
 		name     string
 		isExpErr bool
-		expMsg   string
 	}{
-		{"", true, "User last name is blank"},
-		{exceedMaxLengthName, true, "User last name exceeds max length"},
-		{"Hello-.", true, regexFailMsg},
-		{"Hell O .", true, regexFailMsg},
-		{"Hell O-", true, regexFailMsg},
-		{"Hello%f@k", true, regexFailMsg},
-		{"Hello", false, ""},
-		{"Hell-O", false, ""},
-		{"Hell O", false, ""},
-		{"He.llo Can You Hear Me", false, ""},
-		{"Hell'o World", false, ""},
-		{reachMaxLengthTrailingSpaces, false, ""},
-		{reachMaxLengthSpacesBetween, false, ""},
+		{"", true},
+		{exceedMaxLengthName, true},
+		{"Hello-.", true},
+		{"Hell O .", true},
+		{"Hell O-", true},
+		{"Hello%f@k", true},
+		{"Hello", false},
+		{"Hell-O", false},
+		{"Hell O", false},
+		{"He.llo Can You Hear Me", false},
+		{"Hell'o World", false},
+		{reachMaxLengthTrailingSpaces, false},
+		{reachMaxLengthSpacesBetween, false},
 	}
 
 	for _, c := range cases {
-		str, err := validateLastName(c.name)
+		err := validateLastName(c.name)
 
 		if c.isExpErr {
-			assert.Equal(t, c.expMsg, str)
 			assert.EqualError(t, err, errInvalidUserLastName.Error())
 		} else {
 			assert.Nil(t, err)
-			assert.Equal(t, "", str)
 		}
 	}
 }
@@ -176,50 +164,43 @@ func TestValidateEmail(t *testing.T) {
 		">Wpzo|iZt#l0T:e4n??hd>CBjCnITEakpi@W{>1B06|D@<$#R&&11)W2IHM3D(|@" +
 		"b?FrdG&t:7aF4#W}"
 
-	regexFailMsg := "User Email is either: len < 3 || symbol @ is misplaced"
-
 	cases := []struct {
 		email    string
 		isExpErr bool
-		expMsg   string
 	}{
-		{"", true, regexFailMsg},
-		{"a", true, regexFailMsg},
-		{"ab", true, regexFailMsg},
-		{"abc", true, regexFailMsg},
-		{"@bc", true, regexFailMsg},
-		{"ab@", true, regexFailMsg},
-		{"@", true, regexFailMsg},
-		{"a@", true, regexFailMsg},
-		{"@a", true, regexFailMsg},
-		{exceedMaxLengthEmail, true, "User Email exceeds max length"},
-		{"@@@", false, ""},
-		{"!@@", false, ""},
-		{"@@#", false, ""},
-		{"abc@abc.com", false, ""},
+		{"", true},
+		{"a", true},
+		{"ab", true},
+		{"abc", true},
+		{"@bc", true},
+		{"ab@", true},
+		{"@", true},
+		{"a@", true},
+		{"@a", true},
+		{exceedMaxLengthEmail, true},
+		{"@@@", false},
+		{"!@@", false},
+		{"@@#", false},
+		{"abc@abc.com", false},
 	}
 
 	for _, c := range cases {
-		str, err := validateEmail(c.email)
+		err := validateEmail(c.email)
 
 		if c.isExpErr {
-			assert.Equal(t, c.expMsg, str)
 			assert.EqualError(t, err, errInvalidUserEmail.Error())
 		} else {
 			assert.Nil(t, err)
-			assert.Equal(t, "", str)
 		}
 	}
 }
 
 func TestValidateOrganization(t *testing.T) {
-	result, err := validateOrganization("")
+	err := validateOrganization("")
 	assert.NotNil(t, err)
-	assert.Equal(t, "User Organization is blank", result)
 
-	result, err = validateOrganization("abcd")
+	err = validateOrganization("abcd")
 	assert.Nil(t, err)
-	assert.Equal(t, "", result)
 }
 
 func TestGenerateUUID(t *testing.T) {
@@ -239,6 +220,12 @@ func TestGenerateUUID(t *testing.T) {
 }
 
 func TestHashPassword(t *testing.T) {
+	// test empty password
+	hashed, err := hashPassword("")
+	assert.NotNil(t, err)
+	assert.EqualError(t, err, errEmptyPassword.Error())
+	assert.Equal(t, "", hashed)
+
 	// test password and hash password !=
 	start := "@#$Sdadf?><;?/`~+-=alskfjwi23xcv"
 	for i := 0; i < 30; i++ {

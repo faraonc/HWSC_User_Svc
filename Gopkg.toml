@@ -57,6 +57,10 @@
   name = "google.golang.org/grpc"
   version = "1.17.0"
 
+[[constraint]]
+  name = "github.com/lib/pq"
+  revision = "9eb73efc1fcc404148b56765b0d3f61d9a5ef8ee"
+
 [prune]
   go-tests = true
   unused-packages = true

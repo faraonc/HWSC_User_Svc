@@ -24,79 +24,69 @@ var (
 	emailRegex = regexp.MustCompile(`.+@.+`)
 )
 
-func validateUser(user *pb.User) (string, error) {
-	if str, err := validateFirstName(user.GetFirstName()); err != nil {
-		return str, err
+func validateUser(user *pb.User) error {
+	if err := validateFirstName(user.GetFirstName()); err != nil {
+		return err
 	}
-	if str, err := validateLastName(user.GetLastName()); err != nil {
-		return str, err
+	if err := validateLastName(user.GetLastName()); err != nil {
+		return err
 	}
-	if str, err := validateEmail(user.GetEmail()); err != nil {
-		return str, err
+	if err := validateEmail(user.GetEmail()); err != nil {
+		return err
 	}
 	if user.GetPassword() == "" {
-		return "User Password is blank", errInvalidPassword
+		return errInvalidPassword
 	}
-	if str, err := validateOrganization(user.GetOrganization()); err != nil {
-		return str, err
+	if err := validateOrganization(user.GetOrganization()); err != nil {
+		return err
 	}
-	return "", nil
+	return nil
 }
 
-func validateFirstName(name string) (string, error) {
+func validateFirstName(name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return "User first name is blank", errInvalidUserFirstName
+		return errInvalidUserFirstName
 	}
 
 	name = multiSpaceRegex.ReplaceAllString(name, " ")
-	if len(name) > maxFirstNameLength {
-		return "User first name exceeds max length", errInvalidUserFirstName
+	if len(name) > maxFirstNameLength || !nameValidCharsRegex.MatchString(name) {
+		return errInvalidUserFirstName
 	}
 
-	if !nameValidCharsRegex.MatchString(name) {
-		return "User first name contains invalid characters", errInvalidUserFirstName
-	}
-
-	return "", nil
+	return nil
 }
 
-func validateLastName(name string) (string, error) {
+func validateLastName(name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return "User last name is blank", errInvalidUserLastName
+		return errInvalidUserLastName
 	}
 
 	name = multiSpaceRegex.ReplaceAllString(name, " ")
-	if len(name) > maxLastNameLength {
-		return "User last name exceeds max length", errInvalidUserLastName
+	if len(name) > maxLastNameLength || !nameValidCharsRegex.MatchString(name) {
+		return errInvalidUserLastName
 	}
 
-	if !nameValidCharsRegex.MatchString(name) {
-		return "User last name contains invalid characters", errInvalidUserLastName
-	}
-
-	return "", nil
+	return nil
 }
 
-func validateEmail(email string) (string, error) {
-	if len(email) > maxEmailLength {
-		return "User Email exceeds max length", errInvalidUserEmail
+func validateEmail(email string) error {
+	if len(email) > maxEmailLength || !emailRegex.MatchString(email) {
+		return errInvalidUserEmail
 	}
 
-	if !emailRegex.MatchString(email) {
-		return "User Email is either: len < 3 || symbol @ is misplaced", errInvalidUserEmail
-	}
-	return "", nil
+	return nil
 }
 
-func validateOrganization(name string) (string, error) {
+func validateOrganization(name string) error {
 	if name == "" {
-		return "User Organization is blank", errInvalidUserOrganization
+		return errInvalidUserOrganization
 	}
-	return "", nil
+	return nil
 }
 
+// TODO synchronize inside this function
 // generateUUID generates a unique user ID using ulid package based on currentTime
 // returns a lower cased string type of generated ulid.ULID
 func generateUUID() (string, error) {
@@ -114,6 +104,10 @@ func generateUUID() (string, error) {
 // hashPassword hashes and salts provided string
 // returns stringified hashed password
 func hashPassword(password string) (string, error) {
+	if password == "" {
+		return "", errEmptyPassword
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
 	if err != nil {
 		return "", err

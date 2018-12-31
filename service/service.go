@@ -59,14 +59,11 @@ func (s *Service) GetStatus(ctx context.Context, req *pb.UserRequest) (*pb.UserR
 
 	logger.Info("Service state:", serviceStateMap[serviceStateLocker.currentServiceState])
 	if serviceStateLocker.currentServiceState == unavailable {
-		return &pb.UserResponse{
-			Status:  &pb.UserResponse_Code{Code: uint32(codes.Unavailable)},
-			Message: codes.Unavailable.String(),
-		}, nil
+		return responseServiceUnavailable, nil
 	}
 
-	if response := refreshDBConnection(); response != nil {
-		return response, nil
+	if err := refreshDBConnection(); err != nil {
+		return responseServiceUnavailable, nil
 	}
 
 	return &pb.UserResponse{
@@ -87,11 +84,12 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	}
 
 	// validate fields in user object
-	if str, err := validateUser(user); err != nil {
-		logger.Error(str, ":", err.Error())
+	if err := validateUser(user); err != nil {
+		logger.Error("CreateUser svc:", err.Error())
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	// TODO synchronize to avoid 2 or more users with the same UUID ( RW lock )
 	// generate uuid
 	id, err := generateUUID()
 	if err != nil {
@@ -125,7 +123,6 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 
 	logger.Info("Success inserting new user:", user.GetFirstName(), user.GetLastName(), user.GetUuid())
 
-	// NOTE: I shouldn't be sending back user object, b/c user has to verify his account first
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),

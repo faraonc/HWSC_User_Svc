@@ -3,10 +3,8 @@ package service
 import (
 	"database/sql"
 	"fmt"
-	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
 	log "github.com/hwsc-org/hwsc-logger/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
-	"google.golang.org/grpc/codes"
 	// database/sql uses this library indirectly
 	_ "github.com/lib/pq"
 	"os"
@@ -19,17 +17,11 @@ const (
 )
 
 var (
-	connectionString    string
-	postgresDB          *sql.DB
-	postgresUnavailable *pb.UserResponse
+	connectionString string
+	postgresDB       *sql.DB
 )
 
 func init() {
-	postgresUnavailable = &pb.UserResponse{
-		Status:  &pb.UserResponse_Code{Code: uint32(codes.Unavailable)},
-		Message: codes.Unavailable.String(),
-	}
-
 	log.Info("Connecting to postgres DB")
 
 	// initialize connection string
@@ -80,26 +72,43 @@ func devCreateUserTable() {
 	}
 
 	const userSchema = `
-DROP TABLE IF EXISTS user_account;
-DROP DOMAIN IF EXISTS user_name;
-DROP DOMAIN IF EXISTS ulid;
+DROP SCHEMA IF EXISTS user_svc CASCADE;
 
-CREATE DOMAIN user_name AS
+CREATE SCHEMA user_svc;
+
+CREATE DOMAIN user_svc.user_name AS
   VARCHAR(32) NOT NULL CHECK (VALUE ~ '^[[:alpha:]]+(([''.\s-][[:alpha:]\s])?[[:alpha:]]*)*$');
 
--- https://github.com/oklog/ulid
-CREATE DOMAIN ulid AS
+CREATE DOMAIN user_svc.ulid AS
   VARCHAR(26) NOT NULL CHECK (LENGTH(VALUE) = 26);
-  
-CREATE TABLE user_account (
-	uuid              ULID PRIMARY KEY,
-	first_name        USER_NAME,
-	last_name         USER_NAME,
-	email             VARCHAR(320) NOT NULL UNIQUE,
-	password          VARCHAR(60) NOT NULL,
-	organization      TEXT,
-	created_date      TIMESTAMP NOT NULL,
-  	is_verified       BOOLEAN NOT NULL
+
+CREATE DOMAIN user_svc.ksuid AS
+  VARCHAR(27) NOT NULL CHECK (LENGTH(VALUE) = 27);
+
+CREATE TABLE user_svc.accounts
+(
+  uuid              user_svc.ulid PRIMARY KEY,
+  first_name        user_svc.user_name,
+  last_name         user_svc.user_name,
+  email             VARCHAR(320) NOT NULL UNIQUE,
+  password          VARCHAR(60) NOT NULL,
+  organization      TEXT,
+  created_date      TIMESTAMP NOT NULL,
+  is_verified       BOOLEAN NOT NULL
+);
+
+CREATE TABLE user_svc.documents
+(
+  uuid      user_svc.ulid REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE,
+  duid      user_svc.ksuid PRIMARY KEY,
+  is_public BOOLEAN NOT NULL
+);
+
+CREATE TABLE user_svc.shared_documents
+(
+  PRIMARY KEY (uuid, duid),
+  uuid user_svc.ulid   REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE,
+  duid user_svc.ksuid  REFERENCES user_svc.documents(duid) ON DELETE CASCADE
 );`
 
 	_, err := postgresDB.Exec(userSchema)
@@ -108,20 +117,20 @@ CREATE TABLE user_account (
 
 // refreshDBConnection verifies if connection is alive, ping will establish c/n if necessary
 // Returns response object if ping failed to reconnect
-func refreshDBConnection() *pb.UserResponse {
+func refreshDBConnection() error {
 	if postgresDB == nil {
 		var err error
 		postgresDB, err = sql.Open(dbDriverName, connectionString)
 		if err != nil {
-			return postgresUnavailable
+			return err
 		}
 	}
 
 	if err := postgresDB.Ping(); err != nil {
 		_ = postgresDB.Close()
+		postgresDB = nil
 		log.Error("Failed to ping and reconnect to postgres db:", err.Error())
-
-		return postgresUnavailable
+		return err
 	}
 
 	return nil
