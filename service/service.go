@@ -76,6 +76,11 @@ func (s *Service) GetStatus(ctx context.Context, req *pb.UserRequest) (*pb.UserR
 func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	logger.RequestService("CreateUser")
 
+	// TODO is this necessary? should be nil, error status
+	//if err := refreshDBConnection(); err != nil {
+	//	return responseServiceUnavailable, nil
+	//}
+
 	// get User Object
 	user := req.GetUser()
 	if user == nil {
@@ -109,7 +114,7 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 
 	// insert into DB
 	command := `
-				INSERT INTO user_account(
+				INSERT INTO user_svc.accounts(
 					uuid, first_name, last_name, email, password, organization, created_date, is_verified
 				) VALUES($1, $2, $3, $4, $5, $6, $7, $8)
 				`
@@ -123,6 +128,10 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 
 	logger.Info("Success inserting new user:", user.GetFirstName(), user.GetLastName(), user.GetUuid())
 
+	// TODO create token for email verification
+	// TODO store token, email, expiration date in table
+	// TODO create another table representing this verification
+	// TODO send verification email
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),

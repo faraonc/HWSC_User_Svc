@@ -82,7 +82,7 @@ func TestCreateUser(t *testing.T) {
 		{&pb.UserRequest{User: testUser1}, false, codes.OK.String()},
 		{&pb.UserRequest{User: testUser2}, false, codes.OK.String()},
 		{&pb.UserRequest{User: testUser3}, true, "rpc error: code = Unknown desc = pq: " +
-			"duplicate key value violates unique constraint \"user_account_email_key\""},
+			"duplicate key value violates unique constraint \"accounts_email_key\""},
 	}
 
 	for _, c := range cases {

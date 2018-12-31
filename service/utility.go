@@ -101,6 +101,7 @@ func generateUUID() (string, error) {
 	return strings.ToLower(id.String()), nil
 }
 
+// TODO trim spaces, had question though, can i mutate the passed in parameter?
 // hashPassword hashes and salts provided string
 // returns stringified hashed password
 func hashPassword(password string) (string, error) {
