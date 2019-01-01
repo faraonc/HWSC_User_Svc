@@ -30,12 +30,23 @@ type UserDBHost struct {
 	Password string `json:"password"`
 }
 
+// SMTPHost contains SMTP email configurations
+type SMTPHost struct {
+	Host     string `json:"host"`
+	Port     string `json:"port"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 var (
 	// GRPCHost contains server configs grabbed from env vars
 	GRPCHost Host
 
 	// UserDB contains user database configs grabbed from env vars
 	UserDB UserDBHost
+
+	// EmailHost contains smtp configs grabbed from env vars
+	EmailHost SMTPHost
 )
 
 func init() {
@@ -64,6 +75,10 @@ func init() {
 	// scan "hosts" prop "postgres" from environmental variables & copy values to UserDB struct
 	if err := conf.Get("hosts", "postgres").Scan(&UserDB); err != nil {
 		log.Fatal("Failed to get postgres configuration", err.Error())
+	}
+
+	if err := conf.Get("hosts", "smtp").Scan(&EmailHost); err != nil {
+		log.Fatal("Failed to get smtp email configurations", err.Error())
 	}
 }
 

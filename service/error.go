@@ -15,8 +15,9 @@ var (
 	errInvalidUserEmail             = errors.New("invalid User email")
 	errInvalidPassword              = errors.New("invalid User password")
 	errInvalidUserOrganization      = errors.New("invalid User organization")
-	errEmptyPassword                = errors.New("password is blank")
 	errEmailMainTemplateNotProvided = errors.New("email main template not provided")
+	errEmailNilFilePaths            = errors.New("nil email template file paths")
+	errEmailRequestFieldsEmpty      = errors.New("empty or nil fields in emailRequest struct")
 	responseServiceUnavailable      = &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.Unavailable)},
 		Message: codes.Unavailable.String(),

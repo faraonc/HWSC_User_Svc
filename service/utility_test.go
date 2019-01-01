@@ -223,7 +223,13 @@ func TestHashPassword(t *testing.T) {
 	// test empty password
 	hashed, err := hashPassword("")
 	assert.NotNil(t, err)
-	assert.EqualError(t, err, errEmptyPassword.Error())
+	assert.EqualError(t, err, errInvalidPassword.Error())
+	assert.Equal(t, "", hashed)
+
+	// test passwords with leading and trailing spaces
+	hashed, err = hashPassword("    skjfdsd     ")
+	assert.NotNil(t, err)
+	assert.EqualError(t, err, errInvalidPassword.Error())
 	assert.Equal(t, "", hashed)
 
 	// test password and hash password !=
