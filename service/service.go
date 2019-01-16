@@ -129,44 +129,44 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	}, nil
 }
 
-//// DeleteUser deletes a user document in user DB
-//func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-//	//TODO
-//	logger.RequestService("DeleteUser")
-//	return &pb.UserResponse{}, nil
-//}
-//
-//// UpdateUser updates a user document in user DB
-//func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-//	//TODO
-//	logger.RequestService("UpdateUser")
-//	return &pb.UserResponse{}, nil
-//}
-//
-//// AuthenticateUser goes through user DB collection and tries to find matching email/password
-//func (s *Service) AuthenticateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-//	//TODO
-//	logger.RequestService("AuthenticateUser")
-//	return &pb.UserResponse{}, nil
-//}
-//
-//// ListUsers returns the user DB collection
-//func (s *Service) ListUsers(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-//	//TODO
-//	logger.RequestService("ListUsers")
-//	return &pb.UserResponse{}, nil
-//}
-//
-//// GetUser returns a user document in user DB
-//func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-//	//TODO
-//	logger.RequestService("GetUser")
-//	return &pb.UserResponse{}, nil
-//}
-//
-//// ShareDocument updates user/s documents shared_to_me field in user DB
-//func (s *Service) ShareDocument(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-//	//TODO
-//	logger.RequestService("ShareDocument")
-//	return &pb.UserResponse{}, nil
-//}
+// DeleteUser deletes a user document in user DB
+func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+	//TODO
+	logger.RequestService("DeleteUser")
+	return &pb.UserResponse{}, nil
+}
+
+// UpdateUser updates a user document in user DB
+func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+	//TODO
+	logger.RequestService("UpdateUser")
+	return &pb.UserResponse{}, nil
+}
+
+// AuthenticateUser goes through user DB collection and tries to find matching email/password
+func (s *Service) AuthenticateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+	//TODO
+	logger.RequestService("AuthenticateUser")
+	return &pb.UserResponse{}, nil
+}
+
+// ListUsers returns the user DB collection
+func (s *Service) ListUsers(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+	//TODO
+	logger.RequestService("ListUsers")
+	return &pb.UserResponse{}, nil
+}
+
+// GetUser returns a user document in user DB
+func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+	//TODO
+	logger.RequestService("GetUser")
+	return &pb.UserResponse{}, nil
+}
+
+// ShareDocument updates user/s documents shared_to_me field in user DB
+func (s *Service) ShareDocument(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+	//TODO
+	logger.RequestService("ShareDocument")
+	return &pb.UserResponse{}, nil
+}
