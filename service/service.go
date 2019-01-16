@@ -8,7 +8,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"sync"
-	"time"
 )
 
 // Service struct type, implements the generated (pb file) UserServiceServer interface
@@ -112,6 +111,13 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	user.Password = hashedPassword
 	user.IsVerified = false
 
+	// insert user into DB
+	if err := insertNewUser(user); err != nil {
+		logger.Error("CreateUser INSERT user_svc.accounts:", err.Error())
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	logger.Info("Success INSERT new user:", user.GetFirstName(), user.GetLastName(), user.GetUuid())
+
 	// create unique email token
 	token, err := generateEmailToken()
 	if err != nil {
@@ -119,29 +125,10 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	// insert user into DB
-	command := `
-				INSERT INTO user_svc.accounts(
-					uuid, first_name, last_name, email, password, organization, created_date, is_verified
-				) VALUES($1, $2, $3, $4, $5, $6, $7, $8)
-				`
-	_, err = postgresDB.Exec(command, user.GetUuid(), user.GetFirstName(), user.GetLastName(),
-		user.GetEmail(), user.GetPassword(), user.GetOrganization(), time.Now().UTC(), user.GetIsVerified())
-
-	if err != nil {
-		logger.Error("CreateUser INSERT user_svc.accounts:", err.Error())
-		return nil, status.Error(codes.Unknown, err.Error())
-	}
-	logger.Info("Success INSERT new user:", user.GetFirstName(), user.GetLastName(), user.GetUuid())
-
 	// insert token into db
-	command = `INSERT INTO user_svc.pending_tokens(token, created_date, uuid) VALUES($1, $2, $3)`
-	_, err = postgresDB.Exec(command, token, time.Now().UTC(), user.GetUuid())
-	if err != nil {
+	if err := insertToken(user.GetUuid(), token); err != nil {
 		logger.Error("CreateUser INSERT user_svc.pending_tokens:", err.Error())
-		command = `DELETE FROM user_svc.accounts WHERE user_svc.uuid = ?`
-		_, err = postgresDB.Exec(command, user.GetUuid())
-		if err != nil {
+		if err := deleteUser(user.GetUuid()); err != nil {
 			logger.Error("CreateUser DELETE user-svc.accounts:", err.Error())
 		}
 		logger.Info("Deleted user: ", user.GetUuid())

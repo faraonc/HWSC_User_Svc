@@ -1,10 +1,13 @@
 package service
 
 import (
+	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
 	"database/sql"
 	"fmt"
 	log "github.com/hwsc-org/hwsc-logger/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
+	"time"
+
 	// database/sql uses this library indirectly
 	_ "github.com/lib/pq"
 	"os"
@@ -137,6 +140,67 @@ func refreshDBConnection() error {
 		_ = postgresDB.Close()
 		postgresDB = nil
 		log.Error("Failed to ping and reconnect to postgres db:", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+// insertNewUser inserts new users to user_svc.accounts table
+// Returns error if User is nil or if error with inserting to database
+func insertNewUser(user *pb.User) error {
+	if user == nil {
+		return errNilRequestUser
+	}
+
+	command := `
+				INSERT INTO user_svc.accounts(
+					uuid, first_name, last_name, email, password, organization, created_date, is_verified
+				) VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+				`
+
+	_, err := postgresDB.Exec(command, user.GetUuid(), user.GetFirstName(), user.GetLastName(),
+		user.GetEmail(), user.GetPassword(), user.GetOrganization(), time.Now().UTC(), user.GetIsVerified())
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// insertToken inserts to user_svc.pending_tokens
+// Returns error if strings are empty or error with inserting to database
+func insertToken(uuid string, token string) error {
+	if uuid == "" {
+		return errInvalidUuid
+	}
+
+	if token == "" {
+		return errInvalidToken
+	}
+
+	command := `INSERT INTO user_svc.pending_tokens(token, created_date, uuid) VALUES($1, $2, $3)`
+	_, err := postgresDB.Exec(command, token, time.Now().UTC(), uuid)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// deleteUser deletes user from user_svc.accounts
+// Returns error if string is empty or error with deleting from database
+func deleteUser(uuid string) error {
+	if uuid == "" {
+		return errInvalidUuid
+	}
+
+	command := `DELETE FROM user_svc.accounts WHERE user_svc.uuid = ?`
+	_, err := postgresDB.Exec(command, uuid)
+
+	if err != nil {
 		return err
 	}
 

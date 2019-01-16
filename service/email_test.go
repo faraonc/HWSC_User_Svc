@@ -131,3 +131,44 @@ func TestSendEmail(t *testing.T) {
 	// gsmtp errs includes varying id keys with its msg, cannot test for equalError
 	assert.NotNil(t, err)
 }
+
+func TestValidateEmail(t *testing.T) {
+	exceedMaxLengthEmail := ")YFTcgcK}6?J&1%{c0OV7@)N4v^BLXcZH9eQ9kl5V_y>" +
+		"5vnonsB0cA(h@ZD+a$Ny3D6K@EhGx}mJ*<%MZ|7f@2u@)xclP_n(Q|}+ZK58m*0VU^" +
+		"Qq}!m(Wper^@72*|GyZDt?u30Y5KiEOE@Hwm#q?2ot9IsOer(yZ}hUbL@}&1TX1+_" +
+		"<tZVl^JbBAL0kzUgk789O_e}5vEZeA&8S:5A:NhED1Ae*y9xXt^!<TU7:n8nK#A$wB" +
+		">Wpzo|iZt#l0T:e4n??hd>CBjCnITEakpi@W{>1B06|D@<$#R&&11)W2IHM3D(|@" +
+		"b?FrdG&t:7aF4#W}"
+
+	cases := []struct {
+		email    string
+		isExpErr bool
+		expErrMsg string
+	}{
+		{"", true, errInvalidUserEmail.Error()},
+		{"a", true, errInvalidUserEmail.Error()},
+		{"ab", true, errInvalidUserEmail.Error()},
+		{"abc", true, errInvalidUserEmail.Error()},
+		{"@bc", true, errInvalidUserEmail.Error()},
+		{"ab@", true, errInvalidUserEmail.Error()},
+		{"@", true, errInvalidUserEmail.Error()},
+		{"a@", true, errInvalidUserEmail.Error()},
+		{"@a", true, errInvalidUserEmail.Error()},
+		{exceedMaxLengthEmail, true, errInvalidUserEmail.Error()},
+		{"@@@", true, "unresolvable host"},
+		{"!@@", true, "unresolvable host"},
+		{"@@#", true, "unresolvable host"},
+		{"lisakeem@outlook.com", true, "dial tcp 104.47.46.36:25: i/o timeout"},
+	}
+
+	// TODO test for non-existing emails
+	for _, c := range cases {
+		err := validateEmail(c.email)
+
+		if c.isExpErr {
+			assert.EqualError(t, err, c.expErrMsg)
+		} else {
+			assert.Nil(t, err)
+		}
+	}
+}

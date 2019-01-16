@@ -14,16 +14,12 @@ import (
 const (
 	maxFirstNameLength = 32
 	maxLastNameLength  = 32
-	maxEmailLength     = 320
 	emailTokenBytes    = 32
 )
 
 var (
 	multiSpaceRegex     = regexp.MustCompile(`[\s\p{Zs}]{2,}`)
 	nameValidCharsRegex = regexp.MustCompile(`^[[:alpha:]]+((['.\s-][[:alpha:]\s])?[[:alpha:]]*)*$`)
-
-	// tests empty string, @ symbol in between, at least 3 chars
-	emailRegex = regexp.MustCompile(`.+@.+`)
 )
 
 func validateUser(user *pb.User) error {
@@ -68,14 +64,6 @@ func validateLastName(name string) error {
 	name = multiSpaceRegex.ReplaceAllString(name, " ")
 	if len(name) > maxLastNameLength || !nameValidCharsRegex.MatchString(name) {
 		return errInvalidUserLastName
-	}
-
-	return nil
-}
-
-func validateEmail(email string) error {
-	if len(email) > maxEmailLength || !emailRegex.MatchString(email) {
-		return errInvalidUserEmail
 	}
 
 	return nil

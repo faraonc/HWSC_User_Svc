@@ -10,6 +10,8 @@ var (
 	errNilPostgresClient            = errors.New("nil Postgres Client")
 	errNilRequestUser               = errors.New("nil request User")
 	errEmailTaken                   = errors.New("email is already taken")
+	errInvalidToken					= errors.New("invalid token")
+	errInvalidUuid					= errors.New("invalid User uuid")
 	errInvalidUserFirstName         = errors.New("invalid User first name")
 	errInvalidUserLastName          = errors.New("invalid User last name")
 	errInvalidUserEmail             = errors.New("invalid User email")

@@ -156,45 +156,6 @@ func TestValidateLastName(t *testing.T) {
 	}
 }
 
-func TestValidateEmail(t *testing.T) {
-	exceedMaxLengthEmail := ")YFTcgcK}6?J&1%{c0OV7@)N4v^BLXcZH9eQ9kl5V_y>" +
-		"5vnonsB0cA(h@ZD+a$Ny3D6K@EhGx}mJ*<%MZ|7f@2u@)xclP_n(Q|}+ZK58m*0VU^" +
-		"Qq}!m(Wper^@72*|GyZDt?u30Y5KiEOE@Hwm#q?2ot9IsOer(yZ}hUbL@}&1TX1+_" +
-		"<tZVl^JbBAL0kzUgk789O_e}5vEZeA&8S:5A:NhED1Ae*y9xXt^!<TU7:n8nK#A$wB" +
-		">Wpzo|iZt#l0T:e4n??hd>CBjCnITEakpi@W{>1B06|D@<$#R&&11)W2IHM3D(|@" +
-		"b?FrdG&t:7aF4#W}"
-
-	cases := []struct {
-		email    string
-		isExpErr bool
-	}{
-		{"", true},
-		{"a", true},
-		{"ab", true},
-		{"abc", true},
-		{"@bc", true},
-		{"ab@", true},
-		{"@", true},
-		{"a@", true},
-		{"@a", true},
-		{exceedMaxLengthEmail, true},
-		{"@@@", false},
-		{"!@@", false},
-		{"@@#", false},
-		{"abc@abc.com", false},
-	}
-
-	for _, c := range cases {
-		err := validateEmail(c.email)
-
-		if c.isExpErr {
-			assert.EqualError(t, err, errInvalidUserEmail.Error())
-		} else {
-			assert.Nil(t, err)
-		}
-	}
-}
-
 func TestValidateOrganization(t *testing.T) {
 	err := validateOrganization("")
 	assert.NotNil(t, err)
