@@ -18,9 +18,9 @@ variables:
 steps:
 - task: DownloadSecureFile@1
   inputs:
-    secureFile: hwscdev_pw.txt
+    secureFile: hwscdevcontainer_pw.txt
 - script: |
-    cat $(Agent.TempDirectory)/hwscdev_pw.txt | docker login -u "$(hwscDevContainerUser)" --password-stdin
+    cat $(Agent.TempDirectory)/hwscdevcontainer_pw.txt | docker login -u "$(hwscDevContainerUser)" --password-stdin
     docker build --no-cache -f Dockerfile -t hwsc/$(hwscDevImageNameUserSvc):$(build.buildId) .
   
   displayName: 'Build Docker Image'
