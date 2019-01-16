@@ -155,10 +155,10 @@ func TestValidateEmail(t *testing.T) {
 		{"a@", true, errInvalidUserEmail.Error()},
 		{"@a", true, errInvalidUserEmail.Error()},
 		{exceedMaxLengthEmail, true, errInvalidUserEmail.Error()},
-		{"@@@", true, "unresolvable host"},
-		{"!@@", true, "unresolvable host"},
-		{"@@#", true, "unresolvable host"},
-		{"lisakeem@outlook.com", true, "dial tcp 104.47.46.36:25: i/o timeout"},
+		{"@@@", false, ""},
+		{"!@@", false, ""},
+		{"@@#", false, ""},
+		{"lisakeem@outlook.com", false, ""},
 	}
 
 	// TODO test for non-existing emails

@@ -90,6 +90,28 @@ func TestCreateUser(t *testing.T) {
 		Password:  "    abcklajdsfasdf      ",
 	}
 
+	// fail: blank email
+	testUser7 := &pb.User {
+		FirstName: "Blank",
+		LastName: "Email",
+		Email: "",
+	}
+
+	// fail: blank organization
+	testUser8 := &pb.User{
+		FirstName:    "Blank",
+		LastName:     "Organization",
+		Email:        "hwsc.test+user2@gmail.com",
+		Password:     "12345678",
+		Organization: "",
+	}
+
+	// fail: blank last name
+	testUser9 := &pb.User{
+		FirstName: "Lisa",
+		LastName: "",
+	}
+
 	cases := []struct {
 		request  *pb.UserRequest
 		isExpErr bool
@@ -108,6 +130,12 @@ func TestCreateUser(t *testing.T) {
 			"InvalidArgument desc = invalid User password"},
 		{&pb.UserRequest{User: testUser6}, true, "rpc error: code = " +
 			"InvalidArgument desc = invalid User password"},
+		{&pb.UserRequest{User: testUser7}, true, "rpc error: code = " +
+			"InvalidArgument desc = invalid User email"},
+		{&pb.UserRequest{User: testUser8}, true, "rpc error: code = " +
+			"InvalidArgument desc = invalid User organization"},
+		{&pb.UserRequest{User: testUser9}, true, "rpc error: code = " +
+			"InvalidArgument desc = invalid User last name"},
 	}
 
 	for _, c := range cases {

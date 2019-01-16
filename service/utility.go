@@ -32,7 +32,7 @@ func validateUser(user *pb.User) error {
 	if err := validateEmail(user.GetEmail()); err != nil {
 		return err
 	}
-	if pass := user.GetPassword(); pass == "" || strings.TrimSpace(pass) != pass {
+	if password := user.GetPassword(); password == "" || strings.TrimSpace(password) != password {
 		return errInvalidPassword
 	}
 	if err := validateOrganization(user.GetOrganization()); err != nil {

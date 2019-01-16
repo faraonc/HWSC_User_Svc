@@ -1,8 +1,6 @@
 package service
 
 import (
-	"errors"
-	"github.com/badoux/checkmail"
 	"bytes"
 	"fmt"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
@@ -111,8 +109,8 @@ func (r *emailRequest) parseTemplates(filePaths []string) error {
 		return err
 	}
 
-	buffer := *new(bytes.Buffer)
-	if err := parsedTemplate.Execute(&buffer, r.templateData); err != nil {
+	buffer := &bytes.Buffer{}
+	if err := parsedTemplate.Execute(buffer, r.templateData); err != nil {
 		return err
 	}
 
@@ -176,18 +174,6 @@ func (r *emailRequest) sendEmail(htmlTemplate string) error {
 func validateEmail(email string) error {
 	if len(email) > maxEmailLength || !emailRegex.MatchString(email) {
 		return errInvalidUserEmail
-	}
-
-	// check if email domain exists
-	err := checkmail.ValidateHost(email)
-	if err != nil {
-		return err
-	}
-
-	// check if email exists
-	if smtpErr, ok := err.(checkmail.SmtpError); ok {
-		errMsg := fmt.Sprintf("%s", smtpErr)
-		return errors.New(errMsg)
 	}
 
 	return nil
