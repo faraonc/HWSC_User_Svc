@@ -1,9 +1,9 @@
 package service
 
 import (
-	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
 	"database/sql"
 	"fmt"
+	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
 	log "github.com/hwsc-org/hwsc-logger/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"time"
@@ -173,7 +173,7 @@ func insertNewUser(user *pb.User) error {
 // Returns error if strings are empty or error with inserting to database
 func insertToken(uuid string, token string) error {
 	if uuid == "" {
-		return errInvalidUuid
+		return errInvalidUUID
 	}
 
 	if token == "" {
@@ -190,14 +190,32 @@ func insertToken(uuid string, token string) error {
 	return nil
 }
 
+func testUserExist(uuid string) (bool, error) {
+	if uuid == "" {
+		return false, errInvalidUUID
+	}
+
+	command := `SELECT uuid FROM user_svc.accounts WHERE EXISTS (SELECT 1 from user_svc.accounts where uuid = $1)`
+	result, err := postgresDB.Query(command, uuid)
+
+	if err != nil {
+		return false, err
+	}
+
+	exists := result.Next()
+	_ = result.Close()
+
+	return exists, nil
+}
+
 // deleteUser deletes user from user_svc.accounts
 // Returns error if string is empty or error with deleting from database
 func deleteUser(uuid string) error {
 	if uuid == "" {
-		return errInvalidUuid
+		return errInvalidUUID
 	}
 
-	command := `DELETE FROM user_svc.accounts WHERE user_svc.uuid = ?`
+	command := `DELETE FROM user_svc.accounts WHERE user_svc.accounts.uuid = $1`
 	_, err := postgresDB.Exec(command, uuid)
 
 	if err != nil {

@@ -26,3 +26,5 @@ func TestRefreshDBConnection(t *testing.T) {
 	err = refreshDBConnection()
 	assert.Nil(t, err)
 }
+
+//TODO test db utility functions

@@ -25,7 +25,7 @@ const (
 	mime                = "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
 	subjectVerifyEmail  = "Verify account for Humpback Whale Social Call"
 	templateVerifyEmail = "verify_email.html"
-	maxEmailLength     = 320
+	maxEmailLength      = 320
 )
 
 var (

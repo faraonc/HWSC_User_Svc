@@ -91,10 +91,10 @@ func TestCreateUser(t *testing.T) {
 	}
 
 	// fail: blank email
-	testUser7 := &pb.User {
+	testUser7 := &pb.User{
 		FirstName: "Blank",
-		LastName: "Email",
-		Email: "",
+		LastName:  "Email",
+		Email:     "",
 	}
 
 	// fail: blank organization
@@ -109,7 +109,7 @@ func TestCreateUser(t *testing.T) {
 	// fail: blank last name
 	testUser9 := &pb.User{
 		FirstName: "Lisa",
-		LastName: "",
+		LastName:  "",
 	}
 
 	cases := []struct {
@@ -145,6 +145,70 @@ func TestCreateUser(t *testing.T) {
 			assert.EqualError(t, err, c.expMsg)
 		} else {
 			assert.Equal(t, codes.OK.String(), response.GetMessage())
+		}
+	}
+}
+
+func TestDeleteUser(t *testing.T) {
+	// insert valid user
+	insertUser := &pb.User{
+		FirstName:    "Lisa",
+		LastName:     "Kim",
+		Email:        "deleteUserTest@email.com",
+		Password:     "12345678",
+		Organization: "Test User 1",
+	}
+
+	s := Service{}
+	response, err := s.CreateUser(context.TODO(), &pb.UserRequest{User: insertUser})
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), response.GetMessage())
+
+	// generate a valid uuid to test non existent uuid in table
+	validUUID, err := generateUUID()
+	assert.Nil(t, err)
+	assert.NotNil(t, validUUID)
+
+	// exisiting uuid
+	test1 := &pb.User{
+		Uuid: response.GetUser().GetUuid(),
+	}
+
+	// nonexistent uuid
+	test2 := &pb.User{
+		Uuid: validUUID,
+	}
+
+	// invalid uuid's
+	test3 := &pb.User{
+		Uuid: "",
+	}
+	test4 := &pb.User{
+		Uuid: "01d1nba01gnzbrkbfrrvgrz2m",
+	}
+
+	cases := []struct {
+		request  *pb.UserRequest
+		isExpErr bool
+		expMsg   string
+	}{
+		{&pb.UserRequest{User: test1}, false, codes.OK.String()},
+		{&pb.UserRequest{User: test2}, true, "rpc error: code = NotFound desc = uuid does not exist in database"},
+		{&pb.UserRequest{User: test3}, true, "rpc error: code = InvalidArgument desc = invalid User uuid"},
+		{&pb.UserRequest{User: test4}, true, "rpc error: code = InvalidArgument desc = invalid User uuid"},
+		{&pb.UserRequest{User: nil}, true, "rpc error: code = InvalidArgument desc = nil request User"},
+		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
+	}
+
+	for _, c := range cases {
+		s = Service{}
+		response, err := s.DeleteUser(context.TODO(), c.request)
+		if c.isExpErr {
+			assert.EqualError(t, err, c.expMsg)
+			assert.Nil(t, response)
+		} else {
+			assert.Equal(t, codes.OK.String(), response.GetMessage())
+			assert.Nil(t, err)
 		}
 	}
 }

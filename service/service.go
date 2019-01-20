@@ -151,14 +151,55 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
+		User:    &pb.User{Uuid: user.GetUuid()},
 	}, nil
 }
 
 // DeleteUser deletes a user document in user DB
 func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-	//TODO
 	logger.RequestService("DeleteUser")
-	return &pb.UserResponse{}, nil
+
+	if err := refreshDBConnection(); err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	// get User Object
+	user := req.GetUser()
+	if user == nil {
+		logger.Error(errNilRequestUser.Error())
+		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+	}
+
+	// validate user id
+	uuid := user.GetUuid()
+	if err := validateUUID(uuid); err != nil {
+		errMsg := err.Error()
+		logger.Error("DeleteUser validating uuid: ", errMsg)
+		return nil, status.Error(codes.InvalidArgument, errMsg)
+	}
+
+	// check uuid exists
+	exists, err := testUserExist(uuid)
+	if err != nil {
+		logger.Error("DeleteUser EXISTS uuid in user-svc-accounts:", err.Error())
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	if !exists {
+		logger.Error(errDoesNotExistUUID.Error())
+		return nil, status.Error(codes.NotFound, errDoesNotExistUUID.Error())
+	}
+
+	// delete from db
+	if err := deleteUser(uuid); err != nil {
+		logger.Error("DeleteUser DELETE user-svc.accounts:", err.Error())
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	return &pb.UserResponse{
+		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
+		Message: codes.OK.String(),
+	}, nil
 }
 
 // UpdateUser updates a user document in user DB
