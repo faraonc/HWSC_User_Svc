@@ -76,6 +76,10 @@ func (s *Service) GetStatus(ctx context.Context, req *pb.UserRequest) (*pb.UserR
 func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	logger.RequestService("CreateUser")
 
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+	}
+
 	if err := refreshDBConnection(); err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
@@ -159,6 +163,10 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	logger.RequestService("DeleteUser")
 
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+	}
+
 	if err := refreshDBConnection(); err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
@@ -173,16 +181,15 @@ func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	// validate user id
 	uuid := user.GetUuid()
 	if err := validateUUID(uuid); err != nil {
-		errMsg := err.Error()
-		logger.Error("DeleteUser validating uuid: ", errMsg)
-		return nil, status.Error(codes.InvalidArgument, errMsg)
+		logger.Error("DeleteUser validating uuid: ", err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	// check uuid exists
-	exists, err := testUserExist(uuid)
+	exists, err := checkUserExists(uuid)
 	if err != nil {
-		logger.Error("DeleteUser EXISTS uuid in user-svc-accounts:", err.Error())
-		return nil, status.Error(codes.Unknown, err.Error())
+		logger.Error("DeleteUser checkUserExists:", err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if !exists {
@@ -193,7 +200,7 @@ func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	// delete from db
 	if err := deleteUser(uuid); err != nil {
 		logger.Error("DeleteUser DELETE user-svc.accounts:", err.Error())
-		return nil, status.Error(codes.Unknown, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &pb.UserResponse{

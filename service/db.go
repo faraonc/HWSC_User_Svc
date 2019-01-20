@@ -190,22 +190,30 @@ func insertToken(uuid string, token string) error {
 	return nil
 }
 
-func testUserExist(uuid string) (bool, error) {
+func checkUserExists(uuid string) (bool, error) {
 	if uuid == "" {
 		return false, errInvalidUUID
 	}
 
-	command := `SELECT uuid FROM user_svc.accounts WHERE EXISTS (SELECT 1 from user_svc.accounts where uuid = $1)`
-	result, err := postgresDB.Query(command, uuid)
+	command := `SELECT uuid FROM user_svc.accounts WHERE uuid = $1`
+	row, err := postgresDB.Query(command, uuid)
 
 	if err != nil {
 		return false, err
 	}
 
-	exists := result.Next()
-	_ = result.Close()
+	for row.Next() {
+		var uid string
+		if err := row.Scan(&uid); err != nil {
+			return false, err
+		}
 
-	return exists, nil
+		if uuid == uid {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // deleteUser deletes user from user_svc.accounts
