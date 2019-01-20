@@ -141,8 +141,8 @@ func TestValidateEmail(t *testing.T) {
 		"b?FrdG&t:7aF4#W}"
 
 	cases := []struct {
-		email    string
-		isExpErr bool
+		email     string
+		isExpErr  bool
 		expErrMsg string
 	}{
 		{"", true, errInvalidUserEmail.Error()},

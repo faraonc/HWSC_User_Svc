@@ -91,6 +91,19 @@ func generateUUID() (string, error) {
 	return strings.ToLower(id.String()), nil
 }
 
+func validateUUID(uuid string) error {
+	if uuid == "" {
+		return errInvalidUUID
+	}
+
+	id, err := ulid.ParseStrict(strings.ToUpper(uuid))
+	if err != nil || strings.ToLower(id.String()) != uuid {
+		return errInvalidUUID
+	}
+
+	return nil
+}
+
 // TODO probably need to synchronize this as well
 // generateEmailToken generates a 44 byte, base64 URL-safe string
 // built from securely generated random bytes
