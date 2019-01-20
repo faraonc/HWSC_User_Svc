@@ -44,32 +44,72 @@ func TestGetStatus(t *testing.T) {
 func TestCreateUser(t *testing.T) {
 	// valid
 	testUser1 := &pb.User{
-		Uuid:         "",
 		FirstName:    "Stella Lilly",
 		LastName:     "Kim",
-		Email:        "stella@test.com",
+		Email:        "hwsc.test+user1@gmail.com",
 		Password:     "12345678",
 		Organization: "Test User 1",
 	}
 
 	// valid
 	testUser2 := &pb.User{
-		Uuid:         "",
 		FirstName:    "Ray",
 		LastName:     "Bradbury",
-		Email:        "ray@test.com",
+		Email:        "hwsc.test+user2@gmail.com",
 		Password:     "12345678",
 		Organization: "Test User 2",
 	}
 
 	// fail: duplicate email test
 	testUser3 := &pb.User{
-		Uuid:         "",
 		FirstName:    "Duplicate Email",
 		LastName:     "Test",
-		Email:        "ray@test.com",
+		Email:        "hwsc.test+user2@gmail.com",
 		Password:     "12345678",
 		Organization: "Test User 3",
+	}
+
+	// fail: invalid fields in userobject (it will fail on firstname)
+	testUser4 := &pb.User{
+		FirstName: "",
+	}
+
+	// fail: empty password
+	testUser5 := &pb.User{
+		FirstName: "Lisa",
+		LastName:  "Kim",
+		Email:     "hwsc.test+user3@gmail.com",
+		Password:  "",
+	}
+
+	// fail: passwords with leading/trailing spaces
+	testUser6 := &pb.User{
+		FirstName: "Lisa",
+		LastName:  "Kim",
+		Email:     "hwsc.test+user3@gmail.com",
+		Password:  "    abcklajdsfasdf      ",
+	}
+
+	// fail: blank email
+	testUser7 := &pb.User {
+		FirstName: "Blank",
+		LastName: "Email",
+		Email: "",
+	}
+
+	// fail: blank organization
+	testUser8 := &pb.User{
+		FirstName:    "Blank",
+		LastName:     "Organization",
+		Email:        "hwsc.test+user2@gmail.com",
+		Password:     "12345678",
+		Organization: "",
+	}
+
+	// fail: blank last name
+	testUser9 := &pb.User{
+		FirstName: "Lisa",
+		LastName: "",
 	}
 
 	cases := []struct {
@@ -78,11 +118,24 @@ func TestCreateUser(t *testing.T) {
 		expMsg   string
 	}{
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
-		{&pb.UserRequest{}, true, "rpc error: code = InvalidArgument desc = nil request User"},
+		{&pb.UserRequest{}, true, "rpc error: code = InvalidArgument " +
+			"desc = nil request User"},
 		{&pb.UserRequest{User: testUser1}, false, codes.OK.String()},
 		{&pb.UserRequest{User: testUser2}, false, codes.OK.String()},
-		{&pb.UserRequest{User: testUser3}, true, "rpc error: code = Unknown desc = pq: " +
-			"duplicate key value violates unique constraint \"user_account_email_key\""},
+		{&pb.UserRequest{User: testUser3}, true, "rpc error: code = " +
+			"Unknown desc = pq: duplicate key value violates unique constraint \"accounts_email_key\""},
+		{&pb.UserRequest{User: testUser4}, true, "rpc error: code = " +
+			"InvalidArgument desc = invalid User first name"},
+		{&pb.UserRequest{User: testUser5}, true, "rpc error: code = " +
+			"InvalidArgument desc = invalid User password"},
+		{&pb.UserRequest{User: testUser6}, true, "rpc error: code = " +
+			"InvalidArgument desc = invalid User password"},
+		{&pb.UserRequest{User: testUser7}, true, "rpc error: code = " +
+			"InvalidArgument desc = invalid User email"},
+		{&pb.UserRequest{User: testUser8}, true, "rpc error: code = " +
+			"InvalidArgument desc = invalid User organization"},
+		{&pb.UserRequest{User: testUser9}, true, "rpc error: code = " +
+			"InvalidArgument desc = invalid User last name"},
 	}
 
 	for _, c := range cases {

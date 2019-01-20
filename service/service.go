@@ -3,11 +3,11 @@ package service
 import (
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
 	"github.com/hwsc-org/hwsc-logger/logger"
+	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"sync"
-	"time"
 )
 
 // Service struct type, implements the generated (pb file) UserServiceServer interface
@@ -76,6 +76,10 @@ func (s *Service) GetStatus(ctx context.Context, req *pb.UserRequest) (*pb.UserR
 func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	logger.RequestService("CreateUser")
 
+	if err := refreshDBConnection(); err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
 	// get User Object
 	user := req.GetUser()
 	if user == nil {
@@ -107,21 +111,42 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	user.Password = hashedPassword
 	user.IsVerified = false
 
-	// insert into DB
-	command := `
-				INSERT INTO user_account(
-					uuid, first_name, last_name, email, password, organization, created_date, is_verified
-				) VALUES($1, $2, $3, $4, $5, $6, $7, $8)
-				`
-	_, err = postgresDB.Exec(command, user.GetUuid(), user.GetFirstName(), user.GetLastName(),
-		user.GetEmail(), user.GetPassword(), user.GetOrganization(), time.Now().UTC(), user.GetIsVerified())
+	// insert user into DB
+	if err := insertNewUser(user); err != nil {
+		logger.Error("CreateUser INSERT user_svc.accounts:", err.Error())
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	logger.Info("Success INSERT new user:", user.GetFirstName(), user.GetLastName(), user.GetUuid())
 
+	// create unique email token
+	token, err := generateEmailToken()
 	if err != nil {
-		logger.Error("CreateUser Exec INSERT:", err.Error())
+		logger.Error("CreateUser generateEmailToken:", err.Error())
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	logger.Info("Success inserting new user:", user.GetFirstName(), user.GetLastName(), user.GetUuid())
+	// insert token into db
+	if err := insertToken(user.GetUuid(), token); err != nil {
+		logger.Error("CreateUser INSERT user_svc.pending_tokens:", err.Error())
+		if err := deleteUser(user.GetUuid()); err != nil {
+			logger.Error("CreateUser DELETE user-svc.accounts:", err.Error())
+		}
+		logger.Info("Deleted user: ", user.GetUuid())
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	logger.Info("Success INSERT token:", user.GetFirstName(), user.GetLastName(), user.GetUuid())
+
+	// send email
+	emailReq, err := newEmailRequest(nil, []string{user.GetEmail()}, conf.EmailHost.Username, subjectVerifyEmail)
+	if err != nil {
+		logger.Error("CreateUser newEmailRequest: ", err.Error())
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	if err := emailReq.sendEmail(templateVerifyEmail); err != nil {
+		logger.Error("CreateUser sendEmail: ", err.Error())
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
 
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
