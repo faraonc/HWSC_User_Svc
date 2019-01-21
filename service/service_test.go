@@ -152,11 +152,11 @@ func TestCreateUser(t *testing.T) {
 func TestDeleteUser(t *testing.T) {
 	// insert valid user
 	insertUser := &pb.User{
-		FirstName:    "Lisa",
-		LastName:     "Kim",
+		FirstName:    "Delete",
+		LastName:     "User",
 		Email:        "deleteUserTest@email.com",
 		Password:     "12345678",
-		Organization: "Test User 1",
+		Organization: "Delete User Test",
 	}
 
 	s := Service{}
@@ -209,6 +209,61 @@ func TestDeleteUser(t *testing.T) {
 		} else {
 			assert.Equal(t, codes.OK.String(), response.GetMessage())
 			assert.Nil(t, err)
+		}
+	}
+}
+
+func TestGetUser(t *testing.T) {
+	// insert valid user
+	insertUser := &pb.User{
+		FirstName:    "Get",
+		LastName:     "User",
+		Email:        "getUserTest@email.com",
+		Password:     "12345678",
+		Organization: "Get User Test",
+	}
+
+	s := Service{}
+	response, err := s.CreateUser(context.TODO(), &pb.UserRequest{User: insertUser})
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), response.GetMessage())
+
+	// generate a valid uuid to test non existent uuid in table
+	validUUID, err := generateUUID()
+	assert.Nil(t, err)
+	assert.NotNil(t, validUUID)
+
+	// exisiting uuid
+	test1 := &pb.User{
+		Uuid: response.GetUser().GetUuid(),
+	}
+
+	// nonexistent uuid
+	test2 := &pb.User{
+		Uuid: validUUID,
+	}
+
+	cases := []struct {
+		request  *pb.UserRequest
+		isExpErr bool
+		expMsg   string
+	}{
+		{&pb.UserRequest{User: test1}, false, ""},
+		{&pb.UserRequest{User: test2}, true, "rpc error: code = NotFound desc = uuid does not exist in database"},
+		{&pb.UserRequest{User: nil}, true, "rpc error: code = InvalidArgument desc = nil request User"},
+		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
+	}
+
+	for _, c := range cases {
+		s = Service{}
+		response, err := s.GetUser(context.TODO(), c.request)
+
+		if c.isExpErr {
+			assert.EqualError(t, err, c.expMsg)
+			assert.Nil(t, response)
+		} else {
+			assert.Nil(t, err)
+			assert.Equal(t, codes.OK.String(), response.GetMessage())
 		}
 	}
 }

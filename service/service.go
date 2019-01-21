@@ -232,9 +232,59 @@ func (s *Service) ListUsers(ctx context.Context, req *pb.UserRequest) (*pb.UserR
 
 // GetUser returns a user document in user DB
 func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-	//TODO
 	logger.RequestService("GetUser")
-	return &pb.UserResponse{}, nil
+
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+	}
+
+	if err := refreshDBConnection(); err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	// get User Object
+	user := req.GetUser()
+	if user == nil {
+		logger.Error(errNilRequestUser.Error())
+		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+	}
+
+	// validate user id
+	uuid := user.GetUuid()
+	if err := validateUUID(uuid); err != nil {
+		logger.Error("GetUser validating uuid: ", err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	// check uuid exists
+	exists, err := checkUserExists(uuid)
+	if err != nil {
+		logger.Error("GetUser checkUserExists:", err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if !exists {
+		logger.Error(errDoesNotExistUUID.Error())
+		return nil, status.Error(codes.NotFound, errDoesNotExistUUID.Error())
+	}
+
+	// retrieve users row from database
+	user, err = getUserRow(uuid)
+	if err != nil {
+		logger.Error("GetUser getUserRow:", err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if user == nil {
+		logger.Error("GetUser getUserRow:", errDoesNotExistUUID.Error())
+		return nil, status.Error(codes.Internal, errDoesNotExistUUID.Error())
+	}
+
+	return &pb.UserResponse{
+		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
+		Message: codes.OK.String(),
+		User:    user,
+	}, nil
 }
 
 // ShareDocument updates user/s documents shared_to_me field in user DB

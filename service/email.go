@@ -6,6 +6,7 @@ import (
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"io/ioutil"
 	"net/smtp"
+	"os"
 	"regexp"
 	"strings"
 	"text/template"
@@ -29,7 +30,8 @@ const (
 )
 
 var (
-	verifyEmailAuth smtp.Auth
+	templateDirectory string
+	verifyEmailAuth   smtp.Auth
 
 	// tests empty string, @ symbol in between, at least 3 chars
 	emailRegex = regexp.MustCompile(`.+@.+`)
@@ -37,6 +39,10 @@ var (
 
 func init() {
 	verifyEmailAuth = smtp.PlainAuth("", conf.EmailHost.Username, conf.EmailHost.Password, conf.EmailHost.Host)
+
+	// set template directory
+	pwd, _ := os.Getwd()
+	templateDirectory = pwd + "/tmpl"
 }
 
 // newEmailRequest creates a new emailRequest object, initialized to the parameters passed in
@@ -74,19 +80,19 @@ func (r *emailRequest) getAllTemplatePaths(htmlTemplate string) ([]string, error
 	}
 
 	// grab all files in directory
-	files, err := ioutil.ReadDir("../tmpl")
+	files, err := ioutil.ReadDir(templateDirectory)
 	if err != nil {
 		return nil, err
 	}
 
 	// put files into a string slice
 	var allFilePaths []string
-	allFilePaths = append(allFilePaths, fmt.Sprintf("../tmpl/%s", htmlTemplate))
+	allFilePaths = append(allFilePaths, fmt.Sprintf("%s/%s", templateDirectory, htmlTemplate))
 
 	for _, file := range files {
 		filename := file.Name()
 		if strings.HasSuffix(filename, ".tmpl") {
-			allFilePaths = append(allFilePaths, fmt.Sprintf("../tmpl/%s", filename))
+			allFilePaths = append(allFilePaths, fmt.Sprintf("%s/%s", templateDirectory, filename))
 		}
 	}
 

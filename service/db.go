@@ -96,7 +96,7 @@ CREATE TABLE user_svc.accounts
   email             VARCHAR(320) NOT NULL UNIQUE,
   password          VARCHAR(60) NOT NULL,
   organization      TEXT,
-  created_date      TIMESTAMP NOT NULL,
+  created_date      TIMESTAMPTZ NOT NULL,
   is_verified       BOOLEAN NOT NULL
 );
 
@@ -190,6 +190,8 @@ func insertToken(uuid string, token string) error {
 	return nil
 }
 
+// checkUserExists looks up a uuid in accounts table
+// Returns true if it exists, false if nonexistent
 func checkUserExists(uuid string) (bool, error) {
 	if uuid == "" {
 		return false, errInvalidUUID
@@ -231,4 +233,43 @@ func deleteUser(uuid string) error {
 	}
 
 	return nil
+}
+
+// getUserRow looks up a user by its uuid and stores the result in a pb.User struct
+// Returns pb.User struct if found, nil otherwise
+func getUserRow(uuid string) (*pb.User, error) {
+	if uuid == "" {
+		return nil, errInvalidUUID
+	}
+
+	command := `SELECT uuid, first_name, last_name, email, organization, created_date
+				FROM user_svc.accounts WHERE user_svc.accounts.uuid = $1
+				`
+	row, err := postgresDB.Query(command, uuid)
+	if err != nil {
+		return nil, err
+	}
+
+	for row.Next() {
+		var uid, firstName, lastName, email, organization string
+		var createdDate time.Time
+
+		err := row.Scan(&uid, &firstName, &lastName, &email, &organization, &createdDate)
+		if err != nil {
+			return nil, err
+		}
+
+		if uuid == uid {
+			return &pb.User{
+				Uuid:         uid,
+				FirstName:    firstName,
+				LastName:     lastName,
+				Email:        email,
+				Organization: organization,
+				CreatedDate:  createdDate.Unix(),
+			}, nil
+		}
+	}
+
+	return nil, nil
 }

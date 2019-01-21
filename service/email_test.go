@@ -39,6 +39,8 @@ func TestGetAllTemplatePaths(t *testing.T) {
 }
 
 func TestParseTemplates(t *testing.T) {
+	templateDirectory = "../tmpl"
+
 	r := &emailRequest{}
 
 	// test nil
@@ -108,6 +110,8 @@ func TestProcessEmail(t *testing.T) {
 }
 
 func TestSendEmail(t *testing.T) {
+	templateDirectory = "../tmpl"
+
 	email := []string{"hwsc.test+user0@gmail.com"}
 	r, err := newEmailRequest(nil, email, conf.EmailHost.Username, "HWSC Testing")
 	assert.Nil(t, err)
