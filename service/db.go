@@ -235,6 +235,8 @@ func deleteUser(uuid string) error {
 	return nil
 }
 
+// getUserRow looks up a user by its uuid and stores the result in a pb.User struct
+// Returns pb.User struct if found, nil otherwise
 func getUserRow(uuid string) (*pb.User, error) {
 	if uuid == "" {
 		return nil, errInvalidUUID
