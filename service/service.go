@@ -220,9 +220,72 @@ func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 
 // UpdateUser updates a user document in user DB
 func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-	//TODO
 	logger.RequestService("UpdateUser")
-	return &pb.UserResponse{}, nil
+
+	if ok := serviceStateLocker.isStateAvailable(); !ok {
+		logger.Error("CreateUser: ", errServiceUnavailable.Error())
+		return nil, status.Error(codes.Unavailable, errServiceUnavailable.Error())
+	}
+
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+	}
+
+	if err := refreshDBConnection(); err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	// get User Object
+	svcDerivedUser := req.GetUser()
+	if svcDerivedUser == nil {
+		logger.Error(errNilRequestUser.Error())
+		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+	}
+
+	// validate user id
+	if err := validateUUID(svcDerivedUser.GetUuid()); err != nil {
+		logger.Error("UpdateUser validating uuid: ", err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	lock, _ := uuidMapLocker.LoadOrStore(svcDerivedUser.GetUuid(), &sync.RWMutex{})
+	lock.(*sync.RWMutex).Lock()
+	defer lock.(*sync.RWMutex).Unlock()
+
+	// check uuid exists
+	exists, err := checkUserExists(svcDerivedUser.GetUuid())
+	if err != nil {
+		logger.Error("UpdateUser checkUserExists:", err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if !exists {
+		logger.Error(errDoesNotExistUUID.Error())
+		return nil, status.Error(codes.NotFound, errDoesNotExistUUID.Error())
+	}
+
+	// retrieve users row from database
+	dbDerivedUser, err := getUserRow(svcDerivedUser.GetUuid())
+	if err != nil {
+		logger.Error("UpdateUser getUserRow:", err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if dbDerivedUser == nil {
+		logger.Error("UpdateUser getUserRow:", errDoesNotExistUUID.Error())
+		return nil, status.Error(codes.Internal, errDoesNotExistUUID.Error())
+	}
+
+	// update user
+	if err := updateUserRow(svcDerivedUser.GetUuid(), svcDerivedUser, dbDerivedUser); err != nil {
+		logger.Error("UpdateUser updating user:", err.Error())
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	return &pb.UserResponse{
+		Status: &pb.UserResponse_Code{Code: uint32(codes.OK)},
+		Message: codes.OK.String(),
+	}, nil
 }
 
 // AuthenticateUser goes through user DB collection and tries to find matching email/password
