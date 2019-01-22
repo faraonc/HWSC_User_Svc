@@ -211,8 +211,60 @@ func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 
 // UpdateUser updates a user document in user DB
 func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-	//TODO
 	logger.RequestService("UpdateUser")
+
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+	}
+
+	if err := refreshDBConnection(); err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	// get User Object
+	svcDerivedUser := req.GetUser()
+	if svcDerivedUser == nil {
+		logger.Error(errNilRequestUser.Error())
+		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+	}
+
+	// validate user id
+	uuid := svcDerivedUser.GetUuid()
+	if err := validateUUID(uuid); err != nil {
+		logger.Error("UpdateUser validating uuid: ", err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	// check uuid exists
+	exists, err := checkUserExists(uuid)
+	if err != nil {
+		logger.Error("UpdateUser checkUserExists:", err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if !exists {
+		logger.Error(errDoesNotExistUUID.Error())
+		return nil, status.Error(codes.NotFound, errDoesNotExistUUID.Error())
+	}
+
+	// retrieve users row from database
+	dbDerivedUser, err := getUserRow(uuid)
+	if err != nil {
+		logger.Error("UpdateUser getUserRow:", err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if dbDerivedUser == nil {
+		logger.Error("UpdateUser getUserRow:", errDoesNotExistUUID.Error())
+		return nil, status.Error(codes.Internal, errDoesNotExistUUID.Error())
+	}
+
+	// update user
+	if err := updateUser(svcDerivedUser.GetUuid(), svcDerivedUser, dbDerivedUser); err != nil {
+		logger.Error("UpdateUser updating user:", err.Error())
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
 	return &pb.UserResponse{}, nil
 }
 
