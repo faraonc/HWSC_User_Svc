@@ -22,7 +22,6 @@ var (
 )
 
 func (s *stateLocker) isStateAvailable() bool {
-	//TODO need to test for read race conditions
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -89,21 +88,19 @@ func validateOrganization(name string) error {
 
 // generateUUID generates a unique user ID using ulid package based on currentTime
 // returns a lower cased string type of generated ulid.ULID
-func (u *uuidLocker) generateUUID() error {
-	u.lock.Lock()
-	defer u.lock.Unlock()
+func generateUUID() (string, error) {
+	uuidLocker.Lock()
+	defer uuidLocker.Unlock()
 
 	t := time.Now().UTC()
 	entropy := rand.New(rand.NewSource(t.UnixNano()))
 
 	id, err := ulid.New(ulid.Timestamp(t), entropy)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	u.uuid = strings.ToLower(id.String())
-
-	return nil
+	return strings.ToLower(id.String()), nil
 }
 
 func validateUUID(uuid string) error {

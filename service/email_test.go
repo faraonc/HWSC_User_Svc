@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/stretchr/testify/assert"
+	"sync"
 	"testing"
 )
 
@@ -178,22 +179,33 @@ func TestValidateEmail(t *testing.T) {
 }
 
 func TestGenerateEmailToken(t *testing.T) {
-	// test each function call generats unique tokens
-	tokens := make(map[string]bool)
-	for i := 0; i < 10; i++ {
-		err := tokenGenerator.generateEmailToken()
-		assert.Nil(t, err)
-		assert.NotEqual(t, "", tokenGenerator.token)
+	// NOTE: unable to force a race condition given the nature of randomByte used in generateEmailToken()
+	// but functionality is same as generateUUID and that's been tested for race conditions
 
-		// test if key exists in the map
-		_, ok := tokens[tokenGenerator.token]
-		assert.Equal(t, false, ok)
+	const count = 100
+	var tokens sync.Map
+	var wg sync.WaitGroup
 
-		tokens[tokenGenerator.token] = true
+	wg.Add(count)
+	start := make(chan struct{})
+
+	for i := 0; i < count; i++ {
+		go func() {
+			<-start
+			defer wg.Done()
+
+			// store tokens in map to check for duplicates
+			token, err := generateEmailToken()
+			assert.Nil(t, err)
+			assert.NotEqual(t, "", token)
+
+			_, ok := tokens.Load(token)
+			assert.Equal(t, false, ok)
+
+			tokens.Store(token, true)
+		}()
 	}
 
-	// test for race conditions
-	for i := 0; i < 10; i++ {
-		go tokenGenerator.generateEmailToken()
-	}
+	close(start)
+	wg.Wait()
 }

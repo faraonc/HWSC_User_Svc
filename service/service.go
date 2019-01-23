@@ -22,16 +22,6 @@ type stateLocker struct {
 	currentServiceState state
 }
 
-type uuidLocker struct {
-	lock sync.Mutex
-	uuid string
-}
-
-type tokenLocker struct {
-	lock  sync.Mutex
-	token string
-}
-
 const (
 	// available - service is ready and available for read/write
 	available state = 0
@@ -42,8 +32,8 @@ const (
 
 var (
 	serviceStateLocker stateLocker
-	uuidGenerator      uuidLocker
-	tokenGenerator     tokenLocker
+	uuidLocker         sync.Mutex
+	tokenLocker        sync.Mutex
 	uuidMapLocker      sync.Map
 
 	// converts the state of the service to a string
@@ -111,12 +101,12 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	}
 
 	// generate uuid synchronously to prevent users getting the same uuid
-	err := uuidGenerator.generateUUID()
+	uuid, err := generateUUID()
 	if err != nil {
 		logger.Error("CreateUser generateUUID:", err.Error())
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	user.Uuid = uuidGenerator.uuid
+	user.Uuid = uuid
 
 	// sync.Map equivalent to map[string](&sync.RWMutex{}) = each uuid string gets its own lock
 	// LoadOrStore = LOAD: get the lock for uuid or if not exist,
@@ -142,14 +132,14 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	logger.Info("Success INSERT new user:", user.GetFirstName(), user.GetLastName(), user.GetUuid())
 
 	// create unique email token
-	err = tokenGenerator.generateEmailToken()
+	token, err := generateEmailToken()
 	if err != nil {
 		logger.Error("CreateUser generateEmailToken:", err.Error())
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
 	// insert token into db
-	if err := insertToken(user.GetUuid(), tokenGenerator.token); err != nil {
+	if err := insertToken(user.GetUuid(), token); err != nil {
 		logger.Error("CreateUser INSERT user_svc.pending_tokens:", err.Error())
 		if err := deleteUser(user.GetUuid()); err != nil {
 			logger.Error("CreateUser DELETE user-svc.accounts:", err.Error())

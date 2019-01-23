@@ -182,19 +182,17 @@ func (r *emailRequest) sendEmail(htmlTemplate string) error {
 // generateEmailToken generates a 44 byte, base64 URL-safe string
 // built from securely generated random bytes
 // Return error if system's secure random number generator fails
-func (t *tokenLocker) generateEmailToken() error {
-	t.lock.Lock()
-	defer t.lock.Unlock()
+func generateEmailToken() (string, error) {
+	tokenLocker.Lock()
+	defer tokenLocker.Unlock()
 
 	randomBytes := make([]byte, emailTokenBytes)
 	_, err := rand.Read(randomBytes)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	t.token = base64.URLEncoding.EncodeToString(randomBytes)
-
-	return nil
+	return base64.URLEncoding.EncodeToString(randomBytes), nil
 }
 
 // validateEmail checks for very basic valid email format and string length
