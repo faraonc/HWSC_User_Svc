@@ -9,7 +9,7 @@ import (
 var (
 	errServiceUnavailable           = errors.New("service unavailable")
 	errNilPostgresClient            = errors.New("nil Postgres Client")
-	errEmptyRequestUser				= errors.New("empty request User")
+	errEmptyRequestUser             = errors.New("empty request User")
 	errNilRequestUser               = errors.New("nil request User")
 	errEmailTaken                   = errors.New("email is already taken")
 	errInvalidToken                 = errors.New("invalid token")

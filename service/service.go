@@ -283,7 +283,7 @@ func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	}
 
 	return &pb.UserResponse{
-		Status: &pb.UserResponse_Code{Code: uint32(codes.OK)},
+		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
 	}, nil
 }

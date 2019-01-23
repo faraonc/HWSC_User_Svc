@@ -274,56 +274,56 @@ func TestUpdateUser(t *testing.T) {
 	// password is hashed
 	// modified_date set
 	updateUser := &pb.User{
-		FirstName: 	"UPDATE",
+		FirstName:    "UPDATE",
 		LastName:     "UPDATE",
-		Password: "1234567789",
+		Password:     "1234567789",
 		Organization: "UPDATE ORGANIZATION",
-		Uuid: "0000xsnjg0mqjhbf4qx1efd6y3",
+		Uuid:         "0000xsnjg0mqjhbf4qx1efd6y3",
 	}
 
 	// test prospective_email is set
 	// is_verified set to false from (t)
 	// modified_date set
 	updateUser2 := &pb.User{
-		Email:        "UPDATE_USER@new.com",
-		Uuid: "0000xsnjg0mqjhbf4qx1efd6y4",
+		Email: "UPDATE_USER@new.com",
+		Uuid:  "0000xsnjg0mqjhbf4qx1efd6y4",
 	}
 
 	// invalid uuid
 	updateUser3 := &pb.User{
-		LastName:     "Invalid uuid",
-		Uuid: "0000xsnjg0mqjhbf4qx",
+		LastName: "Invalid uuid",
+		Uuid:     "0000xsnjg0mqjhbf4qx",
 	}
 
 	// non-existent uuid
 	updateUser4 := &pb.User{
-		LastName:     "uuid does not exist",
-		Uuid: "1000xsnjg0mqjhbf4qx1efd6ba",
+		LastName: "uuid does not exist",
+		Uuid:     "1000xsnjg0mqjhbf4qx1efd6ba",
 	}
 
 	// invalid email format
 	updateUser5 := &pb.User{
-		LastName:     "Invalid email",
-		Email: "a",
-		Uuid: "0000xsnjg0mqjhbf4qx1efd6y4",
+		LastName: "Invalid email",
+		Email:    "a",
+		Uuid:     "0000xsnjg0mqjhbf4qx1efd6y4",
 	}
 
 	// invalid first name
 	updateUser6 := &pb.User{
-		FirstName:     "@@@",
-		Uuid: "0000xsnjg0mqjhbf4qx1efd6y4",
+		FirstName: "@@@",
+		Uuid:      "0000xsnjg0mqjhbf4qx1efd6y4",
 	}
 
 	// invalid last name
 	updateUser7 := &pb.User{
-		LastName:     "@@@",
-		Uuid: "0000xsnjg0mqjhbf4qx1efd6y4",
+		LastName: "@@@",
+		Uuid:     "0000xsnjg0mqjhbf4qx1efd6y4",
 	}
 
-	cases := []struct{
-		request *pb.UserRequest
+	cases := []struct {
+		request  *pb.UserRequest
 		isExpErr bool
-		expMsg string
+		expMsg   string
 	}{
 		{&pb.UserRequest{User: updateUser}, false, ""},
 		{&pb.UserRequest{User: updateUser2}, false, ""},

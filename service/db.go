@@ -279,7 +279,7 @@ func getUserRow(uuid string) (*pb.User, error) {
 				Email:        email,
 				Organization: organization,
 				CreatedDate:  createdDate.Unix(),
-				IsVerified: isVerified,
+				IsVerified:   isVerified,
 			}, nil
 		}
 	}
@@ -349,7 +349,7 @@ func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) error {
 		newHashedPassword = hashedPassword
 	}
 
-	if (newFirstName == "" && newLastName == "" && newOrganization == "" && newHashedPassword == "" && newEmail == "") {
+	if newFirstName == "" && newLastName == "" && newOrganization == "" && newHashedPassword == "" && newEmail == "" {
 		return errEmptyRequestUser
 	}
 

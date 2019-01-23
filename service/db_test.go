@@ -51,38 +51,38 @@ func TestGetUserRow(t *testing.T) {
 
 func TestUpdateUserRow(t *testing.T) {
 	// update firstname and modified_date
-	svc := &pb.User {
+	svc := &pb.User{
 		FirstName: "Test Update User Row",
-		Uuid: "0000xsnjg0mqjhbf4qx1efd6y6",
+		Uuid:      "0000xsnjg0mqjhbf4qx1efd6y6",
 	}
-	db := &pb.User {
-		FirstName: "John F",
-		LastName: "Kennedy",
-		Email: "john@test.com",
+	db := &pb.User{
+		FirstName:    "John F",
+		LastName:     "Kennedy",
+		Email:        "john@test.com",
 		Organization: "123",
-		IsVerified: true,
+		IsVerified:   true,
 	}
 
 	// update prospective_email, is_verified, modified_date
-	svc2 := &pb.User {
+	svc2 := &pb.User{
 		Email: "updateUserRow@test.com",
-		Uuid: "0000xsnjg0mqjhbf4qx1efd6y5",
+		Uuid:  "0000xsnjg0mqjhbf4qx1efd6y5",
 	}
-	db2 := &pb.User {
-		FirstName: "Mary-Jo",
-		LastName: "Allen",
-		Email: "mary@test.com",
+	db2 := &pb.User{
+		FirstName:    "Mary-Jo",
+		LastName:     "Allen",
+		Email:        "mary@test.com",
 		Organization: "abc",
-		IsVerified: true,
+		IsVerified:   true,
 	}
 
 	cases := []struct {
-		uuid string
+		uuid       string
 		svcDerived *pb.User
-		dbDerived *pb.User
-		isExpErr bool
-		expMsg string
-	} {
+		dbDerived  *pb.User
+		isExpErr   bool
+		expMsg     string
+	}{
 		{"", nil, nil, true, "invalid User uuid"},
 		{"someid", nil, nil, true, "nil request User"},
 		{"someid", &pb.User{}, nil, true, "nil request User"},
