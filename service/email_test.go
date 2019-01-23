@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/stretchr/testify/assert"
+	"sync"
 	"testing"
 )
 
@@ -175,4 +176,36 @@ func TestValidateEmail(t *testing.T) {
 			assert.Nil(t, err)
 		}
 	}
+}
+
+func TestGenerateEmailToken(t *testing.T) {
+	// NOTE: unable to force a race condition given the nature of randomByte used in generateEmailToken()
+	// but functionality is same as generateUUID and that's been tested for race conditions
+
+	const count = 100
+	var tokens sync.Map
+	var wg sync.WaitGroup
+
+	wg.Add(count)
+	start := make(chan struct{})
+
+	for i := 0; i < count; i++ {
+		go func() {
+			<-start
+			defer wg.Done()
+
+			// store tokens in map to check for duplicates
+			token, err := generateEmailToken()
+			assert.Nil(t, err)
+			assert.NotEqual(t, "", token)
+
+			_, ok := tokens.Load(token)
+			assert.Equal(t, false, ok)
+
+			tokens.Store(token, true)
+		}()
+	}
+
+	close(start)
+	wg.Wait()
 }

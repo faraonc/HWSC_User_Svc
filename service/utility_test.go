@@ -4,8 +4,52 @@ import (
 	"fmt"
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
 	"github.com/stretchr/testify/assert"
+	"sync"
 	"testing"
 )
+
+func TestIsStateAvailable(t *testing.T) {
+	// NOTE: force a race condition by commenting out the locks inside isStateAvailable()
+
+	// test for unavailbility
+	serviceStateLocker.currentServiceState = unavailable
+	assert.Equal(t, unavailable, serviceStateLocker.currentServiceState)
+
+	ok := serviceStateLocker.isStateAvailable()
+	assert.Equal(t, false, ok)
+
+	// test for availability
+	serviceStateLocker.currentServiceState = available
+	assert.Equal(t, available, serviceStateLocker.currentServiceState)
+
+	ok = serviceStateLocker.isStateAvailable()
+	assert.Equal(t, true, ok)
+
+	// test race conditions
+	const count = 20
+	var wg sync.WaitGroup
+	start := make(chan struct{}) // signal channel
+
+	wg.Add(count) // #count go routines to wait for
+
+	for i := 0; i < count; i++ {
+		go func() {
+			<-start // blocks code below, until channel is closed
+
+			defer wg.Done()
+			_ = serviceStateLocker.isStateAvailable()
+		}()
+	}
+
+	close(start) // starts executing blocked goroutines almost at the same time
+
+	// test that read-lock inside isStateAvailable() blocks this write-lock
+	serviceStateLocker.lock.Lock()
+	serviceStateLocker.currentServiceState = available
+	serviceStateLocker.lock.Unlock()
+
+	wg.Wait() // wait until all goroutines finish executing
+}
 
 func TestValidateUser(t *testing.T) {
 	// valid
@@ -165,32 +209,61 @@ func TestValidateOrganization(t *testing.T) {
 }
 
 func TestGenerateUUID(t *testing.T) {
-	// test each function call generats unique id's
-	uuids := make(map[string]bool)
-	for i := 0; i < 30; i++ {
-		id, err := generateUUID()
-		assert.Nil(t, err)
-		assert.NotEqual(t, "", id)
+	// NOTE: force a race condition by commenting out the locks inside generateUUID()
 
-		// test if key exists in the map
-		_, ok := uuids[id]
-		assert.Equal(t, false, ok)
+	const count = 100
+	var tokens sync.Map
 
-		uuids[id] = true
+	var wg sync.WaitGroup // waits until all goroutines finish before executing code below wg.Wait()
+	wg.Add(count)         // indicate we are going to wait for 100 go routines
+
+	// start is a signal channel
+	// channel of empty structs is used to indicate that this channel
+	// will only be used for signalling and not for passing data
+	start := make(chan struct{})
+	for i := 0; i < count; i++ {
+		go func() {
+			// <-start blocks code below, waiting until the for loop is finished
+			// it waits for the start channel to be closed,
+			// once closed, all goroutines will execute(start) almost simultaneously
+			<-start
+
+			// decrement wg.Add, indicates 1 go routine has finished
+			// defer will call wg.Done() at end of go routine
+			defer wg.Done()
+
+			// store tokens in map to check for duplicates
+			uuid, err := generateUUID()
+			assert.Nil(t, err)
+			assert.NotEqual(t, "", uuid)
+
+			_, ok := tokens.Load(uuid)
+			assert.Equal(t, false, ok)
+
+			tokens.Store(uuid, true)
+		}()
 	}
+
+	// closing this channel, will unblock it,
+	// allowing execution to continue
+	close(start)
+
+	// wait for all 100 go routines to finish (when wg.Add reaches 0)
+	// blocks from running any code below it
+	wg.Wait()
 }
 
 func TestValidateUUID(t *testing.T) {
 	// generate a valid uuid
-	validUUID, err := generateUUID()
+	uuid, err := generateUUID()
 	assert.Nil(t, err)
-	assert.NotNil(t, validUUID)
+	assert.NotNil(t, uuid)
 
 	cases := []struct {
 		uuid     string
 		isExpErr bool
 	}{
-		{validUUID, false},
+		{uuid, false},
 		{"", true},
 		{"01d1na5ekzr7p98hragv5fmvx", true},
 		{"abcd", true},
