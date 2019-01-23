@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/base64"
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
 	"github.com/oklog/ulid"
 	"golang.org/x/crypto/bcrypt"
@@ -21,6 +20,18 @@ var (
 	multiSpaceRegex     = regexp.MustCompile(`[\s\p{Zs}]{2,}`)
 	nameValidCharsRegex = regexp.MustCompile(`^[[:alpha:]]+((['.\s-][[:alpha:]\s])?[[:alpha:]]*)*$`)
 )
+
+func (s *stateLocker) isStateAvailable() bool {
+	//TODO need to test for read race conditions
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	if s.currentServiceState != available {
+		return false
+	}
+
+	return true
+}
 
 func validateUser(user *pb.User) error {
 	if err := validateFirstName(user.GetFirstName()); err != nil {
@@ -76,19 +87,23 @@ func validateOrganization(name string) error {
 	return nil
 }
 
-// TODO synchronize inside this function
 // generateUUID generates a unique user ID using ulid package based on currentTime
 // returns a lower cased string type of generated ulid.ULID
-func generateUUID() (string, error) {
+func (u *uuidLocker) generateUUID() error {
+	u.lock.Lock()
+	defer u.lock.Unlock()
+
 	t := time.Now().UTC()
 	entropy := rand.New(rand.NewSource(t.UnixNano()))
 
 	id, err := ulid.New(ulid.Timestamp(t), entropy)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return strings.ToLower(id.String()), nil
+	u.uuid = strings.ToLower(id.String())
+
+	return nil
 }
 
 func validateUUID(uuid string) error {
@@ -102,20 +117,6 @@ func validateUUID(uuid string) error {
 	}
 
 	return nil
-}
-
-// TODO probably need to synchronize this as well
-// generateEmailToken generates a 44 byte, base64 URL-safe string
-// built from securely generated random bytes
-// Return error if system's secure random number generator fails
-func generateEmailToken() (string, error) {
-	randomBytes := make([]byte, emailTokenBytes)
-	_, err := rand.Read(randomBytes)
-	if err != nil {
-		return "", err
-	}
-
-	return base64.URLEncoding.EncodeToString(randomBytes), nil
 }
 
 // hashPassword hashes and salts provided password

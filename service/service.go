@@ -22,6 +22,16 @@ type stateLocker struct {
 	currentServiceState state
 }
 
+type uuidLocker struct {
+	lock sync.Mutex
+	uuid string
+}
+
+type tokenLocker struct {
+	lock  sync.Mutex
+	token string
+}
+
 const (
 	// available - service is ready and available for read/write
 	available state = 0
@@ -32,6 +42,9 @@ const (
 
 var (
 	serviceStateLocker stateLocker
+	uuidGenerator      uuidLocker
+	tokenGenerator     tokenLocker
+	uuidMapLocker      sync.Map
 
 	// converts the state of the service to a string
 	serviceStateMap map[state]string
@@ -53,12 +66,7 @@ func init() {
 func (s *Service) GetStatus(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	logger.RequestService("GetStatus")
 
-	// Lock the state for reading and defer unlocks the state before function exits
-	serviceStateLocker.lock.RLock()
-	defer serviceStateLocker.lock.RUnlock()
-
-	logger.Info("Service state:", serviceStateMap[serviceStateLocker.currentServiceState])
-	if serviceStateLocker.currentServiceState == unavailable {
+	if ok := serviceStateLocker.isStateAvailable(); !ok {
 		return responseServiceUnavailable, nil
 	}
 
@@ -75,6 +83,11 @@ func (s *Service) GetStatus(ctx context.Context, req *pb.UserRequest) (*pb.UserR
 // CreateUser creates a new user document and inserts it to user DB
 func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	logger.RequestService("CreateUser")
+
+	if ok := serviceStateLocker.isStateAvailable(); !ok {
+		logger.Error("CreateUser: ", errServiceUnavailable.Error())
+		return nil, status.Error(codes.Unavailable, errServiceUnavailable.Error())
+	}
 
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
@@ -97,14 +110,20 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	// TODO synchronize to avoid 2 or more users with the same UUID ( RW lock )
-	// generate uuid
-	id, err := generateUUID()
+	// generate uuid synchronously to prevent users getting the same uuid
+	err := uuidGenerator.generateUUID()
 	if err != nil {
 		logger.Error("CreateUser generateUUID:", err.Error())
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	user.Uuid = id
+	user.Uuid = uuidGenerator.uuid
+
+	// sync.Map equivalent to map[string](&sync.RWMutex{}) = each uuid string gets its own lock
+	// LoadOrStore = LOAD: get the lock for uuid or if not exist,
+	// 				 STORE: make uuid key and store lock type &sync.RWMutex{}
+	lock, _ := uuidMapLocker.LoadOrStore(user.GetUuid(), &sync.RWMutex{})
+	lock.(*sync.RWMutex).Lock()
+	defer lock.(*sync.RWMutex).Unlock()
 
 	// hash password using bcrypt
 	hashedPassword, err := hashPassword(user.GetPassword())
@@ -123,14 +142,14 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	logger.Info("Success INSERT new user:", user.GetFirstName(), user.GetLastName(), user.GetUuid())
 
 	// create unique email token
-	token, err := generateEmailToken()
+	err = tokenGenerator.generateEmailToken()
 	if err != nil {
 		logger.Error("CreateUser generateEmailToken:", err.Error())
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
 	// insert token into db
-	if err := insertToken(user.GetUuid(), token); err != nil {
+	if err := insertToken(user.GetUuid(), tokenGenerator.token); err != nil {
 		logger.Error("CreateUser INSERT user_svc.pending_tokens:", err.Error())
 		if err := deleteUser(user.GetUuid()); err != nil {
 			logger.Error("CreateUser DELETE user-svc.accounts:", err.Error())

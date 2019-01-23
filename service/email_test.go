@@ -176,3 +176,24 @@ func TestValidateEmail(t *testing.T) {
 		}
 	}
 }
+
+func TestGenerateEmailToken(t *testing.T) {
+	// test each function call generats unique tokens
+	tokens := make(map[string]bool)
+	for i := 0; i < 10; i++ {
+		err := tokenGenerator.generateEmailToken()
+		assert.Nil(t, err)
+		assert.NotEqual(t, "", tokenGenerator.token)
+
+		// test if key exists in the map
+		_, ok := tokens[tokenGenerator.token]
+		assert.Equal(t, false, ok)
+
+		tokens[tokenGenerator.token] = true
+	}
+
+	// test for race conditions
+	for i := 0; i < 10; i++ {
+		go tokenGenerator.generateEmailToken()
+	}
+}

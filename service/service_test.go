@@ -165,9 +165,9 @@ func TestDeleteUser(t *testing.T) {
 	assert.Equal(t, codes.OK.String(), response.GetMessage())
 
 	// generate a valid uuid to test non existent uuid in table
-	validUUID, err := generateUUID()
+	err = uuidGenerator.generateUUID()
 	assert.Nil(t, err)
-	assert.NotNil(t, validUUID)
+	assert.NotNil(t, uuidGenerator.uuid)
 
 	// exisiting uuid
 	test1 := &pb.User{
@@ -176,7 +176,7 @@ func TestDeleteUser(t *testing.T) {
 
 	// nonexistent uuid
 	test2 := &pb.User{
-		Uuid: validUUID,
+		Uuid: uuidGenerator.uuid,
 	}
 
 	// invalid uuid's
@@ -229,9 +229,9 @@ func TestGetUser(t *testing.T) {
 	assert.Equal(t, codes.OK.String(), response.GetMessage())
 
 	// generate a valid uuid to test non existent uuid in table
-	validUUID, err := generateUUID()
+	err = uuidGenerator.generateUUID()
 	assert.Nil(t, err)
-	assert.NotNil(t, validUUID)
+	assert.NotNil(t, uuidGenerator.uuid)
 
 	// exisiting uuid
 	test1 := &pb.User{
@@ -240,7 +240,7 @@ func TestGetUser(t *testing.T) {
 
 	// nonexistent uuid
 	test2 := &pb.User{
-		Uuid: validUUID,
+		Uuid: uuidGenerator.uuid,
 	}
 
 	cases := []struct {

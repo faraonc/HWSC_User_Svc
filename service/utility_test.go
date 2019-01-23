@@ -7,6 +7,29 @@ import (
 	"testing"
 )
 
+func TestIsStateAvailable(t *testing.T) {
+	// test for unavailbility
+	serviceStateLocker.currentServiceState = unavailable
+	assert.Equal(t, unavailable, serviceStateLocker.currentServiceState)
+
+	ok := serviceStateLocker.isStateAvailable()
+	assert.Equal(t, false, ok)
+
+	// test for availability
+	serviceStateLocker.currentServiceState = available
+	assert.Equal(t, available, serviceStateLocker.currentServiceState)
+
+	ok = serviceStateLocker.isStateAvailable()
+	assert.Equal(t, true, ok)
+
+	//TODO need to test for read race conditions
+	// does not work
+	//for i := 0; i < 20; i++ {
+	//	go serviceStateLocker.isStateAvailable()
+	//}
+
+}
+
 func TestValidateUser(t *testing.T) {
 	// valid
 	validTest := pb.User{
@@ -167,30 +190,35 @@ func TestValidateOrganization(t *testing.T) {
 func TestGenerateUUID(t *testing.T) {
 	// test each function call generats unique id's
 	uuids := make(map[string]bool)
-	for i := 0; i < 30; i++ {
-		id, err := generateUUID()
+	for i := 0; i < 10; i++ {
+		err := uuidGenerator.generateUUID()
 		assert.Nil(t, err)
-		assert.NotEqual(t, "", id)
+		assert.NotEqual(t, "", uuidGenerator.uuid)
 
 		// test if key exists in the map
-		_, ok := uuids[id]
+		_, ok := uuids[uuidGenerator.uuid]
 		assert.Equal(t, false, ok)
 
-		uuids[id] = true
+		uuids[uuidGenerator.uuid] = true
+	}
+
+	// test for race conditions
+	for i := 0; i < 10; i++ {
+		go uuidGenerator.generateUUID()
 	}
 }
 
 func TestValidateUUID(t *testing.T) {
 	// generate a valid uuid
-	validUUID, err := generateUUID()
+	err := uuidGenerator.generateUUID()
 	assert.Nil(t, err)
-	assert.NotNil(t, validUUID)
+	assert.NotNil(t, uuidGenerator.uuid)
 
 	cases := []struct {
 		uuid     string
 		isExpErr bool
 	}{
-		{validUUID, false},
+		{uuidGenerator.uuid, false},
 		{"", true},
 		{"01d1na5ekzr7p98hragv5fmvx", true},
 		{"abcd", true},
