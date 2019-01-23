@@ -94,9 +94,11 @@ CREATE TABLE user_svc.accounts
   first_name        user_svc.user_name,
   last_name         user_svc.user_name,
   email             VARCHAR(320) NOT NULL UNIQUE,
+  prospective_email	VARCHAR(320) UNIQUE DEFAULT NULL,
   password          VARCHAR(60) NOT NULL,
   organization      TEXT,
   created_date      TIMESTAMPTZ NOT NULL,
+  modified_date		TIMESTAMPTZ DEFAULT NULL,
   is_verified       BOOLEAN NOT NULL
 );
 
@@ -119,7 +121,16 @@ CREATE TABLE user_svc.shared_documents
   PRIMARY KEY (uuid, duid),
   uuid user_svc.ulid   REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE,
   duid user_svc.ksuid  REFERENCES user_svc.documents(duid) ON DELETE CASCADE
-);`
+);
+
+INSERT INTO user_svc.accounts (uuid, first_name, last_name, email, password, organization, created_date, is_verified)
+VALUES
+    ('1000xsnjg0mqjhbf4qx1efd6y7', 'Test Delete', 'Delete', 'delete@test.com', '12345678', 'delete', current_timestamp, TRUE),
+	('0000xsnjg0mqjhbf4qx1efd6y5', 'Mary-Jo', 'Allen', 'mary@test.com', '12345678', 'abc', current_timestamp, TRUE),
+	('0000xsnjg0mqjhbf4qx1efd6y6', 'John F', 'Kennedy', 'john@test.com', '12345678', '123', current_timestamp, TRUE),
+    ('0000xsnjg0mqjhbf4qx1efd6y3', 'Lisa', 'Kim', 'lisa@test.com', '12345678', 'uwb', current_timestamp, TRUE),
+    ('0000xsnjg0mqjhbf4qx1efd6y4', 'Kate Swan', 'Smith-Jones', 'kate@test.com', '12345678', 'cse', current_timestamp, TRUE);
+`
 
 	_, err := postgresDB.Exec(userSchema)
 	devCheckError(err)
@@ -242,7 +253,7 @@ func getUserRow(uuid string) (*pb.User, error) {
 		return nil, errInvalidUUID
 	}
 
-	command := `SELECT uuid, first_name, last_name, email, organization, created_date
+	command := `SELECT uuid, first_name, last_name, email, organization, created_date, is_verified
 				FROM user_svc.accounts WHERE user_svc.accounts.uuid = $1
 				`
 	row, err := postgresDB.Query(command, uuid)
@@ -252,9 +263,10 @@ func getUserRow(uuid string) (*pb.User, error) {
 
 	for row.Next() {
 		var uid, firstName, lastName, email, organization string
+		var isVerified bool
 		var createdDate time.Time
 
-		err := row.Scan(&uid, &firstName, &lastName, &email, &organization, &createdDate)
+		err := row.Scan(&uid, &firstName, &lastName, &email, &organization, &createdDate, &isVerified)
 		if err != nil {
 			return nil, err
 		}
@@ -267,9 +279,110 @@ func getUserRow(uuid string) (*pb.User, error) {
 				Email:        email,
 				Organization: organization,
 				CreatedDate:  createdDate.Unix(),
+				IsVerified:   isVerified,
 			}, nil
 		}
 	}
 
 	return nil, nil
+}
+
+// updateUser does a partial update by going through each User fields and replacing values
+// that are different from original values. It's partial b/c some fields like created_date & uuid are not touched
+// Return error if params are zero values or querying problem
+func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) error {
+	if uuid == "" {
+		return errInvalidUUID
+	}
+
+	if svcDerived == nil || dbDerived == nil {
+		return errNilRequestUser
+	}
+
+	newFirstName := dbDerived.GetFirstName()
+	if svcDerived.GetFirstName() != "" && svcDerived.GetFirstName() != newFirstName {
+		if err := validateFirstName(svcDerived.GetFirstName()); err != nil {
+			return err
+		}
+		newFirstName = svcDerived.GetFirstName()
+	}
+
+	newLastName := dbDerived.GetLastName()
+	if svcDerived.GetLastName() != "" && svcDerived.GetLastName() != newLastName {
+		if err := validateLastName(svcDerived.GetLastName()); err != nil {
+			return err
+		}
+		newLastName = svcDerived.GetLastName()
+	}
+
+	newOrganization := dbDerived.GetOrganization()
+	if svcDerived.GetOrganization() != "" && svcDerived.GetOrganization() != newOrganization {
+		if err := validateOrganization(svcDerived.GetOrganization()); err != nil {
+			return err
+		}
+		newOrganization = svcDerived.GetOrganization()
+	}
+
+	newEmail := ""
+	var newEmailToken string
+	if svcDerived.GetEmail() != "" && svcDerived.GetEmail() != dbDerived.GetEmail() {
+		if err := validateEmail(svcDerived.GetEmail()); err != nil {
+			return err
+		}
+		newEmail = svcDerived.GetEmail()
+
+		// create unique email token
+		token, err := generateEmailToken()
+		if err != nil {
+			return err
+		}
+		newEmailToken = token
+	}
+
+	newHashedPassword := dbDerived.GetPassword()
+	if svcDerived.GetPassword() != "" {
+		// hash password using bcrypt
+		hashedPassword, err := hashPassword(svcDerived.GetPassword())
+		if err != nil {
+			return err
+		}
+		newHashedPassword = hashedPassword
+	}
+
+	if newFirstName == "" && newLastName == "" && newOrganization == "" && newHashedPassword == "" && newEmail == "" {
+		return errEmptyRequestUser
+	}
+
+	newIsVerified := dbDerived.GetIsVerified()
+	if newEmailToken != "" {
+		newIsVerified = false
+	}
+
+	command := `UPDATE user_svc.accounts SET 
+                	first_name = $2,
+                    last_name = $3, 
+                    organization = $4, 
+                    password = $5, 
+                    prospective_email = (CASE WHEN LENGTH($6) = 0 THEN NULL ELSE $6 END),
+					is_verified = $7,
+                    modified_date = $8
+				WHERE user_svc.accounts.uuid = $1
+				`
+	_, err := postgresDB.Exec(command, uuid, newFirstName, newLastName, newOrganization,
+		newHashedPassword, newEmail, newIsVerified, time.Now().UTC())
+	if err != nil {
+		return err
+	}
+
+	if newEmailToken != "" {
+		// insert token into db
+		if err := insertToken(uuid, newEmailToken); err != nil {
+			if err := deleteUser(uuid); err != nil {
+				return err
+			}
+			return err
+		}
+	}
+
+	return nil
 }

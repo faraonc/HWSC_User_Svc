@@ -267,3 +267,91 @@ func TestGetUser(t *testing.T) {
 		}
 	}
 }
+
+func TestUpdateUser(t *testing.T) {
+	// prospective email is NULL
+	// is_verified stays same as last value (t)
+	// password is hashed
+	// modified_date set
+	updateUser := &pb.User{
+		FirstName:    "UPDATE",
+		LastName:     "UPDATE",
+		Password:     "1234567789",
+		Organization: "UPDATE ORGANIZATION",
+		Uuid:         "0000xsnjg0mqjhbf4qx1efd6y3",
+	}
+
+	// test prospective_email is set
+	// is_verified set to false from (t)
+	// modified_date set
+	updateUser2 := &pb.User{
+		Email: "UPDATE_USER@new.com",
+		Uuid:  "0000xsnjg0mqjhbf4qx1efd6y4",
+	}
+
+	// invalid uuid
+	updateUser3 := &pb.User{
+		LastName: "Invalid uuid",
+		Uuid:     "0000xsnjg0mqjhbf4qx",
+	}
+
+	// non-existent uuid
+	updateUser4 := &pb.User{
+		LastName: "uuid does not exist",
+		Uuid:     "1000xsnjg0mqjhbf4qx1efd6ba",
+	}
+
+	// invalid email format
+	updateUser5 := &pb.User{
+		LastName: "Invalid email",
+		Email:    "a",
+		Uuid:     "0000xsnjg0mqjhbf4qx1efd6y4",
+	}
+
+	// invalid first name
+	updateUser6 := &pb.User{
+		FirstName: "@@@",
+		Uuid:      "0000xsnjg0mqjhbf4qx1efd6y4",
+	}
+
+	// invalid last name
+	updateUser7 := &pb.User{
+		LastName: "@@@",
+		Uuid:     "0000xsnjg0mqjhbf4qx1efd6y4",
+	}
+
+	cases := []struct {
+		request  *pb.UserRequest
+		isExpErr bool
+		expMsg   string
+	}{
+		{&pb.UserRequest{User: updateUser}, false, ""},
+		{&pb.UserRequest{User: updateUser2}, false, ""},
+		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
+		{&pb.UserRequest{User: updateUser3}, true,
+			"rpc error: code = InvalidArgument desc = invalid User uuid"},
+		{&pb.UserRequest{User: updateUser4}, true,
+			"rpc error: code = NotFound desc = uuid does not exist in database"},
+		{&pb.UserRequest{User: updateUser5}, true,
+			"rpc error: code = Unknown desc = invalid User email"},
+		{&pb.UserRequest{User: updateUser6}, true,
+			"rpc error: code = Unknown desc = invalid User first name"},
+		{&pb.UserRequest{User: updateUser7}, true,
+			"rpc error: code = Unknown desc = invalid User last name"},
+		{&pb.UserRequest{User: nil}, true,
+			"rpc error: code = InvalidArgument desc = nil request User"},
+	}
+
+	for _, c := range cases {
+		s := Service{}
+		response, err := s.UpdateUser(context.TODO(), c.request)
+
+		if c.isExpErr {
+			assert.EqualError(t, err, c.expMsg)
+			assert.Nil(t, response)
+		} else {
+			assert.Nil(t, err)
+			assert.Equal(t, codes.OK.String(), response.GetMessage())
+		}
+	}
+}
