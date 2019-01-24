@@ -172,6 +172,11 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	logger.RequestService("DeleteUser")
 
+	if ok := serviceStateLocker.isStateAvailable(); !ok {
+		logger.Error("DeleteUser: ", errServiceUnavailable.Error())
+		return nil, status.Error(codes.Unavailable, errServiceUnavailable.Error())
+	}
+
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
 	}
@@ -188,15 +193,20 @@ func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	}
 
 	// validate user id
-	uuid := user.GetUuid()
-	if err := validateUUID(uuid); err != nil {
+	if err := validateUUID(user.GetUuid()); err != nil {
 		logger.Error("DeleteUser validating uuid: ", err.Error())
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	lock, _ := uuidMapLocker.LoadOrStore(user.GetUuid(), &sync.RWMutex{})
+	lock.(*sync.RWMutex).Lock()
+	defer lock.(*sync.RWMutex).Unlock()
+
 	// check uuid exists
-	exists, err := checkUserExists(uuid)
+	exists, err := checkUserExists(user.GetUuid())
 	if err != nil {
+		// remove uuid from cache uuidMapLocker b/c Mutex was allocated to save resources/memory and prevent security issues
+		uuidMapLocker.Delete(user.GetUuid())
 		logger.Error("DeleteUser checkUserExists:", err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -207,7 +217,7 @@ func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	}
 
 	// delete from db
-	if err := deleteUser(uuid); err != nil {
+	if err := deleteUser(user.GetUuid()); err != nil {
 		logger.Error("DeleteUser DELETE user-svc.accounts:", err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -223,7 +233,7 @@ func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	logger.RequestService("UpdateUser")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		logger.Error("CreateUser: ", errServiceUnavailable.Error())
+		logger.Error("UpdateUser: ", errServiceUnavailable.Error())
 		return nil, status.Error(codes.Unavailable, errServiceUnavailable.Error())
 	}
 
@@ -255,6 +265,7 @@ func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	// check uuid exists
 	exists, err := checkUserExists(svcDerivedUser.GetUuid())
 	if err != nil {
+		uuidMapLocker.Delete(svcDerivedUser.GetUuid())
 		logger.Error("UpdateUser checkUserExists:", err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -306,6 +317,11 @@ func (s *Service) ListUsers(ctx context.Context, req *pb.UserRequest) (*pb.UserR
 func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	logger.RequestService("GetUser")
 
+	if ok := serviceStateLocker.isStateAvailable(); !ok {
+		logger.Error("GetUser: ", errServiceUnavailable.Error())
+		return nil, status.Error(codes.Unavailable, errServiceUnavailable.Error())
+	}
+
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
 	}
@@ -322,15 +338,19 @@ func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserRes
 	}
 
 	// validate user id
-	uuid := user.GetUuid()
-	if err := validateUUID(uuid); err != nil {
+	if err := validateUUID(user.GetUuid()); err != nil {
 		logger.Error("GetUser validating uuid: ", err.Error())
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	lock, _ := uuidMapLocker.LoadOrStore(user.GetUuid(), &sync.RWMutex{})
+	lock.(*sync.RWMutex).Lock()
+	defer lock.(*sync.RWMutex).Unlock()
+
 	// check uuid exists
-	exists, err := checkUserExists(uuid)
+	exists, err := checkUserExists(user.GetUuid())
 	if err != nil {
+		uuidMapLocker.Delete(user.GetUuid())
 		logger.Error("GetUser checkUserExists:", err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -341,7 +361,7 @@ func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserRes
 	}
 
 	// retrieve users row from database
-	user, err = getUserRow(uuid)
+	user, err = getUserRow(user.GetUuid())
 	if err != nil {
 		logger.Error("GetUser getUserRow:", err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
