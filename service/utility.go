@@ -33,6 +33,10 @@ func (s *stateLocker) isStateAvailable() bool {
 }
 
 func validateUser(user *pb.User) error {
+	if user == nil {
+		return errNilRequestUser
+	}
+
 	if err := validateFirstName(user.GetFirstName()); err != nil {
 		return err
 	}

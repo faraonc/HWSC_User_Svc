@@ -106,7 +106,7 @@ CREATE TABLE user_svc.pending_tokens
 (
   token         TEXT PRIMARY KEY,
   created_date  TIMESTAMP NOT NULL,
-  uuid          user_svc.ulid REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE
+  uuid          user_svc.ulid UNIQUE REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE
 );
 
 CREATE TABLE user_svc.documents
@@ -129,7 +129,8 @@ VALUES
 	('0000xsnjg0mqjhbf4qx1efd6y5', 'Mary-Jo', 'Allen', 'mary@test.com', '12345678', 'abc', current_timestamp, TRUE),
 	('0000xsnjg0mqjhbf4qx1efd6y6', 'John F', 'Kennedy', 'john@test.com', '12345678', '123', current_timestamp, TRUE),
     ('0000xsnjg0mqjhbf4qx1efd6y3', 'Lisa', 'Kim', 'lisa@test.com', '12345678', 'uwb', current_timestamp, TRUE),
-    ('0000xsnjg0mqjhbf4qx1efd6y4', 'Kate Swan', 'Smith-Jones', 'kate@test.com', '12345678', 'cse', current_timestamp, TRUE);
+    ('0000xsnjg0mqjhbf4qx1efd6y4', 'Kate Swan', 'Smith-Jones', 'kate@test.com', '12345678', 'cse', current_timestamp, TRUE),
+    ('1212asnjg0mqjhbf4qx1efd6y2', 'Unit Test', 'GetUserRow', 'get@user.com', '12345678', 'unit test getUserRow', current_timestamp, TRUE);
 `
 
 	_, err := postgresDB.Exec(userSchema)
@@ -157,12 +158,27 @@ func refreshDBConnection() error {
 	return nil
 }
 
-// insertNewUser inserts new users to user_svc.accounts table
+// insertNewUser checks user field validity, hashes password and
+// inserts new users to user_svc.accounts table
 // Returns error if User is nil or if error with inserting to database
 func insertNewUser(user *pb.User) error {
-	if user == nil {
-		return errNilRequestUser
+	// check if uuid is valid form
+	if err := validateUUID(user.GetUuid()); err != nil {
+		return errInvalidUUID
 	}
+
+	// validate fields in user object
+	if err := validateUser(user); err != nil {
+		return errInvalidUserFields
+	}
+
+	// hash password using bcrypt
+	var err error
+	user.Password, err = hashPassword(user.GetPassword())
+	if err != nil {
+		return err
+	}
+	user.IsVerified = false
 
 	command := `
 				INSERT INTO user_svc.accounts(
@@ -170,7 +186,7 @@ func insertNewUser(user *pb.User) error {
 				) VALUES($1, $2, $3, $4, $5, $6, $7, $8)
 				`
 
-	_, err := postgresDB.Exec(command, user.GetUuid(), user.GetFirstName(), user.GetLastName(),
+	_, err = postgresDB.Exec(command, user.GetUuid(), user.GetFirstName(), user.GetLastName(),
 		user.GetEmail(), user.GetPassword(), user.GetOrganization(), time.Now().UTC(), user.GetIsVerified())
 
 	if err != nil {
@@ -180,19 +196,22 @@ func insertNewUser(user *pb.User) error {
 	return nil
 }
 
-// insertToken inserts to user_svc.pending_tokens
+// insertToken creates a unique token and inserts to user_svc.pending_tokens
 // Returns error if strings are empty or error with inserting to database
-func insertToken(uuid string, token string) error {
-	if uuid == "" {
+func insertToken(uuid string) error {
+	// check if uuid is valid form
+	if err := validateUUID(uuid); err != nil {
 		return errInvalidUUID
 	}
 
-	if token == "" {
-		return errInvalidToken
+	// create unique email token
+	token, err := generateEmailToken()
+	if err != nil {
+		return err
 	}
 
 	command := `INSERT INTO user_svc.pending_tokens(token, created_date, uuid) VALUES($1, $2, $3)`
-	_, err := postgresDB.Exec(command, token, time.Now().UTC(), uuid)
+	_, err = postgresDB.Exec(command, token, time.Now().UTC(), uuid)
 
 	if err != nil {
 		return err
@@ -204,7 +223,8 @@ func insertToken(uuid string, token string) error {
 // checkUserExists looks up a uuid in accounts table
 // Returns true if it exists, false if nonexistent
 func checkUserExists(uuid string) (bool, error) {
-	if uuid == "" {
+	// check if uuid is valid form
+	if err := validateUUID(uuid); err != nil {
 		return false, errInvalidUUID
 	}
 
@@ -230,9 +250,11 @@ func checkUserExists(uuid string) (bool, error) {
 }
 
 // deleteUser deletes user from user_svc.accounts
+// deleting non-existent uuid does not throw an error, db simply returns nothing which is okay
 // Returns error if string is empty or error with deleting from database
-func deleteUser(uuid string) error {
-	if uuid == "" {
+func deleteUserRow(uuid string) error {
+	// check if uuid is valid form
+	if err := validateUUID(uuid); err != nil {
 		return errInvalidUUID
 	}
 
@@ -247,10 +269,22 @@ func deleteUser(uuid string) error {
 }
 
 // getUserRow looks up a user by its uuid and stores the result in a pb.User struct
-// Returns pb.User struct if found, nil otherwise
+// retrieving non-existent uuid does not throw an error, db simply returns nothing
+// so we put in a check to see if uuid exists to return error if not found
+// Returns pb.User struct if found, nil otherwise, error if uuid does not exist or err with db
 func getUserRow(uuid string) (*pb.User, error) {
-	if uuid == "" {
+	// check if uuid is valid form
+	if err := validateUUID(uuid); err != nil {
 		return nil, errInvalidUUID
+	}
+
+	// check uuid exists
+	exists, err := checkUserExists(uuid)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errDoesNotExistUUID
 	}
 
 	command := `SELECT uuid, first_name, last_name, email, organization, created_date, is_verified
@@ -291,7 +325,7 @@ func getUserRow(uuid string) (*pb.User, error) {
 // that are different from original values. It's partial b/c some fields like created_date & uuid are not touched
 // Return error if params are zero values or querying problem
 func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) error {
-	if uuid == "" {
+	if err := validateUUID(uuid); err != nil {
 		return errInvalidUUID
 	}
 
@@ -376,8 +410,8 @@ func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) error {
 
 	if newEmailToken != "" {
 		// insert token into db
-		if err := insertToken(uuid, newEmailToken); err != nil {
-			if err := deleteUser(uuid); err != nil {
+		if err := insertToken(uuid); err != nil {
+			if err := deleteUserRow(uuid); err != nil {
 				return err
 			}
 			return err

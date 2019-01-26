@@ -11,7 +11,7 @@ var (
 	errNilPostgresClient            = errors.New("nil Postgres Client")
 	errEmptyRequestUser             = errors.New("empty request User")
 	errNilRequestUser               = errors.New("nil request User")
-	errEmailTaken                   = errors.New("email is already taken")
+	errInvalidUserFields            = errors.New("invalid field values in request User")
 	errInvalidToken                 = errors.New("invalid token")
 	errInvalidUUID                  = errors.New("invalid User uuid")
 	errInvalidUserFirstName         = errors.New("invalid User first name")
