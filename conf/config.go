@@ -68,7 +68,7 @@ func init() {
 	// get gets the path target from loaded file
 	// scan grabs the values from path target from the config file into a struct
 	// scan "hosts" with "grpc" props from config file & copy all "grpc" prop values to GRPCHost struct
-	if err := conf.Get("hosts", "grpc").Scan(&GRPCHost); err != nil {
+	if err := conf.Get("hosts", "user").Scan(&GRPCHost); err != nil {
 		log.Fatal("Failed to get grpc configuration", err.Error())
 	}
 
