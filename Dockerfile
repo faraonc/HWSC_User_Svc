@@ -7,4 +7,4 @@ WORKDIR $GOPATH/src/github.com/hwsc-org/hwsc-user-svc
 RUN dep ensure -v
 RUN go install
 ENTRYPOINT ["/go/bin/hwsc-user-svc"]
-EXPOSE 50051
+EXPOSE 50052
