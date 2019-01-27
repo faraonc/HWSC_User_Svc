@@ -110,12 +110,12 @@ func TestInsertNewUser(t *testing.T) {
 		{insertUser, false, ""},
 		{insertUser1, true, "pq: duplicate key value violates unique constraint \"accounts_pkey\""},
 		{insertUser2, true, "pq: duplicate key value violates unique constraint \"accounts_email_key\""},
-		{insertUser3, true, errInvalidUserFields.Error()},
-		{insertUser4, true, errInvalidUserFields.Error()},
-		{insertUser5, true, errInvalidUserFields.Error()},
-		{insertUser6, true, errInvalidUserFields.Error()},
-		{insertUser7, true, errInvalidUserFields.Error()},
-		{nil, true, errInvalidUUID.Error()},
+		{insertUser3, true, errInvalidUserFirstName.Error()},
+		{insertUser4, true, errInvalidUserLastName.Error()},
+		{insertUser5, true, errInvalidUserEmail.Error()},
+		{insertUser6, true, errInvalidPassword.Error()},
+		{insertUser7, true, errInvalidUserOrganization.Error()},
+		{nil, true, errNilRequestUser.Error()},
 		{&pb.User{}, true, errInvalidUUID.Error()},
 		{&pb.User{Uuid: "1234"}, true, errInvalidUUID.Error()},
 	}
@@ -158,7 +158,7 @@ func TestCheckUserExists(t *testing.T) {
 	assert.Equal(t, false, exists)
 	assert.EqualError(t, err, errInvalidUUID.Error())
 
-	exists, err = checkUserExists("0000xsnjg0mqjhbf4qx1efd6y6")
+	exists, err = checkUserExists("0000xsnjg0mqjhbf4qx1efd6y4")
 	assert.Equal(t, true, exists)
 	assert.Nil(t, err)
 
@@ -185,7 +185,7 @@ func TestDeleteUserRow(t *testing.T) {
 func TestGetUserRow(t *testing.T) {
 	// non existent uuid
 	user, err := getUserRow("1010asnjg0mqjhbf4qx1efd6y1")
-	assert.EqualError(t, err, errDoesNotExistUUID.Error())
+	assert.EqualError(t, err, errUUIDNotFound.Error())
 	assert.Nil(t, user)
 
 	// existent uuid
@@ -232,6 +232,8 @@ func TestUpdateUserRow(t *testing.T) {
 		IsVerified:   true,
 	}
 
+	const someID = "1111abcde0mqjhbf4qx1efd6y3"
+
 	cases := []struct {
 		uuid       string
 		svcDerived *pb.User
@@ -239,13 +241,13 @@ func TestUpdateUserRow(t *testing.T) {
 		isExpErr   bool
 		expMsg     string
 	}{
-		{"", nil, nil, true, "invalid User uuid"},
-		{"someid", nil, nil, true, "nil request User"},
-		{"someid", &pb.User{}, nil, true, "nil request User"},
-		{"someid", &pb.User{}, &pb.User{}, true, "empty request User"},
-		{"someid", &pb.User{FirstName: "@"}, &pb.User{}, true, "invalid User first name"},
-		{"someid", &pb.User{LastName: "@"}, &pb.User{}, true, "invalid User last name"},
-		{"someid", &pb.User{Email: "@"}, &pb.User{}, true, "invalid User email"},
+		{"", nil, nil, true, errNilRequestUser.Error()},
+		{someID, nil, nil, true, errNilRequestUser.Error()},
+		{someID, &pb.User{}, nil, true, errNilRequestUser.Error()},
+		{someID, &pb.User{}, &pb.User{}, true, errEmptyRequestUser.Error()},
+		{someID, &pb.User{FirstName: "@"}, &pb.User{}, true, errInvalidUserFirstName.Error()},
+		{someID, &pb.User{LastName: "@"}, &pb.User{}, true, errInvalidUserLastName.Error()},
+		{someID, &pb.User{Email: "@"}, &pb.User{}, true, errInvalidUserEmail.Error()},
 		{svc.Uuid, svc, db, false, ""},
 		{svc2.Uuid, svc2, db2, false, ""},
 	}

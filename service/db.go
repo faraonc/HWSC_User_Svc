@@ -2,6 +2,7 @@ package service
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
 	log "github.com/hwsc-org/hwsc-logger/logger"
@@ -127,7 +128,7 @@ INSERT INTO user_svc.accounts (uuid, first_name, last_name, email, password, org
 VALUES
     ('1000xsnjg0mqjhbf4qx1efd6y7', 'Test Delete', 'Delete', 'delete@test.com', '12345678', 'delete', current_timestamp, TRUE),
 	('0000xsnjg0mqjhbf4qx1efd6y5', 'Mary-Jo', 'Allen', 'mary@test.com', '12345678', 'abc', current_timestamp, TRUE),
-	('0000xsnjg0mqjhbf4qx1efd6y6', 'John F', 'Kennedy', 'john@test.com', '12345678', '123', current_timestamp, TRUE),
+	('0000xsnjg0mqjhbf4qx1efd6y6', 'To be Deleted', 'Kennedy', 'john@test.com', '12345678', '123', current_timestamp, TRUE),
     ('0000xsnjg0mqjhbf4qx1efd6y3', 'Lisa', 'Kim', 'lisa@test.com', '12345678', 'uwb', current_timestamp, TRUE),
     ('0000xsnjg0mqjhbf4qx1efd6y4', 'Kate Swan', 'Smith-Jones', 'kate@test.com', '12345678', 'cse', current_timestamp, TRUE),
     ('1212asnjg0mqjhbf4qx1efd6y2', 'Unit Test', 'GetUserRow', 'get@user.com', '12345678', 'unit test getUserRow', current_timestamp, TRUE);
@@ -162,14 +163,18 @@ func refreshDBConnection() error {
 // inserts new users to user_svc.accounts table
 // Returns error if User is nil or if error with inserting to database
 func insertNewUser(user *pb.User) error {
+	if user == nil {
+		return errNilRequestUser
+	}
+
 	// check if uuid is valid form
 	if err := validateUUID(user.GetUuid()); err != nil {
-		return errInvalidUUID
+		return err
 	}
 
 	// validate fields in user object
 	if err := validateUser(user); err != nil {
-		return errInvalidUserFields
+		return err
 	}
 
 	// hash password using bcrypt
@@ -201,7 +206,7 @@ func insertNewUser(user *pb.User) error {
 func insertToken(uuid string) error {
 	// check if uuid is valid form
 	if err := validateUUID(uuid); err != nil {
-		return errInvalidUUID
+		return err
 	}
 
 	// create unique email token
@@ -214,7 +219,11 @@ func insertToken(uuid string) error {
 	_, err = postgresDB.Exec(command, token, time.Now().UTC(), uuid)
 
 	if err != nil {
-		return err
+		combinedErr := err.Error()
+		if deleteErr := deleteUserRow(uuid); deleteErr != nil {
+			combinedErr += deleteErr.Error()
+		}
+		return errors.New(combinedErr)
 	}
 
 	return nil
@@ -225,7 +234,7 @@ func insertToken(uuid string) error {
 func checkUserExists(uuid string) (bool, error) {
 	// check if uuid is valid form
 	if err := validateUUID(uuid); err != nil {
-		return false, errInvalidUUID
+		return false, err
 	}
 
 	command := `SELECT uuid FROM user_svc.accounts WHERE uuid = $1`
@@ -255,7 +264,7 @@ func checkUserExists(uuid string) (bool, error) {
 func deleteUserRow(uuid string) error {
 	// check if uuid is valid form
 	if err := validateUUID(uuid); err != nil {
-		return errInvalidUUID
+		return err
 	}
 
 	command := `DELETE FROM user_svc.accounts WHERE user_svc.accounts.uuid = $1`
@@ -275,7 +284,7 @@ func deleteUserRow(uuid string) error {
 func getUserRow(uuid string) (*pb.User, error) {
 	// check if uuid is valid form
 	if err := validateUUID(uuid); err != nil {
-		return nil, errInvalidUUID
+		return nil, err
 	}
 
 	// check uuid exists
@@ -284,7 +293,7 @@ func getUserRow(uuid string) (*pb.User, error) {
 		return nil, err
 	}
 	if !exists {
-		return nil, errDoesNotExistUUID
+		return nil, errUUIDNotFound
 	}
 
 	command := `SELECT uuid, first_name, last_name, email, organization, created_date, is_verified
@@ -325,12 +334,12 @@ func getUserRow(uuid string) (*pb.User, error) {
 // that are different from original values. It's partial b/c some fields like created_date & uuid are not touched
 // Return error if params are zero values or querying problem
 func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) error {
-	if err := validateUUID(uuid); err != nil {
-		return errInvalidUUID
-	}
-
 	if svcDerived == nil || dbDerived == nil {
 		return errNilRequestUser
+	}
+
+	if err := validateUUID(uuid); err != nil {
+		return err
 	}
 
 	newFirstName := dbDerived.GetFirstName()

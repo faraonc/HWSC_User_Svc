@@ -123,19 +123,19 @@ func TestCreateUser(t *testing.T) {
 		{&pb.UserRequest{User: testUser1}, false, codes.OK.String()},
 		{&pb.UserRequest{User: testUser2}, false, codes.OK.String()},
 		{&pb.UserRequest{User: testUser3}, true, "rpc error: code = " +
-			"Unknown desc = pq: duplicate key value violates unique constraint \"accounts_email_key\""},
+			"Internal desc = pq: duplicate key value violates unique constraint \"accounts_email_key\""},
 		{&pb.UserRequest{User: testUser4}, true, "rpc error: code = " +
-			"InvalidArgument desc = invalid User first name"},
+			"Internal desc = invalid User first name"},
 		{&pb.UserRequest{User: testUser5}, true, "rpc error: code = " +
-			"InvalidArgument desc = invalid User password"},
+			"Internal desc = invalid User password"},
 		{&pb.UserRequest{User: testUser6}, true, "rpc error: code = " +
-			"InvalidArgument desc = invalid User password"},
+			"Internal desc = invalid User password"},
 		{&pb.UserRequest{User: testUser7}, true, "rpc error: code = " +
-			"InvalidArgument desc = invalid User email"},
+			"Internal desc = invalid User email"},
 		{&pb.UserRequest{User: testUser8}, true, "rpc error: code = " +
-			"InvalidArgument desc = invalid User organization"},
+			"Internal desc = invalid User organization"},
 		{&pb.UserRequest{User: testUser9}, true, "rpc error: code = " +
-			"InvalidArgument desc = invalid User last name"},
+			"Internal desc = invalid User last name"},
 	}
 
 	for _, c := range cases {
@@ -194,8 +194,8 @@ func TestDeleteUser(t *testing.T) {
 	}{
 		{&pb.UserRequest{User: test1}, false, codes.OK.String()},
 		{&pb.UserRequest{User: test2}, true, "rpc error: code = NotFound desc = uuid does not exist in database"},
-		{&pb.UserRequest{User: test3}, true, "rpc error: code = InvalidArgument desc = invalid User uuid"},
-		{&pb.UserRequest{User: test4}, true, "rpc error: code = InvalidArgument desc = invalid User uuid"},
+		{&pb.UserRequest{User: test3}, true, "rpc error: code = Internal desc = invalid User uuid"},
+		{&pb.UserRequest{User: test4}, true, "rpc error: code = Internal desc = invalid User uuid"},
 		{&pb.UserRequest{User: nil}, true, "rpc error: code = InvalidArgument desc = nil request User"},
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
 	}
@@ -249,7 +249,7 @@ func TestGetUser(t *testing.T) {
 		expMsg   string
 	}{
 		{&pb.UserRequest{User: test1}, false, ""},
-		{&pb.UserRequest{User: test2}, true, "rpc error: code = NotFound desc = uuid does not exist in database"},
+		{&pb.UserRequest{User: test2}, true, "rpc error: code = Internal desc = uuid does not exist in database"},
 		{&pb.UserRequest{User: nil}, true, "rpc error: code = InvalidArgument desc = nil request User"},
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
 	}
@@ -329,15 +329,15 @@ func TestUpdateUser(t *testing.T) {
 		{&pb.UserRequest{User: updateUser2}, false, ""},
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
 		{&pb.UserRequest{User: updateUser3}, true,
-			"rpc error: code = InvalidArgument desc = invalid User uuid"},
+			"rpc error: code = Internal desc = invalid User uuid"},
 		{&pb.UserRequest{User: updateUser4}, true,
-			"rpc error: code = NotFound desc = uuid does not exist in database"},
+			"rpc error: code = Internal desc = uuid does not exist in database"},
 		{&pb.UserRequest{User: updateUser5}, true,
-			"rpc error: code = Unknown desc = invalid User email"},
+			"rpc error: code = Internal desc = invalid User email"},
 		{&pb.UserRequest{User: updateUser6}, true,
-			"rpc error: code = Unknown desc = invalid User first name"},
+			"rpc error: code = Internal desc = invalid User first name"},
 		{&pb.UserRequest{User: updateUser7}, true,
-			"rpc error: code = Unknown desc = invalid User last name"},
+			"rpc error: code = Internal desc = invalid User last name"},
 		{&pb.UserRequest{User: nil}, true,
 			"rpc error: code = InvalidArgument desc = nil request User"},
 	}

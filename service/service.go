@@ -75,30 +75,30 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	logger.RequestService("CreateUser")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		logger.Error("CreateUser: ", errServiceUnavailable.Error())
-		return nil, status.Error(codes.Unavailable, errServiceUnavailable.Error())
+		logger.Error(createUserTag, errServiceUnavailable.Error())
+		return nil, statusServiceUnavailable
 	}
 
 	if req == nil {
-		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+		return nil, statusNilRequestUser
 	}
 
 	if err := refreshDBConnection(); err != nil {
-		return nil, status.Error(codes.Unknown, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// get User Object
 	user := req.GetUser()
 	if user == nil {
 		logger.Error(errNilRequestUser.Error())
-		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+		return nil, statusNilRequestUser
 	}
 
 	// generate uuid synchronously to prevent users getting the same uuid
 	var err error
 	user.Uuid, err = generateUUID()
 	if err != nil {
-		logger.Error("CreateUser generating uuid:", err.Error())
+		logger.Error(createUserTag, msgErrGeneratingUUID, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -111,35 +111,32 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 
 	// insert user into DB
 	if err := insertNewUser(user); err != nil {
-		// remove uuid from cache uuidMapLocker b/c Mutex was allocated to save resources/memory and prevent security issues
+		// remove unstored/invaid uuid from cache uuidMapLocker b/c
+		// Mutex was allocated (saves resources/memory and prevent security issues)
 		uuidMapLocker.Delete(user.GetUuid())
-		logger.Error("CreateUser INSERT user_svc.accounts:", err.Error())
-		return nil, status.Error(codes.Unknown, err.Error())
+		logger.Error(createUserTag, msgErrInsertUser, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
-	logger.Info("Success INSERT new user:", user.GetFirstName(), user.GetLastName(), user.GetUuid())
 
 	// insert token into db
 	if err := insertToken(user.GetUuid()); err != nil {
-		logger.Error("CreateUser INSERT user_svc.pending_tokens:", err.Error())
-		if err := deleteUserRow(user.GetUuid()); err != nil {
-			logger.Error("CreateUser DELETE user-svc.accounts:", err.Error())
-		}
-		logger.Info("Deleted user: ", user.GetUuid())
-		return nil, status.Error(codes.Unknown, err.Error())
+		logger.Error(createUserTag, msgErrInsertToken, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
-	logger.Info("Success INSERT token:", user.GetFirstName(), user.GetLastName(), user.GetUuid())
 
 	// send email
 	emailReq, err := newEmailRequest(nil, []string{user.GetEmail()}, conf.EmailHost.Username, subjectVerifyEmail)
 	if err != nil {
-		logger.Error("CreateUser newEmailRequest: ", err.Error())
-		return nil, status.Error(codes.Unknown, err.Error())
+		logger.Error(createUserTag, msgErrEmailRequest, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if err := emailReq.sendEmail(templateVerifyEmail); err != nil {
-		logger.Error("CreateUser sendEmail: ", err.Error())
-		return nil, status.Error(codes.Unknown, err.Error())
+		logger.Error(createUserTag, msgErrSendEmail, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	logger.Info("Inserted new user:", user.GetUuid())
 
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
@@ -153,23 +150,23 @@ func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	logger.RequestService("DeleteUser")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		logger.Error("DeleteUser: ", errServiceUnavailable.Error())
-		return nil, status.Error(codes.Unavailable, errServiceUnavailable.Error())
+		logger.Error(deleteUserTag, errServiceUnavailable.Error())
+		return nil, statusServiceUnavailable
 	}
 
 	if req == nil {
-		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+		return nil, statusNilRequestUser
 	}
 
 	if err := refreshDBConnection(); err != nil {
-		return nil, status.Error(codes.Unknown, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// get User Object
 	user := req.GetUser()
 	if user == nil {
 		logger.Error(errNilRequestUser.Error())
-		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+		return nil, statusNilRequestUser
 	}
 
 	lock, _ := uuidMapLocker.LoadOrStore(user.GetUuid(), &sync.RWMutex{})
@@ -179,22 +176,22 @@ func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	// check uuid exists
 	exists, err := checkUserExists(user.GetUuid())
 	if err != nil {
-		// remove uuid from cache uuidMapLocker b/c Mutex was allocated to save resources/memory and prevent security issues
-		uuidMapLocker.Delete(user.GetUuid())
-		logger.Error("DeleteUser checkUserExists:", err.Error())
+		logger.Error(deleteUserTag, msgErrCheckUser, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if !exists {
-		logger.Error(errDoesNotExistUUID.Error())
-		return nil, status.Error(codes.NotFound, errDoesNotExistUUID.Error())
+		logger.Error(deleteUserTag, errUUIDNotFound.Error())
+		return nil, statusUUIDNotFound
 	}
 
 	// delete from db
 	if err := deleteUserRow(user.GetUuid()); err != nil {
-		logger.Error("DeleteUser DELETE user-svc.accounts:", err.Error())
+		logger.Error(deleteUserTag, msgErrDeleteUser, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	logger.Info("Deleted user:", user.GetUuid())
 
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
@@ -207,23 +204,23 @@ func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	logger.RequestService("UpdateUser")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		logger.Error("UpdateUser: ", errServiceUnavailable.Error())
-		return nil, status.Error(codes.Unavailable, errServiceUnavailable.Error())
+		logger.Error(updateUserTag, errServiceUnavailable.Error())
+		return nil, statusServiceUnavailable
 	}
 
 	if req == nil {
-		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+		return nil, statusNilRequestUser
 	}
 
 	if err := refreshDBConnection(); err != nil {
-		return nil, status.Error(codes.Unknown, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// get User Object
 	svcDerivedUser := req.GetUser()
 	if svcDerivedUser == nil {
 		logger.Error(errNilRequestUser.Error())
-		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+		return nil, statusNilRequestUser
 	}
 
 	lock, _ := uuidMapLocker.LoadOrStore(svcDerivedUser.GetUuid(), &sync.RWMutex{})
@@ -233,20 +230,22 @@ func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	// retrieve users row from database
 	dbDerivedUser, err := getUserRow(svcDerivedUser.GetUuid())
 	if err != nil {
-		logger.Error("UpdateUser getUserRow:", err.Error())
+		logger.Error(updateUserTag, msgErrGetUserRow, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if dbDerivedUser == nil {
-		logger.Error("UpdateUser getUserRow:", errDoesNotExistUUID.Error())
-		return nil, status.Error(codes.Internal, errDoesNotExistUUID.Error())
+		logger.Error(updateUserTag, errUUIDNotFound.Error())
+		return nil, statusUUIDNotFound
 	}
 
 	// update user
 	if err := updateUserRow(svcDerivedUser.GetUuid(), svcDerivedUser, dbDerivedUser); err != nil {
-		logger.Error("UpdateUser updating user:", err.Error())
-		return nil, status.Error(codes.Unknown, err.Error())
+		logger.Error(updateUserTag, msgErrUpdateUserRow, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	logger.Info("Updated user:", svcDerivedUser.GetUuid())
 
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
@@ -273,40 +272,43 @@ func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserRes
 	logger.RequestService("GetUser")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		logger.Error("GetUser: ", errServiceUnavailable.Error())
-		return nil, status.Error(codes.Unavailable, errServiceUnavailable.Error())
+		logger.Error(getUserTag, errServiceUnavailable.Error())
+		return nil, statusServiceUnavailable
 	}
 
 	if req == nil {
-		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+		return nil, statusNilRequestUser
 	}
 
 	if err := refreshDBConnection(); err != nil {
-		return nil, status.Error(codes.Unknown, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// get User Object
 	user := req.GetUser()
 	if user == nil {
 		logger.Error(errNilRequestUser.Error())
-		return nil, status.Error(codes.InvalidArgument, errNilRequestUser.Error())
+		return nil, statusNilRequestUser
 	}
 
+	// read lock, b/c we are only retrieving/reading from the DB
 	lock, _ := uuidMapLocker.LoadOrStore(user.GetUuid(), &sync.RWMutex{})
-	lock.(*sync.RWMutex).Lock()
-	defer lock.(*sync.RWMutex).Unlock()
+	lock.(*sync.RWMutex).RLock()
+	defer lock.(*sync.RWMutex).RUnlock()
 
 	// retrieve users row from database
 	user, err := getUserRow(user.GetUuid())
 	if err != nil {
-		logger.Error("GetUser getUserRow:", err.Error())
+		logger.Error(getUserTag, msgErrGetUserRow, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if user == nil {
-		logger.Error("GetUser getUserRow:", errDoesNotExistUUID.Error())
-		return nil, status.Error(codes.Internal, errDoesNotExistUUID.Error())
+		logger.Error(getUserTag, errUUIDNotFound.Error())
+		return nil, statusUUIDNotFound
 	}
+
+	logger.Info("Retrieved user:", user.GetUuid())
 
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},

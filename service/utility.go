@@ -107,13 +107,23 @@ func generateUUID() (string, error) {
 	return strings.ToLower(id.String()), nil
 }
 
+// validateUUID ensures uuid is not a zero value and matches format set by ulid package
+// if ulid identifies uuid as invalid, the invalid uuid is removed from uuidMapLocker if exists
+// Returns error if zero value or invalid uuid (determined by ulid package)
 func validateUUID(uuid string) error {
 	if uuid == "" {
 		return errInvalidUUID
 	}
 
 	id, err := ulid.ParseStrict(strings.ToUpper(uuid))
-	if err != nil || strings.ToLower(id.String()) != uuid {
+	if err != nil {
+		if err.Error() == "ulid: bad data size when unmarshaling" {
+			return errInvalidUUID
+		}
+		return err
+	}
+
+	if strings.ToLower(id.String()) != uuid {
 		return errInvalidUUID
 	}
 
