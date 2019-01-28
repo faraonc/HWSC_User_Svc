@@ -137,7 +137,7 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	logger.Info("Inserted new user:", user.GetUuid())
+	logger.Info("Inserted new user:", user.GetUuid(), user.GetFirstName(), user.GetLastName())
 
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
@@ -192,7 +192,7 @@ func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	logger.Info("Deleted user:", user.GetUuid())
+	logger.Info("Deleted user:", user.GetUuid(), user.GetFirstName(), user.GetLastName())
 
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
@@ -246,7 +246,8 @@ func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	logger.Info("Updated user:", svcDerivedUser.GetUuid())
+	logger.Info("Updated user:", svcDerivedUser.GetUuid(),
+		svcDerivedUser.GetFirstName(), svcDerivedUser.GetLastName())
 
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
@@ -309,7 +310,7 @@ func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserRes
 		return nil, consts.StatusUUIDNotFound
 	}
 
-	logger.Info("Retrieved user:", user.GetUuid())
+	logger.Info("Retrieved user:", user.GetUuid(), user.GetFirstName(), user.GetLastName())
 
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
