@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/hwsc-org/hwsc-user-svc/conf"
+	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -14,19 +15,19 @@ func TestNewEmailRequest(t *testing.T) {
 
 	data := map[string]string{"test": "test"}
 	req, err = newEmailRequest(data, nil, "test", "test")
-	assert.EqualError(t, err, errEmailRequestFieldsEmpty.Error())
+	assert.EqualError(t, err, consts.ErrEmailRequestFieldsEmpty.Error())
 	assert.Nil(t, req)
 
 	req, err = newEmailRequest(data, []string{"test"}, "", "test")
-	assert.EqualError(t, err, errEmailRequestFieldsEmpty.Error())
+	assert.EqualError(t, err, consts.ErrEmailRequestFieldsEmpty.Error())
 	assert.Nil(t, req)
 
 	req, err = newEmailRequest(data, []string{"test"}, "test", "")
-	assert.EqualError(t, err, errEmailRequestFieldsEmpty.Error())
+	assert.EqualError(t, err, consts.ErrEmailRequestFieldsEmpty.Error())
 	assert.Nil(t, req)
 
 	req, err = newEmailRequest(data, nil, "", "")
-	assert.EqualError(t, err, errEmailRequestFieldsEmpty.Error())
+	assert.EqualError(t, err, consts.ErrEmailRequestFieldsEmpty.Error())
 	assert.Nil(t, req)
 }
 
@@ -35,7 +36,7 @@ func TestGetAllTemplatePaths(t *testing.T) {
 
 	// empty template
 	files, err := r.getAllTemplatePaths("")
-	assert.EqualError(t, err, errEmailMainTemplateNotProvided.Error())
+	assert.EqualError(t, err, consts.ErrEmailMainTemplateNotProvided.Error())
 	assert.Nil(t, files)
 }
 
@@ -46,7 +47,7 @@ func TestParseTemplates(t *testing.T) {
 
 	// test nil
 	err := r.parseTemplates(nil)
-	assert.EqualError(t, err, errEmailNilFilePaths.Error())
+	assert.EqualError(t, err, consts.ErrEmailNilFilePaths.Error())
 
 	// wrong file path
 	files, err := r.getAllTemplatePaths("wrong_file_name")
@@ -124,7 +125,7 @@ func TestSendEmail(t *testing.T) {
 
 	// invalid - empty file
 	err = r.sendEmail("")
-	assert.EqualError(t, err, errEmailMainTemplateNotProvided.Error())
+	assert.EqualError(t, err, consts.ErrEmailMainTemplateNotProvided.Error())
 
 	// invalid - wrong file name
 	err = r.sendEmail("wrong_file")
@@ -150,16 +151,16 @@ func TestValidateEmail(t *testing.T) {
 		isExpErr  bool
 		expErrMsg string
 	}{
-		{"", true, errInvalidUserEmail.Error()},
-		{"a", true, errInvalidUserEmail.Error()},
-		{"ab", true, errInvalidUserEmail.Error()},
-		{"abc", true, errInvalidUserEmail.Error()},
-		{"@bc", true, errInvalidUserEmail.Error()},
-		{"ab@", true, errInvalidUserEmail.Error()},
-		{"@", true, errInvalidUserEmail.Error()},
-		{"a@", true, errInvalidUserEmail.Error()},
-		{"@a", true, errInvalidUserEmail.Error()},
-		{exceedMaxLengthEmail, true, errInvalidUserEmail.Error()},
+		{"", true, consts.ErrInvalidUserEmail.Error()},
+		{"a", true, consts.ErrInvalidUserEmail.Error()},
+		{"ab", true, consts.ErrInvalidUserEmail.Error()},
+		{"abc", true, consts.ErrInvalidUserEmail.Error()},
+		{"@bc", true, consts.ErrInvalidUserEmail.Error()},
+		{"ab@", true, consts.ErrInvalidUserEmail.Error()},
+		{"@", true, consts.ErrInvalidUserEmail.Error()},
+		{"a@", true, consts.ErrInvalidUserEmail.Error()},
+		{"@a", true, consts.ErrInvalidUserEmail.Error()},
+		{exceedMaxLengthEmail, true, consts.ErrInvalidUserEmail.Error()},
 		{"@@@", false, ""},
 		{"!@@", false, ""},
 		{"@@#", false, ""},

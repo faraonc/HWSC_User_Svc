@@ -2,6 +2,7 @@ package service
 
 import (
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
+	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -110,14 +111,14 @@ func TestInsertNewUser(t *testing.T) {
 		{insertUser, false, ""},
 		{insertUser1, true, "pq: duplicate key value violates unique constraint \"accounts_pkey\""},
 		{insertUser2, true, "pq: duplicate key value violates unique constraint \"accounts_email_key\""},
-		{insertUser3, true, errInvalidUserFirstName.Error()},
-		{insertUser4, true, errInvalidUserLastName.Error()},
-		{insertUser5, true, errInvalidUserEmail.Error()},
-		{insertUser6, true, errInvalidPassword.Error()},
-		{insertUser7, true, errInvalidUserOrganization.Error()},
-		{nil, true, errNilRequestUser.Error()},
-		{&pb.User{}, true, errInvalidUUID.Error()},
-		{&pb.User{Uuid: "1234"}, true, errInvalidUUID.Error()},
+		{insertUser3, true, consts.ErrInvalidUserFirstName.Error()},
+		{insertUser4, true, consts.ErrInvalidUserLastName.Error()},
+		{insertUser5, true, consts.ErrInvalidUserEmail.Error()},
+		{insertUser6, true, consts.ErrInvalidPassword.Error()},
+		{insertUser7, true, consts.ErrInvalidUserOrganization.Error()},
+		{nil, true, consts.ErrNilRequestUser.Error()},
+		{&pb.User{}, true, consts.ErrInvalidUUID.Error()},
+		{&pb.User{Uuid: "1234"}, true, consts.ErrInvalidUUID.Error()},
 	}
 
 	for _, c := range cases {
@@ -132,10 +133,10 @@ func TestInsertNewUser(t *testing.T) {
 
 func TestInsertToken(t *testing.T) {
 	err := insertToken("")
-	assert.EqualError(t, err, errInvalidUUID.Error())
+	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
 
 	err = insertToken("1234")
-	assert.EqualError(t, err, errInvalidUUID.Error())
+	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
 
 	err = insertToken("0000xsnjg0mqjhbf4qx1efd6y6")
 	assert.Nil(t, err)
@@ -152,11 +153,11 @@ func TestInsertToken(t *testing.T) {
 func TestCheckUserExists(t *testing.T) {
 	exists, err := checkUserExists("")
 	assert.Equal(t, false, exists)
-	assert.EqualError(t, err, errInvalidUUID.Error())
+	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
 
 	exists, err = checkUserExists("1234")
 	assert.Equal(t, false, exists)
-	assert.EqualError(t, err, errInvalidUUID.Error())
+	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
 
 	exists, err = checkUserExists("0000xsnjg0mqjhbf4qx1efd6y4")
 	assert.Equal(t, true, exists)
@@ -169,10 +170,10 @@ func TestCheckUserExists(t *testing.T) {
 
 func TestDeleteUserRow(t *testing.T) {
 	err := deleteUserRow("")
-	assert.EqualError(t, err, errInvalidUUID.Error())
+	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
 
 	err = deleteUserRow("1234")
-	assert.EqualError(t, err, errInvalidUUID.Error())
+	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
 
 	err = deleteUserRow("1000xsnjg0mqjhbf4qx1efd6y7")
 	assert.Nil(t, err)
@@ -185,7 +186,7 @@ func TestDeleteUserRow(t *testing.T) {
 func TestGetUserRow(t *testing.T) {
 	// non existent uuid
 	user, err := getUserRow("1010asnjg0mqjhbf4qx1efd6y1")
-	assert.EqualError(t, err, errUUIDNotFound.Error())
+	assert.EqualError(t, err, consts.ErrUUIDNotFound.Error())
 	assert.Nil(t, user)
 
 	// existent uuid
@@ -241,13 +242,13 @@ func TestUpdateUserRow(t *testing.T) {
 		isExpErr   bool
 		expMsg     string
 	}{
-		{"", nil, nil, true, errNilRequestUser.Error()},
-		{someID, nil, nil, true, errNilRequestUser.Error()},
-		{someID, &pb.User{}, nil, true, errNilRequestUser.Error()},
-		{someID, &pb.User{}, &pb.User{}, true, errEmptyRequestUser.Error()},
-		{someID, &pb.User{FirstName: "@"}, &pb.User{}, true, errInvalidUserFirstName.Error()},
-		{someID, &pb.User{LastName: "@"}, &pb.User{}, true, errInvalidUserLastName.Error()},
-		{someID, &pb.User{Email: "@"}, &pb.User{}, true, errInvalidUserEmail.Error()},
+		{"", nil, nil, true, consts.ErrNilRequestUser.Error()},
+		{someID, nil, nil, true, consts.ErrNilRequestUser.Error()},
+		{someID, &pb.User{}, nil, true, consts.ErrNilRequestUser.Error()},
+		{someID, &pb.User{}, &pb.User{}, true, consts.ErrEmptyRequestUser.Error()},
+		{someID, &pb.User{FirstName: "@"}, &pb.User{}, true, consts.ErrInvalidUserFirstName.Error()},
+		{someID, &pb.User{LastName: "@"}, &pb.User{}, true, consts.ErrInvalidUserLastName.Error()},
+		{someID, &pb.User{Email: "@"}, &pb.User{}, true, consts.ErrInvalidUserEmail.Error()},
 		{svc.Uuid, svc, db, false, ""},
 		{svc2.Uuid, svc2, db2, false, ""},
 	}

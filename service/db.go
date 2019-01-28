@@ -7,6 +7,7 @@ import (
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
 	log "github.com/hwsc-org/hwsc-logger/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
+	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"time"
 
 	// database/sql uses this library indirectly
@@ -164,7 +165,7 @@ func refreshDBConnection() error {
 // Returns error if User is nil or if error with inserting to database
 func insertNewUser(user *pb.User) error {
 	if user == nil {
-		return errNilRequestUser
+		return consts.ErrNilRequestUser
 	}
 
 	// check if uuid is valid form
@@ -293,7 +294,7 @@ func getUserRow(uuid string) (*pb.User, error) {
 		return nil, err
 	}
 	if !exists {
-		return nil, errUUIDNotFound
+		return nil, consts.ErrUUIDNotFound
 	}
 
 	command := `SELECT uuid, first_name, last_name, email, organization, created_date, is_verified
@@ -335,7 +336,7 @@ func getUserRow(uuid string) (*pb.User, error) {
 // Return error if params are zero values or querying problem
 func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) error {
 	if svcDerived == nil || dbDerived == nil {
-		return errNilRequestUser
+		return consts.ErrNilRequestUser
 	}
 
 	if err := validateUUID(uuid); err != nil {
@@ -393,7 +394,7 @@ func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) error {
 	}
 
 	if newFirstName == "" && newLastName == "" && newOrganization == "" && newHashedPassword == "" && newEmail == "" {
-		return errEmptyRequestUser
+		return consts.ErrEmptyRequestUser
 	}
 
 	newIsVerified := dbDerived.GetIsVerified()

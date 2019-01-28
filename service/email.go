@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
+	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"io/ioutil"
 	"math/rand"
 	"net/smtp"
@@ -33,15 +34,12 @@ const (
 
 var (
 	templateDirectory string
-	verifyEmailAuth   smtp.Auth
 
 	// tests empty string, @ symbol in between, at least 3 chars
 	emailRegex = regexp.MustCompile(`.+@.+`)
 )
 
 func init() {
-	verifyEmailAuth = smtp.PlainAuth("", conf.EmailHost.Username, conf.EmailHost.Password, conf.EmailHost.Host)
-
 	// set template directory
 	pwd, _ := os.Getwd()
 	templateDirectory = pwd + "/tmpl"
@@ -58,7 +56,7 @@ func init() {
 func newEmailRequest(data map[string]string, to []string, from string, subject string) (*emailRequest, error) {
 	// note, data can be nil
 	if to == nil || from == "" || subject == "" {
-		return nil, errEmailRequestFieldsEmpty
+		return nil, consts.ErrEmailRequestFieldsEmpty
 	}
 
 	return &emailRequest{
@@ -78,7 +76,7 @@ func newEmailRequest(data map[string]string, to []string, from string, subject s
 // the first element in slice must be the html file path that references these .tmpl files
 func (r *emailRequest) getAllTemplatePaths(htmlTemplate string) ([]string, error) {
 	if htmlTemplate == "" {
-		return nil, errEmailMainTemplateNotProvided
+		return nil, consts.ErrEmailMainTemplateNotProvided
 	}
 
 	// grab all files in directory
@@ -109,7 +107,7 @@ func (r *emailRequest) getAllTemplatePaths(htmlTemplate string) ([]string, error
 // Returns error if filePaths are nil or any errors generated when parsing/executing
 func (r *emailRequest) parseTemplates(filePaths []string) error {
 	if filePaths == nil {
-		return errEmailNilFilePaths
+		return consts.ErrEmailNilFilePaths
 	}
 
 	parsedTemplate, err := template.ParseFiles(filePaths...)
@@ -160,7 +158,7 @@ func (r *emailRequest) processEmail() error {
 // Returns error if there are any errors returned from the sub functions or if htmlTemplate is empty
 func (r *emailRequest) sendEmail(htmlTemplate string) error {
 	if htmlTemplate == "" {
-		return errEmailMainTemplateNotProvided
+		return consts.ErrEmailMainTemplateNotProvided
 	}
 
 	filePaths, err := r.getAllTemplatePaths(htmlTemplate)
@@ -199,7 +197,7 @@ func generateEmailToken() (string, error) {
 // Returns error if checks fail
 func validateEmail(email string) error {
 	if len(email) > maxEmailLength || !emailRegex.MatchString(email) {
-		return errInvalidUserEmail
+		return consts.ErrInvalidUserEmail
 	}
 
 	return nil
