@@ -2,6 +2,7 @@ package service
 
 import (
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
+	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/oklog/ulid"
 	"golang.org/x/crypto/bcrypt"
 	"math/rand"
@@ -34,7 +35,7 @@ func (s *stateLocker) isStateAvailable() bool {
 
 func validateUser(user *pb.User) error {
 	if user == nil {
-		return errNilRequestUser
+		return consts.ErrNilRequestUser
 	}
 
 	if err := validateFirstName(user.GetFirstName()); err != nil {
@@ -47,7 +48,7 @@ func validateUser(user *pb.User) error {
 		return err
 	}
 	if password := user.GetPassword(); password == "" || strings.TrimSpace(password) != password {
-		return errInvalidPassword
+		return consts.ErrInvalidPassword
 	}
 	if err := validateOrganization(user.GetOrganization()); err != nil {
 		return err
@@ -58,12 +59,12 @@ func validateUser(user *pb.User) error {
 func validateFirstName(name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return errInvalidUserFirstName
+		return consts.ErrInvalidUserFirstName
 	}
 
 	name = multiSpaceRegex.ReplaceAllString(name, " ")
 	if len(name) > maxFirstNameLength || !nameValidCharsRegex.MatchString(name) {
-		return errInvalidUserFirstName
+		return consts.ErrInvalidUserFirstName
 	}
 
 	return nil
@@ -72,12 +73,12 @@ func validateFirstName(name string) error {
 func validateLastName(name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return errInvalidUserLastName
+		return consts.ErrInvalidUserLastName
 	}
 
 	name = multiSpaceRegex.ReplaceAllString(name, " ")
 	if len(name) > maxLastNameLength || !nameValidCharsRegex.MatchString(name) {
-		return errInvalidUserLastName
+		return consts.ErrInvalidUserLastName
 	}
 
 	return nil
@@ -85,7 +86,7 @@ func validateLastName(name string) error {
 
 func validateOrganization(name string) error {
 	if name == "" {
-		return errInvalidUserOrganization
+		return consts.ErrInvalidUserOrganization
 	}
 	return nil
 }
@@ -112,19 +113,19 @@ func generateUUID() (string, error) {
 // Returns error if zero value or invalid uuid (determined by ulid package)
 func validateUUID(uuid string) error {
 	if uuid == "" {
-		return errInvalidUUID
+		return consts.ErrInvalidUUID
 	}
 
 	id, err := ulid.ParseStrict(strings.ToUpper(uuid))
 	if err != nil {
 		if err.Error() == "ulid: bad data size when unmarshaling" {
-			return errInvalidUUID
+			return consts.ErrInvalidUUID
 		}
 		return err
 	}
 
 	if strings.ToLower(id.String()) != uuid {
-		return errInvalidUUID
+		return consts.ErrInvalidUUID
 	}
 
 	return nil
@@ -134,7 +135,7 @@ func validateUUID(uuid string) error {
 // returns stringified hashed password
 func hashPassword(password string) (string, error) {
 	if password == "" || strings.TrimSpace(password) != password {
-		return "", errInvalidPassword
+		return "", consts.ErrInvalidPassword
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)

@@ -4,6 +4,7 @@ import (
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
 	"github.com/hwsc-org/hwsc-logger/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
+	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -57,11 +58,11 @@ func (s *Service) GetStatus(ctx context.Context, req *pb.UserRequest) (*pb.UserR
 	logger.RequestService("GetStatus")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		return responseServiceUnavailable, nil
+		return consts.ResponseServiceUnavailable, nil
 	}
 
 	if err := refreshDBConnection(); err != nil {
-		return responseServiceUnavailable, nil
+		return consts.ResponseServiceUnavailable, nil
 	}
 
 	return &pb.UserResponse{
@@ -75,12 +76,12 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	logger.RequestService("CreateUser")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		logger.Error(createUserTag, errServiceUnavailable.Error())
-		return nil, statusServiceUnavailable
+		logger.Error(consts.CreateUserTag, consts.ErrServiceUnavailable.Error())
+		return nil, consts.StatusServiceUnavailable
 	}
 
 	if req == nil {
-		return nil, statusNilRequestUser
+		return nil, consts.StatusNilRequestUser
 	}
 
 	if err := refreshDBConnection(); err != nil {
@@ -90,15 +91,15 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	// get User Object
 	user := req.GetUser()
 	if user == nil {
-		logger.Error(errNilRequestUser.Error())
-		return nil, statusNilRequestUser
+		logger.Error(consts.ErrNilRequestUser.Error())
+		return nil, consts.StatusNilRequestUser
 	}
 
 	// generate uuid synchronously to prevent users getting the same uuid
 	var err error
 	user.Uuid, err = generateUUID()
 	if err != nil {
-		logger.Error(createUserTag, msgErrGeneratingUUID, err.Error())
+		logger.Error(consts.CreateUserTag, consts.MsgErrGeneratingUUID, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -114,25 +115,25 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 		// remove unstored/invaid uuid from cache uuidMapLocker b/c
 		// Mutex was allocated (saves resources/memory and prevent security issues)
 		uuidMapLocker.Delete(user.GetUuid())
-		logger.Error(createUserTag, msgErrInsertUser, err.Error())
+		logger.Error(consts.CreateUserTag, consts.MsgErrInsertUser, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// insert token into db
 	if err := insertToken(user.GetUuid()); err != nil {
-		logger.Error(createUserTag, msgErrInsertToken, err.Error())
+		logger.Error(consts.CreateUserTag, consts.MsgErrInsertToken, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// send email
 	emailReq, err := newEmailRequest(nil, []string{user.GetEmail()}, conf.EmailHost.Username, subjectVerifyEmail)
 	if err != nil {
-		logger.Error(createUserTag, msgErrEmailRequest, err.Error())
+		logger.Error(consts.CreateUserTag, consts.MsgErrEmailRequest, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if err := emailReq.sendEmail(templateVerifyEmail); err != nil {
-		logger.Error(createUserTag, msgErrSendEmail, err.Error())
+		logger.Error(consts.CreateUserTag, consts.MsgErrSendEmail, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -150,12 +151,12 @@ func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	logger.RequestService("DeleteUser")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		logger.Error(deleteUserTag, errServiceUnavailable.Error())
-		return nil, statusServiceUnavailable
+		logger.Error(consts.DeleteUserTag, consts.ErrServiceUnavailable.Error())
+		return nil, consts.StatusServiceUnavailable
 	}
 
 	if req == nil {
-		return nil, statusNilRequestUser
+		return nil, consts.StatusNilRequestUser
 	}
 
 	if err := refreshDBConnection(); err != nil {
@@ -165,8 +166,8 @@ func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	// get User Object
 	user := req.GetUser()
 	if user == nil {
-		logger.Error(errNilRequestUser.Error())
-		return nil, statusNilRequestUser
+		logger.Error(consts.ErrNilRequestUser.Error())
+		return nil, consts.StatusNilRequestUser
 	}
 
 	lock, _ := uuidMapLocker.LoadOrStore(user.GetUuid(), &sync.RWMutex{})
@@ -176,18 +177,18 @@ func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	// check uuid exists
 	exists, err := checkUserExists(user.GetUuid())
 	if err != nil {
-		logger.Error(deleteUserTag, msgErrCheckUser, err.Error())
+		logger.Error(consts.DeleteUserTag, consts.MsgErrCheckUser, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if !exists {
-		logger.Error(deleteUserTag, errUUIDNotFound.Error())
-		return nil, statusUUIDNotFound
+		logger.Error(consts.DeleteUserTag, consts.ErrUUIDNotFound.Error())
+		return nil, consts.StatusUUIDNotFound
 	}
 
 	// delete from db
 	if err := deleteUserRow(user.GetUuid()); err != nil {
-		logger.Error(deleteUserTag, msgErrDeleteUser, err.Error())
+		logger.Error(consts.DeleteUserTag, consts.MsgErrDeleteUser, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -204,12 +205,12 @@ func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	logger.RequestService("UpdateUser")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		logger.Error(updateUserTag, errServiceUnavailable.Error())
-		return nil, statusServiceUnavailable
+		logger.Error(consts.UpdateUserTag, consts.ErrServiceUnavailable.Error())
+		return nil, consts.StatusServiceUnavailable
 	}
 
 	if req == nil {
-		return nil, statusNilRequestUser
+		return nil, consts.StatusNilRequestUser
 	}
 
 	if err := refreshDBConnection(); err != nil {
@@ -219,8 +220,8 @@ func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	// get User Object
 	svcDerivedUser := req.GetUser()
 	if svcDerivedUser == nil {
-		logger.Error(errNilRequestUser.Error())
-		return nil, statusNilRequestUser
+		logger.Error(consts.ErrNilRequestUser.Error())
+		return nil, consts.StatusNilRequestUser
 	}
 
 	lock, _ := uuidMapLocker.LoadOrStore(svcDerivedUser.GetUuid(), &sync.RWMutex{})
@@ -230,18 +231,18 @@ func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	// retrieve users row from database
 	dbDerivedUser, err := getUserRow(svcDerivedUser.GetUuid())
 	if err != nil {
-		logger.Error(updateUserTag, msgErrGetUserRow, err.Error())
+		logger.Error(consts.UpdateUserTag, consts.MsgErrGetUserRow, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if dbDerivedUser == nil {
-		logger.Error(updateUserTag, errUUIDNotFound.Error())
-		return nil, statusUUIDNotFound
+		logger.Error(consts.UpdateUserTag, consts.ErrUUIDNotFound.Error())
+		return nil, consts.StatusUUIDNotFound
 	}
 
 	// update user
 	if err := updateUserRow(svcDerivedUser.GetUuid(), svcDerivedUser, dbDerivedUser); err != nil {
-		logger.Error(updateUserTag, msgErrUpdateUserRow, err.Error())
+		logger.Error(consts.UpdateUserTag, consts.MsgErrUpdateUserRow, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -272,12 +273,12 @@ func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserRes
 	logger.RequestService("GetUser")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		logger.Error(getUserTag, errServiceUnavailable.Error())
-		return nil, statusServiceUnavailable
+		logger.Error(consts.GetUserTag, consts.ErrServiceUnavailable.Error())
+		return nil, consts.StatusServiceUnavailable
 	}
 
 	if req == nil {
-		return nil, statusNilRequestUser
+		return nil, consts.StatusNilRequestUser
 	}
 
 	if err := refreshDBConnection(); err != nil {
@@ -287,8 +288,8 @@ func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserRes
 	// get User Object
 	user := req.GetUser()
 	if user == nil {
-		logger.Error(errNilRequestUser.Error())
-		return nil, statusNilRequestUser
+		logger.Error(consts.ErrNilRequestUser.Error())
+		return nil, consts.StatusNilRequestUser
 	}
 
 	// read lock, b/c we are only retrieving/reading from the DB
@@ -299,13 +300,13 @@ func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserRes
 	// retrieve users row from database
 	user, err := getUserRow(user.GetUuid())
 	if err != nil {
-		logger.Error(getUserTag, msgErrGetUserRow, err.Error())
+		logger.Error(consts.GetUserTag, consts.MsgErrGetUserRow, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if user == nil {
-		logger.Error(getUserTag, errUUIDNotFound.Error())
-		return nil, statusUUIDNotFound
+		logger.Error(consts.GetUserTag, consts.ErrUUIDNotFound.Error())
+		return nil, consts.StatusUUIDNotFound
 	}
 
 	logger.Info("Retrieved user:", user.GetUuid())

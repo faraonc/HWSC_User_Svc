@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
+	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -112,11 +113,11 @@ func TestValidateUser(t *testing.T) {
 		expMsg   string
 	}{
 		{&validTest, false, ""},
-		{&invalidFirstName, true, errInvalidUserFirstName.Error()},
-		{&invalidLastName, true, errInvalidUserLastName.Error()},
-		{&invalidEmail, true, errInvalidUserEmail.Error()},
-		{&invalidPassword, true, errInvalidPassword.Error()},
-		{&invalidOrg, true, errInvalidUserOrganization.Error()},
+		{&invalidFirstName, true, consts.ErrInvalidUserFirstName.Error()},
+		{&invalidLastName, true, consts.ErrInvalidUserLastName.Error()},
+		{&invalidEmail, true, consts.ErrInvalidUserEmail.Error()},
+		{&invalidPassword, true, consts.ErrInvalidPassword.Error()},
+		{&invalidOrg, true, consts.ErrInvalidUserOrganization.Error()},
 	}
 
 	for _, c := range cases {
@@ -158,7 +159,7 @@ func TestValidateFirstName(t *testing.T) {
 		err := validateFirstName(c.name)
 
 		if c.isExpErr {
-			assert.EqualError(t, err, errInvalidUserFirstName.Error())
+			assert.EqualError(t, err, consts.ErrInvalidUserFirstName.Error())
 		} else {
 			assert.Nil(t, err)
 		}
@@ -193,7 +194,7 @@ func TestValidateLastName(t *testing.T) {
 		err := validateLastName(c.name)
 
 		if c.isExpErr {
-			assert.EqualError(t, err, errInvalidUserLastName.Error())
+			assert.EqualError(t, err, consts.ErrInvalidUserLastName.Error())
 		} else {
 			assert.Nil(t, err)
 		}
@@ -273,7 +274,7 @@ func TestValidateUUID(t *testing.T) {
 		err := validateUUID(c.uuid)
 
 		if c.isExpErr {
-			assert.EqualError(t, err, errInvalidUUID.Error())
+			assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
 		} else {
 			assert.Nil(t, err)
 		}
@@ -284,13 +285,13 @@ func TestHashPassword(t *testing.T) {
 	// test empty password
 	hashed, err := hashPassword("")
 	assert.NotNil(t, err)
-	assert.EqualError(t, err, errInvalidPassword.Error())
+	assert.EqualError(t, err, consts.ErrInvalidPassword.Error())
 	assert.Equal(t, "", hashed)
 
 	// test passwords with leading and trailing spaces
 	hashed, err = hashPassword("    skjfdsd     ")
 	assert.NotNil(t, err)
-	assert.EqualError(t, err, errInvalidPassword.Error())
+	assert.EqualError(t, err, consts.ErrInvalidPassword.Error())
 	assert.Equal(t, "", hashed)
 
 	// test password and hash password !=
