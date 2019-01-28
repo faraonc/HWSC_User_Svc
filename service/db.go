@@ -27,7 +27,7 @@ var (
 )
 
 func init() {
-	log.Info("Connecting to postgres DB")
+	log.Info(consts.PSQL, "Connecting to postgres DB")
 
 	// initialize connection string
 	connectionString = fmt.Sprintf(
@@ -38,13 +38,13 @@ func init() {
 	var err error
 	postgresDB, err = sql.Open(dbDriverName, connectionString)
 	if err != nil {
-		log.Fatal("Failed to intialize connection object:", err.Error())
+		log.Fatal(consts.PSQL, "Failed to intialize connection object:", err.Error())
 	}
 
 	// verify connection is alive, establishing connection if necessary
 	err = postgresDB.Ping()
 	if err != nil {
-		log.Fatal("Ping failed, cannot establish connection:", err.Error())
+		log.Fatal(consts.PSQL, "Ping failed, cannot establish connection:", err.Error())
 	}
 
 	// Handle Terminate Signal(Ctrl + C) gracefully
@@ -52,11 +52,11 @@ func init() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		log.Info("Disconnecting postgres DB")
+		log.Info(consts.PSQL, "Disconnecting postgres DB")
 		if postgresDB != nil {
 			_ = postgresDB.Close()
 		}
-		log.Fatal("hwsc-user-svc terminated")
+		log.Fatal(consts.PSQL, "hwsc-user-svc terminated")
 	}()
 
 	// TODO delete after dev-ops working
@@ -153,7 +153,7 @@ func refreshDBConnection() error {
 	if err := postgresDB.Ping(); err != nil {
 		_ = postgresDB.Close()
 		postgresDB = nil
-		log.Error("Failed to ping and reconnect to postgres db:", err.Error())
+		log.Error(consts.PSQL, "Failed to ping and reconnect to postgres db:", err.Error())
 		return err
 	}
 

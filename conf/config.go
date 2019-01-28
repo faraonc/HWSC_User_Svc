@@ -3,6 +3,7 @@ package conf
 import (
 	"fmt"
 	log "github.com/hwsc-org/hwsc-logger/logger"
+	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/micro/go-config"
 	"github.com/micro/go-config/source/env"
 )
@@ -50,7 +51,7 @@ var (
 )
 
 func init() {
-	log.Info("Reading ENV variables")
+	log.Info(consts.UserServiceTag, "Reading ENV variables")
 
 	// create a new config
 	conf := config.NewConfig()
@@ -62,23 +63,23 @@ func init() {
 
 	// config.Load(): Load config from a file source
 	if err := conf.Load(src); err != nil {
-		log.Fatal("Failed to intialize configuration", err.Error())
+		log.Fatal(consts.UserServiceTag, "Failed to intialize configuration", err.Error())
 	}
 
 	// get gets the path target from loaded file
 	// scan grabs the values from path target from the config file into a struct
 	// scan "hosts" with "grpc" props from config file & copy all "grpc" prop values to GRPCHost struct
 	if err := conf.Get("hosts", "user").Scan(&GRPCHost); err != nil {
-		log.Fatal("Failed to get grpc configuration", err.Error())
+		log.Fatal(consts.UserServiceTag, "Failed to get grpc configuration", err.Error())
 	}
 
 	// scan "hosts" prop "postgres" from environmental variables & copy values to UserDB struct
 	if err := conf.Get("hosts", "postgres").Scan(&UserDB); err != nil {
-		log.Fatal("Failed to get postgres configuration", err.Error())
+		log.Fatal(consts.UserServiceTag, "Failed to get postgres configuration", err.Error())
 	}
 
 	if err := conf.Get("hosts", "smtp").Scan(&EmailHost); err != nil {
-		log.Fatal("Failed to get smtp email configurations", err.Error())
+		log.Fatal(consts.UserServiceTag, "Failed to get smtp email configurations", err.Error())
 	}
 }
 
