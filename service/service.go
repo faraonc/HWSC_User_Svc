@@ -139,10 +139,13 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 
 	logger.Info("Inserted new user:", user.GetUuid(), user.GetFirstName(), user.GetLastName())
 
+	user.Password = ""
+	user.IsVerified = false
+
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
-		User:    &pb.User{Uuid: user.GetUuid()},
+		User:    user,
 	}, nil
 }
 
@@ -194,9 +197,13 @@ func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 
 	logger.Info("Deleted user:", user.GetUuid(), user.GetFirstName(), user.GetLastName())
 
+	// release mutex resource
+	uuidMapLocker.Delete(user.GetUuid())
+
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
+		User: &pb.User{Uuid: user.GetUuid()},
 	}, nil
 }
 

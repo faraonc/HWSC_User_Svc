@@ -179,12 +179,10 @@ func insertNewUser(user *pb.User) error {
 	}
 
 	// hash password using bcrypt
-	var err error
-	user.Password, err = hashPassword(user.GetPassword())
+	hashedPassword, err := hashPassword(user.GetPassword())
 	if err != nil {
 		return err
 	}
-	user.IsVerified = false
 
 	command := `
 				INSERT INTO user_svc.accounts(
@@ -193,7 +191,7 @@ func insertNewUser(user *pb.User) error {
 				`
 
 	_, err = postgresDB.Exec(command, user.GetUuid(), user.GetFirstName(), user.GetLastName(),
-		user.GetEmail(), user.GetPassword(), user.GetOrganization(), time.Now().UTC(), user.GetIsVerified())
+		user.GetEmail(), hashedPassword, user.GetOrganization(), time.Now().UTC(), false)
 
 	if err != nil {
 		return err
