@@ -179,12 +179,10 @@ func insertNewUser(user *pb.User) error {
 	}
 
 	// hash password using bcrypt
-	var err error
-	user.Password, err = hashPassword(user.GetPassword())
+	hashedPassword, err := hashPassword(user.GetPassword())
 	if err != nil {
 		return err
 	}
-	user.IsVerified = false
 
 	command := `
 				INSERT INTO user_svc.accounts(
@@ -193,7 +191,7 @@ func insertNewUser(user *pb.User) error {
 				`
 
 	_, err = postgresDB.Exec(command, user.GetUuid(), user.GetFirstName(), user.GetLastName(),
-		user.GetEmail(), user.GetPassword(), user.GetOrganization(), time.Now().UTC(), user.GetIsVerified())
+		user.GetEmail(), hashedPassword, user.GetOrganization(), time.Now().UTC(), false)
 
 	if err != nil {
 		return err
@@ -334,19 +332,19 @@ func getUserRow(uuid string) (*pb.User, error) {
 // updateUser does a partial update by going through each User fields and replacing values
 // that are different from original values. It's partial b/c some fields like created_date & uuid are not touched
 // Return error if params are zero values or querying problem
-func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) error {
+func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) (*pb.User, error) {
 	if svcDerived == nil || dbDerived == nil {
-		return consts.ErrNilRequestUser
+		return nil, consts.ErrNilRequestUser
 	}
 
 	if err := validateUUID(uuid); err != nil {
-		return err
+		return nil, err
 	}
 
 	newFirstName := dbDerived.GetFirstName()
 	if svcDerived.GetFirstName() != "" && svcDerived.GetFirstName() != newFirstName {
 		if err := validateFirstName(svcDerived.GetFirstName()); err != nil {
-			return err
+			return nil, err
 		}
 		newFirstName = svcDerived.GetFirstName()
 	}
@@ -354,7 +352,7 @@ func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) error {
 	newLastName := dbDerived.GetLastName()
 	if svcDerived.GetLastName() != "" && svcDerived.GetLastName() != newLastName {
 		if err := validateLastName(svcDerived.GetLastName()); err != nil {
-			return err
+			return nil, err
 		}
 		newLastName = svcDerived.GetLastName()
 	}
@@ -362,7 +360,7 @@ func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) error {
 	newOrganization := dbDerived.GetOrganization()
 	if svcDerived.GetOrganization() != "" && svcDerived.GetOrganization() != newOrganization {
 		if err := validateOrganization(svcDerived.GetOrganization()); err != nil {
-			return err
+			return nil, err
 		}
 		newOrganization = svcDerived.GetOrganization()
 	}
@@ -371,14 +369,14 @@ func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) error {
 	var newEmailToken string
 	if svcDerived.GetEmail() != "" && svcDerived.GetEmail() != dbDerived.GetEmail() {
 		if err := validateEmail(svcDerived.GetEmail()); err != nil {
-			return err
+			return nil, err
 		}
 		newEmail = svcDerived.GetEmail()
 
 		// create unique email token
 		token, err := generateEmailToken()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		newEmailToken = token
 	}
@@ -388,13 +386,13 @@ func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) error {
 		// hash password using bcrypt
 		hashedPassword, err := hashPassword(svcDerived.GetPassword())
 		if err != nil {
-			return err
+			return nil, err
 		}
 		newHashedPassword = hashedPassword
 	}
 
 	if newFirstName == "" && newLastName == "" && newOrganization == "" && newHashedPassword == "" && newEmail == "" {
-		return consts.ErrEmptyRequestUser
+		return nil, consts.ErrEmptyRequestUser
 	}
 
 	newIsVerified := dbDerived.GetIsVerified()
@@ -415,18 +413,27 @@ func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) error {
 	_, err := postgresDB.Exec(command, uuid, newFirstName, newLastName, newOrganization,
 		newHashedPassword, newEmail, newIsVerified, time.Now().UTC())
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	updatedUser := &pb.User{
+		Uuid:         uuid,
+		FirstName:    newFirstName,
+		LastName:     newLastName,
+		Organization: newOrganization,
+		Email:        newEmail,
+		IsVerified:   newIsVerified,
 	}
 
 	if newEmailToken != "" {
 		// insert token into db
 		if err := insertToken(uuid); err != nil {
 			if err := deleteUserRow(uuid); err != nil {
-				return err
+				return nil, err
 			}
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return updatedUser, nil
 }
