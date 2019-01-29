@@ -203,7 +203,7 @@ func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
-		User: &pb.User{Uuid: user.GetUuid()},
+		User:    &pb.User{Uuid: user.GetUuid()},
 	}, nil
 }
 
@@ -248,17 +248,20 @@ func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	}
 
 	// update user
-	if err := updateUserRow(svcDerivedUser.GetUuid(), svcDerivedUser, dbDerivedUser); err != nil {
+	var updatedUser *pb.User
+	updatedUser, err = updateUserRow(svcDerivedUser.GetUuid(), svcDerivedUser, dbDerivedUser)
+	if err != nil {
 		logger.Error(consts.UpdateUserTag, consts.MsgErrUpdateUserRow, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	logger.Info("Updated user:", svcDerivedUser.GetUuid(),
-		svcDerivedUser.GetFirstName(), svcDerivedUser.GetLastName())
+	logger.Info("Updated user:", updatedUser.GetUuid(),
+		updatedUser.GetFirstName(), updatedUser.GetLastName())
 
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
+		User:    updatedUser,
 	}, nil
 }
 

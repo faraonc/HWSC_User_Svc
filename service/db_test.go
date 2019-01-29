@@ -254,11 +254,13 @@ func TestUpdateUserRow(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		err := updateUserRow(c.uuid, c.svcDerived, c.dbDerived)
+		updatedUser, err := updateUserRow(c.uuid, c.svcDerived, c.dbDerived)
 		if c.isExpErr {
 			assert.EqualError(t, err, c.expMsg)
+			assert.Nil(t, updatedUser)
 		} else {
 			assert.Nil(t, err)
+			assert.Equal(t, c.uuid, updatedUser.GetUuid())
 		}
 	}
 }
