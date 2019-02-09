@@ -2,7 +2,7 @@ package service
 
 import (
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
-	"github.com/hwsc-org/hwsc-logger/logger"
+	"github.com/hwsc-org/hwsc-lib/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"golang.org/x/net/context"

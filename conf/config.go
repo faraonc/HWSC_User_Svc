@@ -2,7 +2,7 @@ package conf
 
 import (
 	"fmt"
-	log "github.com/hwsc-org/hwsc-logger/logger"
+	log "github.com/hwsc-org/hwsc-lib/logger"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/micro/go-config"
 	"github.com/micro/go-config/source/env"

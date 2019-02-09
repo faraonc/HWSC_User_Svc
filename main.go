@@ -2,7 +2,7 @@ package main
 
 import (
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
-	log "github.com/hwsc-org/hwsc-logger/logger"
+	log "github.com/hwsc-org/hwsc-lib/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	svc "github.com/hwsc-org/hwsc-user-svc/service"
