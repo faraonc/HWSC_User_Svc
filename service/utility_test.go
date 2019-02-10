@@ -131,6 +131,17 @@ func TestValidateUser(t *testing.T) {
 	}
 }
 
+func TestValidatePassword(t *testing.T) {
+	err := validatePassword("")
+	assert.EqualError(t, err, consts.ErrInvalidPassword.Error())
+
+	err = validatePassword("                 ")
+	assert.EqualError(t, err, consts.ErrInvalidPassword.Error())
+
+	err = validatePassword("1234l2k3jalkj;skdfj")
+	assert.Nil(t, err)
+}
+
 func TestValidateFirstName(t *testing.T) {
 	exceedMaxLengthName := "uAaxAYexAkSHzirzlLJGKtjrbWnMkaryQ"
 	reachMaxLengthTrailingSpaces := "   jjYnNXQewvJvyNNVeyZPSJRazTLAiFXk   "
@@ -303,4 +314,27 @@ func TestHashPassword(t *testing.T) {
 		assert.NotEqual(t, "", hashed)
 		assert.NotEqual(t, password, hashed)
 	}
+}
+
+func TestComparePassword(t *testing.T) {
+	pass1 := "lakjsdfkj2#flskjf#24133132asdf][askj2@34242dskafjASDF"
+	pass2 := "123432535lkjdlkfaj"
+
+	pass1Hashed, err := hashPassword(pass1)
+	assert.Nil(t, err)
+
+	err = comparePassword(pass1Hashed, pass1)
+	assert.Nil(t, err)
+
+	err = comparePassword(pass1Hashed, pass2)
+	assert.EqualError(t, err, "crypto/bcrypt: hashedPassword is not the hash of the given password")
+
+	err = comparePassword("", pass2)
+	assert.EqualError(t, err, consts.ErrInvalidPassword.Error())
+
+	err = comparePassword(pass1Hashed, "")
+	assert.EqualError(t, err, consts.ErrInvalidPassword.Error())
+
+	err = comparePassword("", "")
+	assert.EqualError(t, err, consts.ErrInvalidPassword.Error())
 }

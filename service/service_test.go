@@ -42,6 +42,7 @@ func TestGetStatus(t *testing.T) {
 }
 
 func TestCreateUser(t *testing.T) {
+	templateDirectory = "../tmpl/"
 	// valid
 	testUser1 := &pb.User{
 		FirstName:    "Stella Lilly",
@@ -352,6 +353,141 @@ func TestUpdateUser(t *testing.T) {
 		} else {
 			assert.Nil(t, err)
 			assert.Equal(t, codes.OK.String(), response.GetMessage())
+		}
+	}
+}
+
+func TestAuthenticateUser(t *testing.T) {
+	templateDirectory = "../tmpl/"
+
+	validPassword := "12345678"
+
+	newUser := &pb.User{
+		FirstName:    "Test",
+		LastName:     "AuthenticateUser",
+		Email:        "authenticate@test.com",
+		Password:     validPassword,
+		Organization: "hwsc",
+	}
+
+	// create user using a service (b/c cannot hard insert a hashed password)
+	s := Service{}
+	response, err := s.CreateUser(context.TODO(), &pb.UserRequest{User: newUser})
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), response.Message)
+
+	createdUser := response.GetUser()
+	assert.NotNil(t, createdUser)
+
+	validUUID := createdUser.GetUuid()
+	validEmail := createdUser.GetEmail()
+
+	// valid user
+	validUser := &pb.User{
+		Uuid:     validUUID,
+		Email:    validEmail,
+		Password: validPassword,
+	}
+
+	// non existing uuid
+	invalidUser1 := &pb.User{
+		Uuid:     "0000bsnjg0mqjhbf4qx1efd6a1",
+		Email:    validEmail,
+		Password: validPassword,
+	}
+
+	// non existing email
+	invalidUser2 := &pb.User{
+		Uuid:     validUUID,
+		Email:    "nonexistent@email.none",
+		Password: validPassword,
+	}
+
+	// non matching password
+	invalidUser3 := &pb.User{
+		Uuid:     validUUID,
+		Email:    validEmail,
+		Password: "mismatchingpassword",
+	}
+
+	// invalid uuid form
+	invalidUser4 := &pb.User{
+		Uuid:     "0000xsnjg0mq",
+		Email:    validEmail,
+		Password: validPassword,
+	}
+
+	// invalid email form
+	invalidUser5 := &pb.User{
+		Uuid:     validUUID,
+		Email:    "@",
+		Password: validPassword,
+	}
+
+	// invalid password
+	invalidUser6 := &pb.User{
+		Uuid:     validUUID,
+		Email:    validEmail,
+		Password: "",
+	}
+
+	// missing uuid
+	invalidUser7 := &pb.User{
+		Email:    validEmail,
+		Password: validPassword,
+	}
+
+	// missing email
+	invalidUser8 := &pb.User{
+		Uuid:     validUUID,
+		Password: validPassword,
+	}
+
+	// missing password
+	invalidUser9 := &pb.User{
+		Uuid:  validUUID,
+		Email: validEmail,
+	}
+
+	cases := []struct {
+		request  *pb.UserRequest
+		isExpErr bool
+		expMsg   string
+	}{
+		{&pb.UserRequest{User: validUser}, false, ""},
+		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
+		{&pb.UserRequest{User: nil}, true,
+			"rpc error: code = InvalidArgument desc = nil request User"},
+		{&pb.UserRequest{User: invalidUser1}, true,
+			"rpc error: code = Unknown desc = uuid does not exist in database"},
+		{&pb.UserRequest{User: invalidUser2}, true,
+			"rpc error: code = InvalidArgument desc = email does not match"},
+		{&pb.UserRequest{User: invalidUser3}, true,
+			"rpc error: code = Unknown desc = crypto/bcrypt: " +
+				"hashedPassword is not the hash of the given password"},
+		{&pb.UserRequest{User: invalidUser4}, true,
+			"rpc error: code = Unknown desc = invalid User uuid"},
+		{&pb.UserRequest{User: invalidUser5}, true,
+			"rpc error: code = InvalidArgument desc = invalid User email"},
+		{&pb.UserRequest{User: invalidUser6}, true,
+			"rpc error: code = InvalidArgument desc = invalid User password"},
+		{&pb.UserRequest{User: invalidUser7}, true,
+			"rpc error: code = Unknown desc = invalid User uuid"},
+		{&pb.UserRequest{User: invalidUser8}, true,
+			"rpc error: code = InvalidArgument desc = invalid User email"},
+		{&pb.UserRequest{User: invalidUser9}, true,
+			"rpc error: code = InvalidArgument desc = invalid User password"},
+	}
+
+	for _, c := range cases {
+		s := Service{}
+		response, err := s.AuthenticateUser(context.TODO(), c.request)
+		if c.isExpErr {
+			assert.Nil(t, response)
+			assert.EqualError(t, err, c.expMsg)
+		} else {
+			assert.Nil(t, err)
+			assert.Equal(t, codes.OK.String(), response.Message)
 		}
 	}
 }

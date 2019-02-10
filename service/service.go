@@ -258,6 +258,7 @@ func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	logger.Info("Updated user:", updatedUser.GetUuid(),
 		updatedUser.GetFirstName(), updatedUser.GetLastName())
 
+	updatedUser.Password = ""
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
@@ -267,9 +268,64 @@ func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 
 // AuthenticateUser goes through user DB collection and tries to find matching email/password
 func (s *Service) AuthenticateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-	//TODO
 	logger.RequestService("AuthenticateUser")
-	return &pb.UserResponse{}, nil
+
+	if ok := serviceStateLocker.isStateAvailable(); !ok {
+		logger.Error(consts.AuthenticateUserTag, consts.ErrServiceUnavailable.Error())
+		return nil, consts.StatusServiceUnavailable
+	}
+
+	if req == nil {
+		return nil, consts.StatusNilRequestUser
+	}
+
+	if err := refreshDBConnection(); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	user := req.GetUser()
+	if user == nil {
+		logger.Error(consts.ErrNilRequestUser.Error())
+		return nil, consts.StatusNilRequestUser
+	}
+
+	// validate email, password
+	if err := validateEmail(user.GetEmail()); err != nil {
+		logger.Error(consts.AuthenticateUserTag, consts.ErrInvalidUserEmail.Error())
+		return nil, status.Error(codes.InvalidArgument, consts.ErrInvalidUserEmail.Error())
+	}
+	if err := validatePassword(user.GetPassword()); err != nil {
+		logger.Error(consts.AuthenticateUserTag, consts.ErrInvalidPassword.Error())
+		return nil, status.Error(codes.InvalidArgument, consts.ErrInvalidPassword.Error())
+	}
+
+	lock, _ := uuidMapLocker.LoadOrStore(user.GetUuid(), &sync.RWMutex{})
+	lock.(*sync.RWMutex).Lock()
+	defer lock.(*sync.RWMutex).Unlock()
+
+	// look up email and password
+	retrievedUser, err := getUserRow(user.GetUuid())
+	if err != nil {
+		logger.Error(consts.AuthenticateUserTag, consts.MsgErrAuthenticateUser, err.Error())
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	if retrievedUser.GetEmail() != user.GetEmail() {
+		logger.Error(consts.AuthenticateUserTag, consts.MsgErrMatchEmail)
+		return nil, status.Error(codes.InvalidArgument, consts.MsgErrMatchEmail)
+	}
+
+	if err := comparePassword(retrievedUser.GetPassword(), user.GetPassword()); err != nil {
+		logger.Error(consts.AuthenticateUserTag, consts.MsgErrMatchPassword, err.Error())
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	retrievedUser.Password = ""
+	return &pb.UserResponse{
+		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
+		Message: codes.OK.String(),
+		User:    retrievedUser,
+	}, nil
 }
 
 // ListUsers returns the user DB collection
@@ -309,7 +365,7 @@ func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserRes
 	defer lock.(*sync.RWMutex).RUnlock()
 
 	// retrieve users row from database
-	user, err := getUserRow(user.GetUuid())
+	retrievedUser, err := getUserRow(user.GetUuid())
 	if err != nil {
 		logger.Error(consts.GetUserTag, consts.MsgErrGetUserRow, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
@@ -322,10 +378,11 @@ func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserRes
 
 	logger.Info("Retrieved user:", user.GetUuid(), user.GetFirstName(), user.GetLastName())
 
+	retrievedUser.Password = ""
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
-		User:    user,
+		User:    retrievedUser,
 	}, nil
 }
 

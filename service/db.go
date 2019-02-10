@@ -243,6 +243,7 @@ func checkUserExists(uuid string) (bool, error) {
 		return false, err
 	}
 
+	defer row.Close()
 	for row.Next() {
 		var uid string
 		if err := row.Scan(&uid); err != nil {
@@ -252,6 +253,9 @@ func checkUserExists(uuid string) (bool, error) {
 		if uuid == uid {
 			return true, nil
 		}
+	}
+	if err := row.Err(); err != nil {
+		return false, err
 	}
 
 	return false, nil
@@ -295,7 +299,7 @@ func getUserRow(uuid string) (*pb.User, error) {
 		return nil, consts.ErrUUIDNotFound
 	}
 
-	command := `SELECT uuid, first_name, last_name, email, organization, created_date, is_verified
+	command := `SELECT uuid, first_name, last_name, email, organization, created_date, is_verified, password
 				FROM user_svc.accounts WHERE user_svc.accounts.uuid = $1
 				`
 	row, err := postgresDB.Query(command, uuid)
@@ -303,30 +307,38 @@ func getUserRow(uuid string) (*pb.User, error) {
 		return nil, err
 	}
 
+	defer row.Close()
+
+	var userObject *pb.User
 	for row.Next() {
-		var uid, firstName, lastName, email, organization string
+		var uid, firstName, lastName, email, organization, password string
 		var isVerified bool
 		var createdDate time.Time
 
-		err := row.Scan(&uid, &firstName, &lastName, &email, &organization, &createdDate, &isVerified)
+		err := row.Scan(&uid, &firstName, &lastName, &email, &organization, &createdDate, &isVerified, &password)
 		if err != nil {
 			return nil, err
 		}
-
-		if uuid == uid {
-			return &pb.User{
-				Uuid:         uid,
-				FirstName:    firstName,
-				LastName:     lastName,
-				Email:        email,
-				Organization: organization,
-				CreatedDate:  createdDate.Unix(),
-				IsVerified:   isVerified,
-			}, nil
+		userObject = &pb.User{
+			Uuid:         uid,
+			FirstName:    firstName,
+			LastName:     lastName,
+			Email:        email,
+			Organization: organization,
+			CreatedDate:  createdDate.Unix(),
+			IsVerified:   isVerified,
+			Password:     password,
 		}
 	}
+	if err := row.Err(); err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	if userObject.GetUuid() != uuid {
+		return nil, consts.ErrInvalidUUID
+	}
+
+	return userObject, nil
 }
 
 // updateUser does a partial update by going through each User fields and replacing values
