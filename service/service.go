@@ -300,8 +300,8 @@ func (s *Service) AuthenticateUser(ctx context.Context, req *pb.UserRequest) (*p
 	}
 
 	lock, _ := uuidMapLocker.LoadOrStore(user.GetUuid(), &sync.RWMutex{})
-	lock.(*sync.RWMutex).Lock()
-	defer lock.(*sync.RWMutex).Unlock()
+	lock.(*sync.RWMutex).RLock()
+	defer lock.(*sync.RWMutex).RUnlock()
 
 	// look up email and password
 	retrievedUser, err := getUserRow(user.GetUuid())
@@ -317,7 +317,7 @@ func (s *Service) AuthenticateUser(ctx context.Context, req *pb.UserRequest) (*p
 
 	if err := comparePassword(retrievedUser.GetPassword(), user.GetPassword()); err != nil {
 		logger.Error(consts.AuthenticateUserTag, consts.MsgErrMatchPassword, err.Error())
-		return nil, status.Error(codes.Unknown, err.Error())
+		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	retrievedUser.Password = ""

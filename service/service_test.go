@@ -83,14 +83,6 @@ func TestCreateUser(t *testing.T) {
 		Password:  "",
 	}
 
-	// fail: passwords with leading/trailing spaces
-	testUser6 := &pb.User{
-		FirstName: "Lisa",
-		LastName:  "Kim",
-		Email:     "hwsc.test+user3@gmail.com",
-		Password:  "    abcklajdsfasdf      ",
-	}
-
 	// fail: blank email
 	testUser7 := &pb.User{
 		FirstName: "Blank",
@@ -128,8 +120,6 @@ func TestCreateUser(t *testing.T) {
 		{&pb.UserRequest{User: testUser4}, true, "rpc error: code = " +
 			"Internal desc = invalid User first name"},
 		{&pb.UserRequest{User: testUser5}, true, "rpc error: code = " +
-			"Internal desc = invalid User password"},
-		{&pb.UserRequest{User: testUser6}, true, "rpc error: code = " +
 			"Internal desc = invalid User password"},
 		{&pb.UserRequest{User: testUser7}, true, "rpc error: code = " +
 			"Internal desc = invalid User email"},
@@ -463,8 +453,8 @@ func TestAuthenticateUser(t *testing.T) {
 		{&pb.UserRequest{User: invalidUser2}, true,
 			"rpc error: code = InvalidArgument desc = email does not match"},
 		{&pb.UserRequest{User: invalidUser3}, true,
-			"rpc error: code = Unknown desc = crypto/bcrypt: " +
-				"hashedPassword is not the hash of the given password"},
+			"rpc error: code = Unauthenticated desc = " +
+				"crypto/bcrypt: hashedPassword is not the hash of the given password"},
 		{&pb.UserRequest{User: invalidUser4}, true,
 			"rpc error: code = Unknown desc = invalid User uuid"},
 		{&pb.UserRequest{User: invalidUser5}, true,

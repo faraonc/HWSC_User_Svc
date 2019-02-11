@@ -57,7 +57,7 @@ func validateUser(user *pb.User) error {
 }
 
 func validatePassword(password string) error {
-	if password == "" || strings.TrimSpace(password) != password {
+	if strings.TrimSpace(password) == "" {
 		return consts.ErrInvalidPassword
 	}
 	return nil
