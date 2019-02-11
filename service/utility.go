@@ -47,11 +47,18 @@ func validateUser(user *pb.User) error {
 	if err := validateEmail(user.GetEmail()); err != nil {
 		return err
 	}
-	if password := user.GetPassword(); password == "" || strings.TrimSpace(password) != password {
+	if err := validatePassword(user.GetPassword()); err != nil {
 		return consts.ErrInvalidPassword
 	}
 	if err := validateOrganization(user.GetOrganization()); err != nil {
 		return err
+	}
+	return nil
+}
+
+func validatePassword(password string) error {
+	if strings.TrimSpace(password) == "" {
+		return consts.ErrInvalidPassword
 	}
 	return nil
 }
@@ -144,4 +151,19 @@ func hashPassword(password string) (string, error) {
 	}
 
 	return string(hashedPassword), nil
+}
+
+// comparePassword compares hashedPassword retrieved from DB and the password from User request
+// Returns nil if match, error if not match or error from bcrypt
+func comparePassword(hashedPassword string, password string) error {
+	if hashedPassword == "" || password == "" {
+		return consts.ErrInvalidPassword
+	}
+
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

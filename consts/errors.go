@@ -8,23 +8,24 @@ import (
 )
 
 const (
-	MsgErrInsertUser     string = "unable to insert new user into db:"
-	MsgErrInsertToken    string = "unable to insert token into db:"
-	MsgErrGeneratingUUID string = "generating uuid:"
-	MsgErrEmailRequest   string = "unable to make email request object:"
-	MsgErrSendEmail      string = "unable to send email:"
-	MsgErrCheckUser      string = "checking user exists:"
-	MsgErrDeleteUser     string = "unable to delete user:"
-	MsgErrGetUserRow     string = "unable to get user row:"
-	MsgErrUpdateUserRow  string = "unable to update user row:"
+	MsgErrInsertUser       string = "unable to insert new user into db:"
+	MsgErrInsertToken      string = "unable to insert token into db:"
+	MsgErrGeneratingUUID   string = "generating uuid:"
+	MsgErrEmailRequest     string = "unable to make email request object:"
+	MsgErrSendEmail        string = "unable to send email:"
+	MsgErrCheckUser        string = "checking user exists:"
+	MsgErrDeleteUser       string = "unable to delete user:"
+	MsgErrGetUserRow       string = "unable to get user row:"
+	MsgErrUpdateUserRow    string = "unable to update user row:"
+	MsgErrAuthenticateUser string = "failed to authenticate user:"
+	MsgErrMatchPassword    string = "failed to match password:"
+	MsgErrMatchEmail       string = "email does not match"
 )
 
 var (
 	ErrServiceUnavailable           = errors.New("service unavailable")
-	ErrNilPostgresClient            = errors.New("nil Postgres Client")
 	ErrNilRequestUser               = errors.New("nil request User")
 	ErrEmptyRequestUser             = errors.New("empty fields in request User")
-	ErrInvalidUserFields            = errors.New("invalid field values in request User")
 	ErrInvalidUUID                  = errors.New("invalid User uuid")
 	ErrInvalidUserFirstName         = errors.New("invalid User first name")
 	ErrInvalidUserLastName          = errors.New("invalid User last name")

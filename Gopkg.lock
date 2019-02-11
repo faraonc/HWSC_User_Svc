@@ -67,11 +67,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6dbde6fa6916a0b25fd1e533bf7a99a973ab8440be3a41c67bd6a3852a399248"
+  digest = "1:609938f0be746de4a53e9231d80640423530f33f72bbe3d3203acb9dccd40352"
   name = "github.com/hwsc-org/hwsc-api-blocks"
   packages = ["int/hwsc-user-svc/proto"]
   pruneopts = "UT"
-  revision = "0f70e37a9d5ebb4bb053ebddeaf9b93a78ec6b18"
+  revision = "402ff7b29b728bde343c721c844a1aa4f950ff01"
 
 [[projects]]
   branch = "master"
@@ -79,15 +79,15 @@
   name = "github.com/hwsc-org/hwsc-lib"
   packages = ["logger"]
   pruneopts = "UT"
-  revision = "0158a67854b2a2090db0635c02a8e9a450a1c242"
+  revision = "05a4a57201973c8ebd28ab317e0b339d5ea6399f"
 
 [[projects]]
-  digest = "1:8eb1de8112c9924d59bf1d3e5c26f5eaa2bfc2a5fcbb92dc1c2e4546d695f277"
+  digest = "1:a0cefd27d12712af4b5018dc7046f245e1e3b5760e2e848c30b171b570708f9b"
   name = "github.com/imdario/mergo"
   packages = ["."]
   pruneopts = "UT"
-  revision = "9f23e2d6bd2a77f959b2bf6acdbefd708a83a4a4"
-  version = "v0.3.6"
+  revision = "7c29201646fa3de8506f701213473dd407f19646"
+  version = "v0.3.7"
 
 [[projects]]
   digest = "1:7cefc4f7f6a411c2598d3344563e4d23fd4e4d88fd1591831fe39cccff41ad28"
@@ -154,7 +154,7 @@
     "blowfish",
   ]
   pruneopts = "UT"
-  revision = "ff983b9c42bc9fbf91556e191cc8efb585c16908"
+  revision = "193df9c0f06f8bb35fba505183eaf0acc0136505"
 
 [[projects]]
   branch = "master"
@@ -170,15 +170,15 @@
     "trace",
   ]
   pruneopts = "UT"
-  revision = "ed066c81e75eba56dd9bd2139ade88125b855585"
+  revision = "65e2d4e15006aab9813ff8769e768bbf4bb667a0"
 
 [[projects]]
   branch = "master"
-  digest = "1:bd7f9a2ec2751199499f5cf1d0e23ccf4d92f75b4bfba17ce79ae0f7c85deaa9"
+  digest = "1:8b466798e96432c23185ca32826702885299f94eb644c9a8dedb79771dff383a"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "770c60269bf0ef965e9e7ac8bedcb6bca2a1cefd"
+  revision = "3b5209105503162ded1863c307ac66fec31120dd"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
@@ -209,7 +209,7 @@
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   pruneopts = "UT"
-  revision = "db91494dd46c1fdcbbde05e5ff5eb56df8f7d79a"
+  revision = "4b09977fb92221987e99d190c8f88f2c92727a29"
 
 [[projects]]
   digest = "1:9ab5a33d8cb5c120602a34d2e985ce17956a4e8c2edce7e6961568f95e40c09a"
