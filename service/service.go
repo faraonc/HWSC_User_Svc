@@ -320,6 +320,9 @@ func (s *Service) AuthenticateUser(ctx context.Context, req *pb.UserRequest) (*p
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
+	logger.Info("Authenticated user:", retrievedUser.GetUuid(),
+		retrievedUser.GetFirstName(), retrievedUser.GetLastName())
+
 	retrievedUser.Password = ""
 	return &pb.UserResponse{
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
@@ -390,5 +393,33 @@ func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserRes
 func (s *Service) ShareDocument(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
 	//TODO
 	logger.RequestService("ShareDocument")
+	return &pb.UserResponse{}, nil
+}
+
+// GetSecret retrieves and returns the recent/active secret from the DB
+func (s *Service) GetSecret(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+	// TODO
+	logger.RequestService("Get Secret")
+	return &pb.UserResponse{}, nil
+}
+
+// GetToken retrieves and returns user's token stored in DB
+func (s *Service) GetToken(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+	// TODO
+	logger.RequestService("Get Token")
+	return &pb.UserResponse{}, nil
+}
+
+// VerifyToken checks if received token from Chrome is valid
+func (s *Service) VerifyToken(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+	// TODO
+	logger.RequestService("Verify Token")
+	return &pb.UserResponse{}, nil
+}
+
+// NewSecret generates and inserts a new secret into DB
+func (s *Service) NewSecret(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+	// TODO
+	logger.RequestService("New Secret")
 	return &pb.UserResponse{}, nil
 }
