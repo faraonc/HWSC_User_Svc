@@ -67,19 +67,26 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:609938f0be746de4a53e9231d80640423530f33f72bbe3d3203acb9dccd40352"
+  digest = "1:3d6ae6f92a15d8501afa67e2cb7e70296aac73fd338ddace67469e018a2a7112"
   name = "github.com/hwsc-org/hwsc-api-blocks"
-  packages = ["int/hwsc-user-svc/proto"]
+  packages = [
+    "int/hwsc-app-gateway-svc/proto",
+    "int/hwsc-user-svc/proto",
+  ]
   pruneopts = "UT"
-  revision = "402ff7b29b728bde343c721c844a1aa4f950ff01"
+  revision = "547722ba9edbb917fdfe7b3af4c72bf191ef06c2"
 
 [[projects]]
   branch = "master"
-  digest = "1:6d9e620e99454e3aa8f5f41f14f57fb1e2524d22b637f866fb96d51231acc605"
+  digest = "1:8fc3752c8cd8e1fb00871b9a13a061eb85543305e2fd9f5b7a1b6d187442f54f"
   name = "github.com/hwsc-org/hwsc-lib"
-  packages = ["logger"]
+  packages = [
+    "auth",
+    "consts",
+    "logger",
+  ]
   pruneopts = "UT"
-  revision = "05a4a57201973c8ebd28ab317e0b339d5ea6399f"
+  revision = "43a835025fb58a045310b06051bc4ddd4274b244"
 
 [[projects]]
   digest = "1:a0cefd27d12712af4b5018dc7046f245e1e3b5760e2e848c30b171b570708f9b"
@@ -154,7 +161,7 @@
     "blowfish",
   ]
   pruneopts = "UT"
-  revision = "193df9c0f06f8bb35fba505183eaf0acc0136505"
+  revision = "74369b46fc6756741c016591724fd1cb8e26845f"
 
 [[projects]]
   branch = "master"
@@ -264,6 +271,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto",
+    "github.com/hwsc-org/hwsc-lib/auth",
     "github.com/hwsc-org/hwsc-lib/logger",
     "github.com/lib/pq",
     "github.com/micro/go-config",

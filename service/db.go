@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
+	"github.com/hwsc-org/hwsc-lib/auth"
 	log "github.com/hwsc-org/hwsc-lib/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
@@ -76,23 +77,38 @@ func devCreateUserTable() {
 		log.Fatal("postgres connection is null for some reason")
 	}
 
+	//hashed password for Lisa Kim = testingPassword
+
 	const userSchema = `
 DROP SCHEMA IF EXISTS user_svc CASCADE;
+DROP SCHEMA IF EXISTS user_security CASCADE;
+DROP TYPE IF EXISTS permission_level;
+DROP DOMAIN IF EXISTS ulid;
+
+CREATE TYPE permission_level AS ENUM
+(
+  'NO_PERM',
+  'USER_REGISTRATION',
+  'USER',
+  'ADMIN'
+);
+
+-- https://github.com/oklog/ulid
+CREATE DOMAIN ulid AS
+  VARCHAR(26) NOT NULL CHECK (LENGTH(VALUE) = 26);
 
 CREATE SCHEMA user_svc;
 
 CREATE DOMAIN user_svc.user_name AS
   VARCHAR(32) NOT NULL CHECK (VALUE ~ '^[[:alpha:]]+(([''.\s-][[:alpha:]\s])?[[:alpha:]]*)*$');
 
-CREATE DOMAIN user_svc.ulid AS
-  VARCHAR(26) NOT NULL CHECK (LENGTH(VALUE) = 26);
-
+-- https://github.com/segmentio/ksuid
 CREATE DOMAIN user_svc.ksuid AS
   VARCHAR(27) NOT NULL CHECK (LENGTH(VALUE) = 27);
 
 CREATE TABLE user_svc.accounts
 (
-  uuid              user_svc.ulid PRIMARY KEY,
+  uuid              ulid PRIMARY KEY,
   first_name        user_svc.user_name,
   last_name         user_svc.user_name,
   email             VARCHAR(320) NOT NULL UNIQUE,
@@ -100,41 +116,75 @@ CREATE TABLE user_svc.accounts
   password          VARCHAR(60) NOT NULL,
   organization      TEXT,
   created_date      TIMESTAMPTZ NOT NULL,
-  modified_date		TIMESTAMPTZ DEFAULT NULL,
-  is_verified       BOOLEAN NOT NULL
+  modified_date     TIMESTAMPTZ DEFAULT NULL,
+  is_verified       BOOLEAN NOT NULL,
+  permission_level  permission_level NOT NULL
 );
 
 CREATE TABLE user_svc.pending_tokens
 (
-  token         TEXT PRIMARY KEY,
-  created_date  TIMESTAMP NOT NULL,
-  uuid          user_svc.ulid UNIQUE REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE
+  token             TEXT PRIMARY KEY,
+  created_date      TIMESTAMPTZ NOT NULL,
+  uuid              ulid UNIQUE REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE
 );
 
 CREATE TABLE user_svc.documents
 (
-  uuid      user_svc.ulid REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE,
   duid      user_svc.ksuid PRIMARY KEY,
+  uuid      ulid REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE,
   is_public BOOLEAN NOT NULL
 );
 
+-- uuid and duid act as unique identifier b/c docs can be shared to any user
 CREATE TABLE user_svc.shared_documents
 (
-  PRIMARY KEY (uuid, duid),
-  uuid user_svc.ulid   REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE,
-  duid user_svc.ksuid  REFERENCES user_svc.documents(duid) ON DELETE CASCADE
+  PRIMARY KEY (duid, uuid),
+  duid user_svc.ksuid  REFERENCES user_svc.documents(duid) ON DELETE CASCADE,
+  uuid ulid   REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE
 );
 
-INSERT INTO user_svc.accounts (uuid, first_name, last_name, email, password, organization, created_date, is_verified)
-VALUES
-    ('1000xsnjg0mqjhbf4qx1efd6y7', 'Test Delete', 'Delete', 'delete@test.com', '12345678', 'delete', current_timestamp, TRUE),
-	('0000xsnjg0mqjhbf4qx1efd6y5', 'Mary-Jo', 'Allen', 'mary@test.com', '12345678', 'abc', current_timestamp, TRUE),
-	('0000xsnjg0mqjhbf4qx1efd6y6', 'To be Deleted', 'Kennedy', 'john@test.com', '12345678', '123', current_timestamp, TRUE),
-    ('0000xsnjg0mqjhbf4qx1efd6y3', 'Lisa', 'Kim', 'lisa@test.com', '12345678', 'uwb', current_timestamp, TRUE),
-    ('0000xsnjg0mqjhbf4qx1efd6y4', 'Kate Swan', 'Smith-Jones', 'kate@test.com', '12345678', 'cse', current_timestamp, TRUE),
-    ('1212asnjg0mqjhbf4qx1efd6y2', 'Unit Test', 'GetUserRow', 'get@user.com', '12345678', 'unit test getUserRow', current_timestamp, TRUE);
-`
+CREATE SCHEMA user_security;
 
+CREATE TYPE user_security.algorithm_type AS ENUM
+(
+  'NO_ALG',
+  'HS256',
+  'HS512'
+);
+
+CREATE TYPE user_security.token_type AS ENUM
+(
+  'NO_TYPE',
+  'JWT'
+);
+
+CREATE TABLE user_security.secret
+(
+  secret_key        TEXT PRIMARY KEY,
+  created_timestamp TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE user_security.tokens
+(
+  token_string      TEXT PRIMARY KEY,
+  secret_key        TEXT REFERENCES user_security.secret(secret_key) ON DELETE CASCADE,
+  token_type        user_security.token_type NOT NULL,
+  algorithm         user_security.algorithm_type NOT NULL,
+  permission        permission_level NOT NULL,
+  expiration_date   TIMESTAMPTZ NOT NULL,
+  uuid              ulid NOT NULL UNIQUE
+);
+
+
+INSERT INTO user_svc.accounts (uuid, first_name, last_name, email, password, organization, created_date, is_verified, permission_level)
+VALUES
+    ('1000xsnjg0mqjhbf4qx1efd6y7', 'Test Delete', 'Delete', 'delete@test.com', '12345678', 'delete', current_timestamp, TRUE, 'NO_PERM'),
+	('0000xsnjg0mqjhbf4qx1efd6y5', 'Mary-Jo', 'Allen', 'mary@test.com', '12345678', 'abc', current_timestamp, TRUE, 'NO_PERM'),
+	('0000xsnjg0mqjhbf4qx1efd6y6', 'To be Deleted', 'Kennedy', 'john@test.com', '12345678', '123', current_timestamp, TRUE, 'NO_PERM'),
+    ('0000xsnjg0mqjhbf4qx1efd6y3', 'Lisa', 'Kim', 'lisa@test.com', '$2a$04$k0Ee2g8dwRV.xTrBBxKWQupAZUyVYAP5AiwEBQm1DP3nz9uJhs/WG', 'uwb', current_timestamp, TRUE, 'NO_PERM'),
+    ('0000xsnjg0mqjhbf4qx1efd6y4', 'Kate Swan', 'Smith-Jones', 'kate@test.com', '12345678', 'cse', current_timestamp, TRUE, 'NO_PERM'),
+    ('1212asnjg0mqjhbf4qx1efd6y2', 'Unit Test', 'GetUserRow', 'get@user.com', '12345678', 'unit test getUserRow', current_timestamp, TRUE, 'NO_PERM');
+`
 	_, err := postgresDB.Exec(userSchema)
 	devCheckError(err)
 }
@@ -186,12 +236,12 @@ func insertNewUser(user *pb.User) error {
 
 	command := `
 				INSERT INTO user_svc.accounts(
-					uuid, first_name, last_name, email, password, organization, created_date, is_verified
-				) VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+					uuid, first_name, last_name, email, password, organization, created_date, is_verified, permission_level
+				) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
 				`
 
 	_, err = postgresDB.Exec(command, user.GetUuid(), user.GetFirstName(), user.GetLastName(),
-		user.GetEmail(), hashedPassword, user.GetOrganization(), time.Now().UTC(), false)
+		user.GetEmail(), hashedPassword, user.GetOrganization(), time.Now().UTC(), false, auth.PermissionStringMap[auth.UserRegistration])
 
 	if err != nil {
 		return err
@@ -229,10 +279,12 @@ func insertToken(uuid string) error {
 }
 
 // checkUserExists looks up a uuid in accounts table
+// if validatingUUID fails, uuid is deleted from uuidMapLocker if exists
 // Returns true if it exists, false if nonexistent
 func checkUserExists(uuid string) (bool, error) {
 	// check if uuid is valid form
 	if err := validateUUID(uuid); err != nil {
+		uuidMapLocker.Delete(uuid)
 		return false, err
 	}
 
