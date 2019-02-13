@@ -40,7 +40,8 @@ var (
 		Status:  &pb.UserResponse_Code{Code: uint32(codes.Unavailable)},
 		Message: codes.Unavailable.String(),
 	}
-	StatusServiceUnavailable = status.Error(codes.Unavailable, ErrServiceUnavailable.Error())
-	StatusNilRequestUser     = status.Error(codes.InvalidArgument, ErrNilRequestUser.Error())
-	StatusUUIDNotFound       = status.Error(codes.NotFound, ErrUUIDNotFound.Error())
+	ErrStatusServiceUnavailable = status.Error(codes.Unavailable, ErrServiceUnavailable.Error())
+	ErrStatusNilRequestUser     = status.Error(codes.InvalidArgument, ErrNilRequestUser.Error())
+	ErrStatusUUIDNotFound       = status.Error(codes.NotFound, ErrUUIDNotFound.Error())
+	ErrStatusUUIDInvalid        = status.Error(codes.InvalidArgument, ErrInvalidUUID.Error())
 )

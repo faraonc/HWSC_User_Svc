@@ -77,7 +77,7 @@ func devCreateUserTable() {
 		log.Fatal("postgres connection is null for some reason")
 	}
 
-	//hashed password for Lisa Kim = testingPassword
+	//hashed password for integrate@update.com = testingPassword
 
 	const userSchema = `
 DROP SCHEMA IF EXISTS user_svc CASCADE;
@@ -178,12 +178,9 @@ CREATE TABLE user_security.tokens
 
 INSERT INTO user_svc.accounts (uuid, first_name, last_name, email, password, organization, created_date, is_verified, permission_level)
 VALUES
-    ('1000xsnjg0mqjhbf4qx1efd6y7', 'Test Delete', 'Delete', 'delete@test.com', '12345678', 'delete', current_timestamp, TRUE, 'NO_PERM'),
-	('0000xsnjg0mqjhbf4qx1efd6y5', 'Mary-Jo', 'Allen', 'mary@test.com', '12345678', 'abc', current_timestamp, TRUE, 'NO_PERM'),
-	('0000xsnjg0mqjhbf4qx1efd6y6', 'To be Deleted', 'Kennedy', 'john@test.com', '12345678', '123', current_timestamp, TRUE, 'NO_PERM'),
-    ('0000xsnjg0mqjhbf4qx1efd6y3', 'Lisa', 'Kim', 'lisa@test.com', '$2a$04$k0Ee2g8dwRV.xTrBBxKWQupAZUyVYAP5AiwEBQm1DP3nz9uJhs/WG', 'uwb', current_timestamp, TRUE, 'NO_PERM'),
-    ('0000xsnjg0mqjhbf4qx1efd6y4', 'Kate Swan', 'Smith-Jones', 'kate@test.com', '12345678', 'cse', current_timestamp, TRUE, 'NO_PERM'),
-    ('1212asnjg0mqjhbf4qx1efd6y2', 'Unit Test', 'GetUserRow', 'get@user.com', '12345678', 'unit test getUserRow', current_timestamp, TRUE, 'NO_PERM');
+    ('1000xsnjg0mqjhbf4qx1efd6y7', 'Integrate Test', 'DeleteUser', 'integrate@delete.com', '12345678', 'delete', current_timestamp, TRUE, 'NO_PERM'),
+	('0000xsnjg0mqjhbf4qx1efd6y5', 'Integrate Test', 'GetUser', 'integrate@get.com', '12345678', 'abc', current_timestamp, TRUE, 'NO_PERM'),
+    ('0000xsnjg0mqjhbf4qx1efd6y3', 'Integrate Test', 'UpdateUser', 'integrate@update.com', '$2a$04$k0Ee2g8dwRV.xTrBBxKWQupAZUyVYAP5AiwEBQm1DP3nz9uJhs/WG', 'uwb', current_timestamp, TRUE, 'NO_PERM');
 `
 	_, err := postgresDB.Exec(userSchema)
 	devCheckError(err)
@@ -252,7 +249,7 @@ func insertNewUser(user *pb.User) error {
 
 // insertToken creates a unique token and inserts to user_svc.pending_tokens
 // Returns error if strings are empty or error with inserting to database
-func insertToken(uuid string) error {
+func insertEmailToken(uuid string) error {
 	// check if uuid is valid form
 	if err := validateUUID(uuid); err != nil {
 		return err
@@ -276,41 +273,6 @@ func insertToken(uuid string) error {
 	}
 
 	return nil
-}
-
-// checkUserExists looks up a uuid in accounts table
-// if validatingUUID fails, uuid is deleted from uuidMapLocker if exists
-// Returns true if it exists, false if nonexistent
-func checkUserExists(uuid string) (bool, error) {
-	// check if uuid is valid form
-	if err := validateUUID(uuid); err != nil {
-		uuidMapLocker.Delete(uuid)
-		return false, err
-	}
-
-	command := `SELECT uuid FROM user_svc.accounts WHERE uuid = $1`
-	row, err := postgresDB.Query(command, uuid)
-
-	if err != nil {
-		return false, err
-	}
-
-	defer row.Close()
-	for row.Next() {
-		var uid string
-		if err := row.Scan(&uid); err != nil {
-			return false, err
-		}
-
-		if uuid == uid {
-			return true, nil
-		}
-	}
-	if err := row.Err(); err != nil {
-		return false, err
-	}
-
-	return false, nil
 }
 
 // deleteUser deletes user from user_svc.accounts
@@ -340,15 +302,6 @@ func getUserRow(uuid string) (*pb.User, error) {
 	// check if uuid is valid form
 	if err := validateUUID(uuid); err != nil {
 		return nil, err
-	}
-
-	// check uuid exists
-	exists, err := checkUserExists(uuid)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, consts.ErrUUIDNotFound
 	}
 
 	command := `SELECT uuid, first_name, last_name, email, organization, created_date, is_verified, password
@@ -491,7 +444,7 @@ func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) (*pb.Us
 
 	if newEmailToken != "" {
 		// insert token into db
-		if err := insertToken(uuid); err != nil {
+		if err := insertEmailToken(uuid); err != nil {
 			if err := deleteUserRow(uuid); err != nil {
 				return nil, err
 			}
