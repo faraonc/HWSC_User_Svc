@@ -233,12 +233,14 @@ func insertNewUser(user *pb.User) error {
 
 	command := `
 				INSERT INTO user_svc.accounts(
-					uuid, first_name, last_name, email, password, organization, created_date, is_verified, permission_level
+					uuid, first_name, last_name, email, password, 
+				    organization, created_date, is_verified, permission_level
 				) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
 				`
 
 	_, err = postgresDB.Exec(command, user.GetUuid(), user.GetFirstName(), user.GetLastName(),
-		user.GetEmail(), hashedPassword, user.GetOrganization(), time.Now().UTC(), false, auth.PermissionStringMap[auth.UserRegistration])
+		user.GetEmail(), hashedPassword, user.GetOrganization(),
+		time.Now().UTC(), false, auth.PermissionStringMap[auth.User])
 
 	if err != nil {
 		return err
