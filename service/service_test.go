@@ -1,12 +1,55 @@
 package service
 
 import (
+	"fmt"
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"testing"
 )
+
+var (
+	unitTestEmailTemplateDirectory = "../tmpl/"
+	unitTestEmailCounter           = 1
+	unitTestDefaultUser            = &pb.User{
+		FirstName:    "Unit Test",
+		Organization: "Unit Testing",
+	}
+	unitTestFailValue = "shouldFail"
+	unitTestFailEmail = "should@fail.com"
+)
+
+func unitTestEmailGenerator() string {
+	email := "hwsc.test+user" + fmt.Sprint(unitTestEmailCounter) + "@gmail.com"
+	unitTestEmailCounter++
+
+	return email
+}
+
+func unitTestUserGenerator(lastName string) *pb.User {
+	return &pb.User{
+		FirstName:    unitTestDefaultUser.GetFirstName(),
+		LastName:     lastName,
+		Email:        unitTestEmailGenerator(),
+		Password:     lastName,
+		Organization: unitTestDefaultUser.Organization,
+	}
+}
+
+func unitTestInsertUser(lastName string) (*pb.UserResponse, error) {
+	insertUser := unitTestUserGenerator(lastName)
+	s := Service{}
+
+	return s.CreateUser(context.TODO(), &pb.UserRequest{User: insertUser})
+}
+
+// TODO temporary, remove after removing pending token is implemented
+func unitTestRemovePendingToken(uuid string) error {
+	command := `DELETE FROM user_svc.pending_tokens WHERE uuid = $1`
+	_, err := postgresDB.Exec(command, uuid)
+	return err
+}
 
 func TestGetStatus(t *testing.T) {
 	// test service state locker
@@ -42,32 +85,21 @@ func TestGetStatus(t *testing.T) {
 }
 
 func TestCreateUser(t *testing.T) {
-	templateDirectory = "../tmpl/"
-	// valid
-	testUser1 := &pb.User{
-		FirstName:    "Stella Lilly",
-		LastName:     "Kim",
-		Email:        "hwsc.test+user1@gmail.com",
-		Password:     "12345678",
-		Organization: "Test User 1",
-	}
+	templateDirectory = unitTestEmailTemplateDirectory
 
 	// valid
-	testUser2 := &pb.User{
-		FirstName:    "Ray",
-		LastName:     "Bradbury",
-		Email:        "hwsc.test+user2@gmail.com",
-		Password:     "12345678",
-		Organization: "Test User 2",
-	}
+	testUser1 := unitTestUserGenerator("CreateUser-One")
+
+	// valid
+	testUser2 := unitTestUserGenerator("CreateUser-Two")
 
 	// fail: duplicate email test
 	testUser3 := &pb.User{
-		FirstName:    "Duplicate Email",
-		LastName:     "Test",
-		Email:        "hwsc.test+user2@gmail.com",
-		Password:     "12345678",
-		Organization: "Test User 3",
+		FirstName:    unitTestDefaultUser.GetFirstName(),
+		LastName:     "CreateUser Fail",
+		Email:        testUser1.GetEmail(),
+		Password:     unitTestFailValue,
+		Organization: unitTestDefaultUser.GetOrganization(),
 	}
 
 	// fail: invalid fields in userobject (it will fail on firstname)
@@ -77,31 +109,31 @@ func TestCreateUser(t *testing.T) {
 
 	// fail: empty password
 	testUser5 := &pb.User{
-		FirstName: "Lisa",
-		LastName:  "Kim",
-		Email:     "hwsc.test+user3@gmail.com",
+		FirstName: unitTestDefaultUser.GetFirstName(),
+		LastName:  "CreateUser Fail",
+		Email:     unitTestFailEmail,
 		Password:  "",
 	}
 
 	// fail: blank email
 	testUser7 := &pb.User{
-		FirstName: "Blank",
-		LastName:  "Email",
+		FirstName: unitTestDefaultUser.GetFirstName(),
+		LastName:  "CreateUser Fail",
 		Email:     "",
 	}
 
 	// fail: blank organization
 	testUser8 := &pb.User{
-		FirstName:    "Blank",
-		LastName:     "Organization",
-		Email:        "hwsc.test+user2@gmail.com",
-		Password:     "12345678",
+		FirstName:    unitTestDefaultUser.GetFirstName(),
+		LastName:     "CreateUser Fail",
+		Email:        unitTestFailEmail,
+		Password:     unitTestFailValue,
 		Organization: "",
 	}
 
 	// fail: blank last name
 	testUser9 := &pb.User{
-		FirstName: "Lisa",
+		FirstName: unitTestDefaultUser.GetFirstName(),
 		LastName:  "",
 	}
 
@@ -141,17 +173,9 @@ func TestCreateUser(t *testing.T) {
 }
 
 func TestDeleteUser(t *testing.T) {
+	templateDirectory = unitTestEmailTemplateDirectory
 	// insert valid user
-	insertUser := &pb.User{
-		FirstName:    "Delete",
-		LastName:     "User",
-		Email:        "deleteUserTest@email.com",
-		Password:     "12345678",
-		Organization: "Delete User Test",
-	}
-
-	s := Service{}
-	response, err := s.CreateUser(context.TODO(), &pb.UserRequest{User: insertUser})
+	response, err := unitTestInsertUser("DeleteUser-One")
 	assert.Nil(t, err)
 	assert.Equal(t, codes.OK.String(), response.GetMessage())
 
@@ -160,7 +184,7 @@ func TestDeleteUser(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, uuid)
 
-	// exisiting uuid
+	// existing uuid
 	test1 := &pb.User{
 		Uuid: response.GetUser().GetUuid(),
 	}
@@ -184,15 +208,18 @@ func TestDeleteUser(t *testing.T) {
 		expMsg   string
 	}{
 		{&pb.UserRequest{User: test1}, false, codes.OK.String()},
-		{&pb.UserRequest{User: test2}, true, "rpc error: code = NotFound desc = uuid does not exist in database"},
-		{&pb.UserRequest{User: test3}, true, "rpc error: code = Internal desc = invalid User uuid"},
-		{&pb.UserRequest{User: test4}, true, "rpc error: code = Internal desc = invalid User uuid"},
-		{&pb.UserRequest{User: nil}, true, "rpc error: code = InvalidArgument desc = nil request User"},
+		{&pb.UserRequest{User: test2}, false, codes.OK.String()},
+		{&pb.UserRequest{User: test3}, true,
+			"rpc error: code = InvalidArgument desc = invalid User uuid"},
+		{&pb.UserRequest{User: test4}, true,
+			"rpc error: code = InvalidArgument desc = invalid User uuid"},
+		{&pb.UserRequest{User: nil}, true,
+			"rpc error: code = InvalidArgument desc = nil request User"},
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
 	}
 
 	for _, c := range cases {
-		s = Service{}
+		s := Service{}
 		response, err := s.DeleteUser(context.TODO(), c.request)
 		if c.isExpErr {
 			assert.EqualError(t, err, c.expMsg)
@@ -205,17 +232,10 @@ func TestDeleteUser(t *testing.T) {
 }
 
 func TestGetUser(t *testing.T) {
-	// insert valid user
-	insertUser := &pb.User{
-		FirstName:    "Get",
-		LastName:     "User",
-		Email:        "getUserTest@email.com",
-		Password:     "12345678",
-		Organization: "Get User Test",
-	}
+	templateDirectory = unitTestEmailTemplateDirectory
 
-	s := Service{}
-	response, err := s.CreateUser(context.TODO(), &pb.UserRequest{User: insertUser})
+	// insert valid user
+	response, err := unitTestInsertUser("GetUser-One")
 	assert.Nil(t, err)
 	assert.Equal(t, codes.OK.String(), response.GetMessage())
 
@@ -240,13 +260,15 @@ func TestGetUser(t *testing.T) {
 		expMsg   string
 	}{
 		{&pb.UserRequest{User: test1}, false, ""},
-		{&pb.UserRequest{User: test2}, true, "rpc error: code = Internal desc = uuid does not exist in database"},
-		{&pb.UserRequest{User: nil}, true, "rpc error: code = InvalidArgument desc = nil request User"},
+		{&pb.UserRequest{User: test2}, true,
+			"rpc error: code = Internal desc = invalid User uuid"},
+		{&pb.UserRequest{User: nil}, true,
+			"rpc error: code = InvalidArgument desc = nil request User"},
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
 	}
 
 	for _, c := range cases {
-		s = Service{}
+		s := Service{}
 		response, err := s.GetUser(context.TODO(), c.request)
 
 		if c.isExpErr {
@@ -260,55 +282,73 @@ func TestGetUser(t *testing.T) {
 }
 
 func TestUpdateUser(t *testing.T) {
+	templateDirectory = unitTestEmailTemplateDirectory
+
+	// insert valid user 1
+	response1, err := unitTestInsertUser("UpdateUser-One")
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), response1.GetMessage())
+
+	// insert valid user 2
+	response2, err := unitTestInsertUser("UpdateUser-Two")
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), response2.GetMessage())
+
+	// TODO force remove pending token until we have a service for removing pending tokens
+	err = unitTestRemovePendingToken(response2.GetUser().GetUuid())
+	assert.Nil(t, err)
+
+	nonExistingUUID, err := generateUUID()
+	assert.Nil(t, err)
+
+	// valid response1
 	// prospective email is NULL
-	// is_verified stays same as last value (t)
-	// password is hashed
 	// modified_date set
 	updateUser := &pb.User{
-		FirstName:    "UPDATE",
-		LastName:     "UPDATE",
-		Password:     "1234567789",
-		Organization: "UPDATE ORGANIZATION",
-		Uuid:         "0000xsnjg0mqjhbf4qx1efd6y3",
+		LastName:     response1.GetUser().GetLastName() + " UPDATED",
+		Password:     "newPassword",
+		Organization: response1.GetUser().GetOrganization() + " UPDATED",
+		Uuid:         response1.GetUser().GetUuid(),
 	}
 
+	// valid response2
 	// test prospective_email is set
-	// is_verified set to false from (t)
 	// modified_date set
 	updateUser2 := &pb.User{
-		Email: "UPDATE_USER@new.com",
-		Uuid:  "0000xsnjg0mqjhbf4qx1efd6y4",
+		LastName: response1.GetUser().GetLastName() + " UPDATED",
+		Email:    response2.GetUser().GetEmail() + "UPDATED",
+		Uuid:     response2.GetUser().GetUuid(),
 	}
 
-	// invalid uuid
+	// fail - invalid uuid
 	updateUser3 := &pb.User{
-		LastName: "Invalid uuid",
+		LastName: unitTestFailValue,
 		Uuid:     "0000xsnjg0mqjhbf4qx",
 	}
 
-	// non-existent uuid
+	// fail - non-existent uuid (uuid is in valid format)
 	updateUser4 := &pb.User{
-		LastName: "uuid does not exist",
-		Uuid:     "1000xsnjg0mqjhbf4qx1efd6ba",
+		LastName: unitTestFailValue,
+		Uuid:     nonExistingUUID,
 	}
 
-	// invalid email format
+	// fail - invalid email format
 	updateUser5 := &pb.User{
-		LastName: "Invalid email",
+		LastName: unitTestFailValue,
 		Email:    "a",
-		Uuid:     "0000xsnjg0mqjhbf4qx1efd6y4",
+		Uuid:     response2.GetUser().GetUuid(),
 	}
 
-	// invalid first name
+	// fail - invalid first name
 	updateUser6 := &pb.User{
 		FirstName: "@@@",
-		Uuid:      "0000xsnjg0mqjhbf4qx1efd6y4",
+		Uuid:      response2.GetUser().GetUuid(),
 	}
 
-	// invalid last name
+	// fail - invalid last name
 	updateUser7 := &pb.User{
 		LastName: "@@@",
-		Uuid:     "0000xsnjg0mqjhbf4qx1efd6y4",
+		Uuid:     response2.GetUser().GetUuid(),
 	}
 
 	cases := []struct {
@@ -320,9 +360,9 @@ func TestUpdateUser(t *testing.T) {
 		{&pb.UserRequest{User: updateUser2}, false, ""},
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
 		{&pb.UserRequest{User: updateUser3}, true,
-			"rpc error: code = Internal desc = invalid User uuid"},
+			"rpc error: code = InvalidArgument desc = invalid User uuid"},
 		{&pb.UserRequest{User: updateUser4}, true,
-			"rpc error: code = Internal desc = uuid does not exist in database"},
+			"rpc error: code = Internal desc = invalid User uuid"},
 		{&pb.UserRequest{User: updateUser5}, true,
 			"rpc error: code = Internal desc = invalid User email"},
 		{&pb.UserRequest{User: updateUser6}, true,
@@ -348,21 +388,11 @@ func TestUpdateUser(t *testing.T) {
 }
 
 func TestAuthenticateUser(t *testing.T) {
-	templateDirectory = "../tmpl/"
+	templateDirectory = unitTestEmailTemplateDirectory
 
-	validPassword := "12345678"
+	validPassword := "AuthenticateUser-One"
 
-	newUser := &pb.User{
-		FirstName:    "Test",
-		LastName:     "AuthenticateUser",
-		Email:        "authenticate@test.com",
-		Password:     validPassword,
-		Organization: "hwsc",
-	}
-
-	// create user using a service (b/c cannot hard insert a hashed password)
-	s := Service{}
-	response, err := s.CreateUser(context.TODO(), &pb.UserRequest{User: newUser})
+	response, err := unitTestInsertUser(validPassword)
 	assert.Nil(t, err)
 	assert.Equal(t, codes.OK.String(), response.Message)
 
@@ -371,6 +401,9 @@ func TestAuthenticateUser(t *testing.T) {
 
 	validUUID := createdUser.GetUuid()
 	validEmail := createdUser.GetEmail()
+
+	nonExistingUUID, err := generateUUID()
+	assert.Nil(t, err)
 
 	// valid user
 	validUser := &pb.User{
@@ -381,7 +414,7 @@ func TestAuthenticateUser(t *testing.T) {
 
 	// non existing uuid
 	invalidUser1 := &pb.User{
-		Uuid:     "0000bsnjg0mqjhbf4qx1efd6a1",
+		Uuid:     nonExistingUUID,
 		Email:    validEmail,
 		Password: validPassword,
 	}
@@ -389,7 +422,7 @@ func TestAuthenticateUser(t *testing.T) {
 	// non existing email
 	invalidUser2 := &pb.User{
 		Uuid:     validUUID,
-		Email:    "nonexistent@email.none",
+		Email:    unitTestFailEmail,
 		Password: validPassword,
 	}
 
@@ -397,7 +430,7 @@ func TestAuthenticateUser(t *testing.T) {
 	invalidUser3 := &pb.User{
 		Uuid:     validUUID,
 		Email:    validEmail,
-		Password: "mismatchingpassword",
+		Password: unitTestFailValue,
 	}
 
 	// invalid uuid form
@@ -449,20 +482,20 @@ func TestAuthenticateUser(t *testing.T) {
 		{&pb.UserRequest{User: nil}, true,
 			"rpc error: code = InvalidArgument desc = nil request User"},
 		{&pb.UserRequest{User: invalidUser1}, true,
-			"rpc error: code = Unknown desc = uuid does not exist in database"},
+			"rpc error: code = Unknown desc = invalid User uuid"},
 		{&pb.UserRequest{User: invalidUser2}, true,
 			"rpc error: code = InvalidArgument desc = email does not match"},
 		{&pb.UserRequest{User: invalidUser3}, true,
 			"rpc error: code = Unauthenticated desc = " +
 				"crypto/bcrypt: hashedPassword is not the hash of the given password"},
 		{&pb.UserRequest{User: invalidUser4}, true,
-			"rpc error: code = Unknown desc = invalid User uuid"},
+			"rpc error: code = InvalidArgument desc = invalid User uuid"},
 		{&pb.UserRequest{User: invalidUser5}, true,
 			"rpc error: code = InvalidArgument desc = invalid User email"},
 		{&pb.UserRequest{User: invalidUser6}, true,
 			"rpc error: code = InvalidArgument desc = invalid User password"},
 		{&pb.UserRequest{User: invalidUser7}, true,
-			"rpc error: code = Unknown desc = invalid User uuid"},
+			"rpc error: code = InvalidArgument desc = invalid User uuid"},
 		{&pb.UserRequest{User: invalidUser8}, true,
 			"rpc error: code = InvalidArgument desc = invalid User email"},
 		{&pb.UserRequest{User: invalidUser9}, true,

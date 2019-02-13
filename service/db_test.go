@@ -4,6 +4,7 @@ import (
 	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc/codes"
 	"testing"
 )
 
@@ -31,75 +32,61 @@ func TestRefreshDBConnection(t *testing.T) {
 
 func TestInsertNewUser(t *testing.T) {
 	// valid user
-	insertUser := &pb.User{
-		Uuid:         "1111xsnjg0mqjhbf4qx1efd6y7",
-		FirstName:    "Test",
-		LastName:     "Insert New User",
-		Email:        "unit@test.com",
-		Password:     "unit_testing",
-		Organization: "Unit Testing",
-		IsVerified:   true,
-	}
+	uuid1, _ := generateUUID()
+	uuid2, _ := generateUUID()
+
+	insertUser := unitTestUserGenerator("InsertNewUser-One")
+	insertUser.Uuid = uuid1
+	insertUser.IsVerified = true
 
 	// invalid - duplicate uuid
-	insertUser1 := &pb.User{
-		Uuid:         "1111xsnjg0mqjhbf4qx1efd6y7",
-		FirstName:    "Lisa",
-		LastName:     "Kim",
-		Email:        "unit@test.com",
-		Password:     "123456789",
-		Organization: "lisa",
-		IsVerified:   true,
-	}
+	insertUser1 := unitTestUserGenerator(unitTestFailValue)
+	insertUser1.Uuid = uuid1
+	insertUser1.IsVerified = true
 
 	// invalid - duplicate email
-	insertUser2 := &pb.User{
-		Uuid:         "2222xsnjg0mqjhbf4qx1efd6y8",
-		FirstName:    "Lisa",
-		LastName:     "Kim",
-		Email:        "unit@test.com",
-		Password:     "123456789",
-		Organization: "lisa",
-		IsVerified:   true,
-	}
+	insertUser2 := unitTestUserGenerator(unitTestFailValue)
+	insertUser2.Uuid = uuid2
+	insertUser2.Email = insertUser.GetEmail()
+	insertUser2.IsVerified = true
 
 	// invalid - first name
 	insertUser3 := &pb.User{
-		Uuid:      "2222xsnjg0mqjhbf4qx1efd6y8",
+		Uuid:      uuid2,
 		FirstName: "",
 	}
 
 	// invalid - last name
 	insertUser4 := &pb.User{
-		Uuid:      "2222xsnjg0mqjhbf4qx1efd6y8",
-		FirstName: "Lisa",
+		Uuid:      uuid2,
+		FirstName: unitTestFailValue,
 		LastName:  "",
 	}
 
 	// invalid - email
 	insertUser5 := &pb.User{
-		Uuid:      "2222xsnjg0mqjhbf4qx1efd6y8",
-		FirstName: "Lisa",
-		LastName:  "Kim",
+		Uuid:      uuid2,
+		FirstName: unitTestFailValue,
+		LastName:  unitTestFailValue,
 		Email:     "@",
 	}
 
 	// invalid - password
 	insertUser6 := &pb.User{
-		Uuid:      "2222xsnjg0mqjhbf4qx1efd6y8",
-		FirstName: "Lisa",
-		LastName:  "Kim",
-		Email:     "unit@test.com",
+		Uuid:      uuid2,
+		FirstName: unitTestFailValue,
+		LastName:  unitTestFailValue,
+		Email:     unitTestFailEmail,
 		Password:  "",
 	}
 
 	// invalid - organization
 	insertUser7 := &pb.User{
-		Uuid:         "2222xsnjg0mqjhbf4qx1efd6y8",
-		FirstName:    "Lisa",
-		LastName:     "Kim",
-		Email:        "unit@test.com",
-		Password:     "123455677",
+		Uuid:         uuid2,
+		FirstName:    unitTestFailValue,
+		LastName:     unitTestFailValue,
+		Email:        unitTestFailEmail,
+		Password:     unitTestFailValue,
 		Organization: "",
 	}
 
@@ -131,109 +118,108 @@ func TestInsertNewUser(t *testing.T) {
 	}
 }
 
-func TestInsertToken(t *testing.T) {
-	err := insertToken("")
+func TestInsertEmailToken(t *testing.T) {
+	templateDirectory = unitTestEmailTemplateDirectory
+
+	response, err := unitTestInsertUser("InsertEmailToken-One")
+	assert.Nil(t, err)
+	// TODO temporary
+	err = unitTestRemovePendingToken(response.GetUser().GetUuid())
+	assert.Nil(t, err)
+
+	// invalid
+	err = insertEmailToken("")
 	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
 
-	err = insertToken("1234")
+	// invalid
+	err = insertEmailToken("1234")
 	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
 
-	err = insertToken("0000xsnjg0mqjhbf4qx1efd6y6")
+	// valid
+	err = insertEmailToken(response.GetUser().GetUuid())
 	assert.Nil(t, err)
 
 	// test duplicate uuid in user_svc.pending_tokens table
-	err = insertToken("0000xsnjg0mqjhbf4qx1efd6y6")
+	err = insertEmailToken(response.GetUser().GetUuid())
 	assert.EqualError(t, err, "pq: duplicate key value violates unique constraint \"pending_tokens_uuid_key\"")
 
 	// test non-existent uuid
-	err = insertToken("1111xsnjg0mqjhbf4qx1efd6y9")
+	nonExistentUUID, _ := generateUUID()
+	err = insertEmailToken(nonExistentUUID)
 	assert.EqualError(t, err, "pq: insert or update on table \"pending_tokens\" violates foreign key constraint \"pending_tokens_uuid_fkey\"")
 }
 
-func TestCheckUserExists(t *testing.T) {
-	exists, err := checkUserExists("")
-	assert.Equal(t, false, exists)
-	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
-
-	exists, err = checkUserExists("1234")
-	assert.Equal(t, false, exists)
-	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
-
-	exists, err = checkUserExists("0000xsnjg0mqjhbf4qx1efd6y4")
-	assert.Equal(t, true, exists)
-	assert.Nil(t, err)
-
-	exists, err = checkUserExists("1111xsnjg0mqjhbf4qx1efd6y9")
-	assert.Equal(t, false, exists)
-	assert.Nil(t, err)
-}
-
 func TestDeleteUserRow(t *testing.T) {
-	err := deleteUserRow("")
+	templateDirectory = unitTestEmailTemplateDirectory
+
+	response, err := unitTestInsertUser("DeleteUserRow-One")
+	assert.Nil(t, err)
+
+	err = deleteUserRow("")
 	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
 
 	err = deleteUserRow("1234")
 	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
 
-	err = deleteUserRow("1000xsnjg0mqjhbf4qx1efd6y7")
+	err = deleteUserRow(response.GetUser().GetUuid())
 	assert.Nil(t, err)
 
 	// non existent (db does not throw an error)
-	err = deleteUserRow("1000xsnjg0mqjhbf4qx1efd6y7")
+	err = deleteUserRow(response.GetUser().GetUuid())
 	assert.Nil(t, err)
 }
 
 func TestGetUserRow(t *testing.T) {
+	templateDirectory = unitTestEmailTemplateDirectory
+
 	// non existent uuid
-	user, err := getUserRow("1010asnjg0mqjhbf4qx1efd6y1")
-	assert.EqualError(t, err, consts.ErrUUIDNotFound.Error())
-	assert.Nil(t, user)
+	nonExistentUUID, _ := generateUUID()
+	retrievedUser, err := getUserRow(nonExistentUUID)
+	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
+	assert.Nil(t, retrievedUser)
 
 	// existent uuid
-	existentUser := &pb.User{
-		Uuid:         "1212asnjg0mqjhbf4qx1efd6y2",
-		FirstName:    "Unit Test",
-		LastName:     "GetUserRow",
-		Email:        "get@user.com",
-		Organization: "unit test getUserRow",
-	}
-	user, err = getUserRow(existentUser.GetUuid())
+	response, err := unitTestInsertUser("GetUserRow-One")
 	assert.Nil(t, err)
-	assert.Equal(t, existentUser.GetUuid(), user.GetUuid())
-	assert.Equal(t, existentUser.GetFirstName(), user.GetFirstName())
-	assert.Equal(t, existentUser.GetLastName(), user.GetLastName())
-	assert.Equal(t, existentUser.GetEmail(), user.GetEmail())
-	assert.Equal(t, existentUser.GetOrganization(), user.GetOrganization())
+
+	retrievedUser, err = getUserRow(response.GetUser().GetUuid())
+	assert.Nil(t, err)
+	assert.Equal(t, response.GetUser().GetUuid(), retrievedUser.GetUuid())
+	assert.Equal(t, response.GetUser().GetFirstName(), retrievedUser.GetFirstName())
+	assert.Equal(t, response.GetUser().GetLastName(), retrievedUser.GetLastName())
+	assert.Equal(t, response.GetUser().GetEmail(), retrievedUser.GetEmail())
+	assert.Equal(t, response.GetUser().GetOrganization(), retrievedUser.GetOrganization())
 }
 
 func TestUpdateUserRow(t *testing.T) {
+	templateDirectory = unitTestEmailTemplateDirectory
+
+	// insert some new users
+	response1, err := unitTestInsertUser("UpdateUserRow-One")
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), response1.GetMessage())
+	response1.GetUser().IsVerified = true
+
+	response2, err := unitTestInsertUser("UpdateUserRow-Two")
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), response2.GetMessage())
+	err = unitTestRemovePendingToken(response2.GetUser().GetUuid())
+	assert.Nil(t, err)
+	response2.GetUser().IsVerified = true
+
 	// update firstname and modified_date
 	svc := &pb.User{
-		FirstName: "Test Update User Row",
-		Uuid:      "0000xsnjg0mqjhbf4qx1efd6y6",
-	}
-	db := &pb.User{
-		FirstName:    "John F",
-		LastName:     "Kennedy",
-		Email:        "john@test.com",
-		Organization: "123",
-		IsVerified:   true,
+		FirstName: response1.GetUser().GetFirstName() + " UPDATED",
+		Uuid:      response1.GetUser().GetUuid(),
 	}
 
 	// update prospective_email, is_verified, modified_date
 	svc2 := &pb.User{
-		Email: "updateUserRow@test.com",
-		Uuid:  "0000xsnjg0mqjhbf4qx1efd6y5",
-	}
-	db2 := &pb.User{
-		FirstName:    "Mary-Jo",
-		LastName:     "Allen",
-		Email:        "mary@test.com",
-		Organization: "abc",
-		IsVerified:   true,
+		Email: response2.GetUser().GetEmail() + "-UPDATED",
+		Uuid:  response2.GetUser().GetUuid(),
 	}
 
-	const someID = "1111abcde0mqjhbf4qx1efd6y3"
+	nonExistentUUID, _ := generateUUID()
 
 	cases := []struct {
 		uuid       string
@@ -243,14 +229,19 @@ func TestUpdateUserRow(t *testing.T) {
 		expMsg     string
 	}{
 		{"", nil, nil, true, consts.ErrNilRequestUser.Error()},
-		{someID, nil, nil, true, consts.ErrNilRequestUser.Error()},
-		{someID, &pb.User{}, nil, true, consts.ErrNilRequestUser.Error()},
-		{someID, &pb.User{}, &pb.User{}, true, consts.ErrEmptyRequestUser.Error()},
-		{someID, &pb.User{FirstName: "@"}, &pb.User{}, true, consts.ErrInvalidUserFirstName.Error()},
-		{someID, &pb.User{LastName: "@"}, &pb.User{}, true, consts.ErrInvalidUserLastName.Error()},
-		{someID, &pb.User{Email: "@"}, &pb.User{}, true, consts.ErrInvalidUserEmail.Error()},
-		{svc.Uuid, svc, db, false, ""},
-		{svc2.Uuid, svc2, db2, false, ""},
+		{nonExistentUUID, nil, nil, true, consts.ErrNilRequestUser.Error()},
+		{nonExistentUUID, &pb.User{}, nil, true,
+			consts.ErrNilRequestUser.Error()},
+		{nonExistentUUID, &pb.User{}, &pb.User{}, true,
+			consts.ErrEmptyRequestUser.Error()},
+		{nonExistentUUID, &pb.User{FirstName: "@"}, &pb.User{}, true,
+			consts.ErrInvalidUserFirstName.Error()},
+		{nonExistentUUID, &pb.User{LastName: "@"}, &pb.User{}, true,
+			consts.ErrInvalidUserLastName.Error()},
+		{nonExistentUUID, &pb.User{Email: "@"}, &pb.User{}, true,
+			consts.ErrInvalidUserEmail.Error()},
+		{svc.Uuid, svc, response1.GetUser(), false, ""},
+		{svc2.Uuid, svc2, response2.GetUser(), false, ""},
 	}
 
 	for _, c := range cases {

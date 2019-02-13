@@ -116,7 +116,6 @@ func generateUUID() (string, error) {
 }
 
 // validateUUID ensures uuid is not a zero value and matches format set by ulid package
-// if ulid identifies uuid as invalid, the invalid uuid is removed from uuidMapLocker if exists
 // Returns error if zero value or invalid uuid (determined by ulid package)
 func validateUUID(uuid string) error {
 	if uuid == "" {
