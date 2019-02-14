@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	maxFirstNameLength  = 32
-	maxLastNameLength   = 32
-	emailTokenByteSize  = 32
-	easternStandardTime = "EST"
-	daysInWeek          = 7
+	maxFirstNameLength       = 32
+	maxLastNameLength        = 32
+	emailTokenByteSize       = 32
+	universalTimeCoordinated = "UTC"
+	daysInWeek               = 7
 )
 
 var (
@@ -178,7 +178,7 @@ func comparePassword(hashedPassword string, password string) error {
 // built from securely generated random bytes
 // number of bytes is determined by tokenSize
 // Return error if system's secure random number generator fails
-func generateToken(tokenSize int) (string, error) {
+func generateSecretKey(tokenSize int) (string, error) {
 	if tokenSize <= 0 {
 		return "", consts.ErrInvalidTokenSize
 	}
@@ -196,24 +196,24 @@ func generateToken(tokenSize int) (string, error) {
 }
 
 // generateSecretExpirationDate returns the expiration date for secret keys used for signing JWT
-// currently sets expiration date to every Monday at 3AM UTC
+// currently sets expiration date to one week later at 3AM UTC
 // Returns error if date object is nil or error with loading location
-func generateSecretExpirationDate(currentDate time.Time) (*time.Time, error) {
-	if currentDate.IsZero() {
-		return nil, consts.ErrInvalidTimeDate
+func generateSecretExpirationTimestamp(currentTimestamp time.Time) (*time.Time, error) {
+	if currentTimestamp.IsZero() {
+		return nil, consts.ErrInvalidTimeStamp
 	}
 
-	timeZonedDate := currentDate.UTC()
-	currentWeekday := int(timeZonedDate.Weekday())
+	timeZonedTimestamp := currentTimestamp
+	if currentTimestamp.Location().String() != universalTimeCoordinated {
+		timeZonedTimestamp = currentTimestamp.UTC()
+	}
 
-	addDays := ((daysInWeek - currentWeekday) % daysInWeek) + 1
-
-	// add number of days to current weekday to get to Monday
-	modifiedDate := currentDate.AddDate(0, 0, int(addDays))
+	// add 7 days to current weekday to get to one week later
+	modifiedTimestamp := timeZonedTimestamp.AddDate(0, 0, daysInWeek)
 
 	// reset time to 3 AM
-	expirationDate := time.Date(modifiedDate.Year(), modifiedDate.Month(), modifiedDate.Day(),
-		3, 0, 0, 0, timeZonedDate.Location())
+	expirationTimestamp := time.Date(modifiedTimestamp.Year(), modifiedTimestamp.Month(), modifiedTimestamp.Day(),
+		3, 0, 0, 0, timeZonedTimestamp.Location())
 
-	return &expirationDate, nil
+	return &expirationTimestamp, nil
 }

@@ -263,7 +263,7 @@ func insertEmailToken(uuid string) error {
 	}
 
 	// create unique email token
-	token, err := generateToken(emailTokenByteSize)
+	token, err := generateSecretKey(emailTokenByteSize)
 	if err != nil {
 		return err
 	}
@@ -398,7 +398,7 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 		newEmail = svcDerived.GetEmail()
 
 		// create unique email token
-		token, err := generateToken(emailTokenByteSize)
+		token, err := generateSecretKey(emailTokenByteSize)
 		if err != nil {
 			return nil, err
 		}
@@ -467,7 +467,7 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 // Returns err if secret is empty or error with database
 func insertNewSecret() error {
 	// generate a new secret
-	secretKey, err := generateToken(auth.SecretByteSize)
+	secretKey, err := generateSecretKey(auth.SecretByteSize)
 	if err != nil {
 		return err
 	}
@@ -478,18 +478,42 @@ func insertNewSecret() error {
 				) VALUES($1, $2, $3)
 				`
 
-	expirationTimestamp, err := generateSecretExpirationDate(time.Now().UTC())
+	createdTimeStamp := time.Now().UTC()
+	expirationTimestamp, err := generateSecretExpirationTimestamp(createdTimeStamp)
 	if err != nil {
 		return err
 	}
 
-	_, err = postgresDB.Exec(command, secretKey, time.Now().UTC(), expirationTimestamp)
+	_, err = postgresDB.Exec(command, secretKey, createdTimeStamp, expirationTimestamp)
 
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// queryLatestSecret looks for the secret that is less 2 minutes
+// Used to validate that a new secret has been inserted into database
+// Returns true if found, else false
+func queryLatestSecret() (bool, error) {
+	command := `
+				SELECT secret_key FROM user_security.secret 
+				WHERE created_timestamp > NOW() - INTERVAL '2 minutes' 
+				LIMIT 1
+				`
+
+	var secret string
+	err := postgresDB.QueryRow(command).Scan(&secret)
+	if err != nil {
+		return false, err
+	}
+
+	if secret == "" {
+		return false, consts.ErrNoRowsFound
+	}
+
+	return true, nil
 }
 
 //TODO work on later

@@ -35,7 +35,7 @@ const (
 var (
 	serviceStateLocker stateLocker
 	uuidMapLocker      sync.Map
-	generalRWLocker    sync.RWMutex
+	secretKeyLocker    sync.RWMutex
 
 	// converts the state of the service to a string
 	serviceStateMap = map[state]string{
@@ -527,8 +527,8 @@ func (s *Service) NewSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	generalRWLocker.Lock()
-	defer generalRWLocker.Unlock()
+	secretKeyLocker.Lock()
+	defer secretKeyLocker.Unlock()
 
 	if err := insertNewSecret(); err != nil {
 		logger.Error(consts.MakeNewSecret, consts.MsgErrSecret, err.Error())
