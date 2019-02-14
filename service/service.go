@@ -1,8 +1,8 @@
 package service
 
 import (
-	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
-	"github.com/hwsc-org/hwsc-lib/auth"
+	pbsvc "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user"
+	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-lib/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
@@ -34,8 +34,6 @@ const (
 
 var (
 	serviceStateLocker stateLocker
-	uuidLocker         sync.Mutex
-	tokenLocker        sync.Mutex
 	uuidMapLocker      sync.Map
 
 	// converts the state of the service to a string
@@ -53,7 +51,7 @@ func init() {
 
 // GetStatus gets the current status of the service
 // Returns status code int and status code text, and any connection errors
-func (s *Service) GetStatus(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+func (s *Service) GetStatus(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetStatus")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
@@ -64,14 +62,14 @@ func (s *Service) GetStatus(ctx context.Context, req *pb.UserRequest) (*pb.UserR
 		return consts.ResponseServiceUnavailable, nil
 	}
 
-	return &pb.UserResponse{
-		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
+	return &pbsvc.UserResponse{
+		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
 	}, nil
 }
 
 // CreateUser creates a new user document and inserts it to user DB
-func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("CreateUser")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
@@ -141,15 +139,15 @@ func (s *Service) CreateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	user.Password = ""
 	user.IsVerified = false
 
-	return &pb.UserResponse{
-		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
+	return &pbsvc.UserResponse{
+		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
 		User:    user,
 	}, nil
 }
 
 // DeleteUser deletes a user document in user DB
-func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+func (s *Service) DeleteUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("DeleteUser")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
@@ -192,15 +190,15 @@ func (s *Service) DeleteUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	// release mutex resource
 	uuidMapLocker.Delete(user.GetUuid())
 
-	return &pb.UserResponse{
-		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
+	return &pbsvc.UserResponse{
+		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
-		User:    &pb.User{Uuid: user.GetUuid()},
+		User:    &pblib.User{Uuid: user.GetUuid()},
 	}, nil
 }
 
 // UpdateUser updates a user document in user DB
-func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+func (s *Service) UpdateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("UpdateUser")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
@@ -245,7 +243,7 @@ func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 	}
 
 	// update user
-	var updatedUser *pb.User
+	var updatedUser *pblib.User
 	updatedUser, err = updateUserRow(svcDerivedUser.GetUuid(), svcDerivedUser, dbDerivedUser)
 	if err != nil {
 		logger.Error(consts.UpdateUserTag, consts.MsgErrUpdateUserRow, err.Error())
@@ -256,15 +254,15 @@ func (s *Service) UpdateUser(ctx context.Context, req *pb.UserRequest) (*pb.User
 		updatedUser.GetFirstName(), updatedUser.GetLastName())
 
 	updatedUser.Password = ""
-	return &pb.UserResponse{
-		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
+	return &pbsvc.UserResponse{
+		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
 		User:    updatedUser,
 	}, nil
 }
 
 // AuthenticateUser goes through user DB collection and tries to find matching email/password
-func (s *Service) AuthenticateUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+func (s *Service) AuthenticateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("AuthenticateUser")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
@@ -325,22 +323,22 @@ func (s *Service) AuthenticateUser(ctx context.Context, req *pb.UserRequest) (*p
 		retrievedUser.GetFirstName(), retrievedUser.GetLastName())
 
 	retrievedUser.Password = ""
-	return &pb.UserResponse{
-		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
+	return &pbsvc.UserResponse{
+		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
 		User:    retrievedUser,
 	}, nil
 }
 
 // ListUsers returns the user DB collection
-func (s *Service) ListUsers(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+func (s *Service) ListUsers(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	//TODO
 	logger.RequestService("ListUsers")
-	return &pb.UserResponse{}, nil
+	return &pbsvc.UserResponse{}, nil
 }
 
 // GetUser returns a user document in user DB
-func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+func (s *Service) GetUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetUser")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
@@ -388,30 +386,30 @@ func (s *Service) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserRes
 	logger.Info("Retrieved user:", user.GetUuid(), user.GetFirstName(), user.GetLastName())
 
 	retrievedUser.Password = ""
-	return &pb.UserResponse{
-		Status:  &pb.UserResponse_Code{Code: uint32(codes.OK)},
+	return &pbsvc.UserResponse{
+		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
 		User:    retrievedUser,
 	}, nil
 }
 
 // ShareDocument updates user/s documents shared_to_me field in user DB
-func (s *Service) ShareDocument(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+func (s *Service) ShareDocument(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	//TODO
 	logger.RequestService("ShareDocument")
-	return &pb.UserResponse{}, nil
+	return &pbsvc.UserResponse{}, nil
 }
 
 // GetSecret retrieves and returns the recent/active secret from the DB
-func (s *Service) GetSecret(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	// TODO
 	logger.RequestService("Get Secret")
-	return &pb.UserResponse{}, nil
+	return &pbsvc.UserResponse{}, nil
 }
 
 // GetToken generates a token after verifying user's email and password,
 // stores generated token related info in DB, returns said token
-func (s *Service) GetToken(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetAuthToken")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
@@ -468,34 +466,54 @@ func (s *Service) GetToken(ctx context.Context, req *pb.UserRequest) (*pb.UserRe
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	// create JWT header and payload
-	header := &auth.Header{
-		Alg: auth.Hs256,
-		TokenTyp: auth.Jwt,
-	}
-	// expiration date is set by auth's NewToken
-	// TODO change auth.User default when we add permission_level to user proto (retrieve from getUserRow)
-	payload := &auth.Body{
-		UUID: retrievedUser.GetUuid(),
-		Permission: auth.User,
-	}
-	// make secret
+	// TODO permission string "USER" should come from retrievedUser.permission_level
+	//permission := auth.PermissionEnumMap["USER"]
+	//algorithm := auth.AlgorithmMap[permission]
+	//
+	////create JWT header and payload
+	//header := &auth.Header{
+	//	Alg: algorithm,
+	//	TokenTyp: auth.Jwt,
+	//}
+	//// expiration date is set by auth's NewToken
+	//body := &auth.Body{
+	//	UUID: retrievedUser.GetUuid(),
+	//	Permission: permission,
+	//}
+	//
+	//// make secret key to sign jwtoken
+	//secretKey, err := generateToken(auth.SignatureBytesMap[algorithm])
+	//if err != nil {
+	//	logger.Error(consts.GetAuthTokenTag, consts.MsgErrGeneratingToken, err.Error())
+	//	return nil, status.Error(codes.Internal, err.Error())
+	//}
+	//secret := &pblib.Secret{
+	//	Key: secretKey,
+	//	CreatedTimestamp: time.Now().UTC().Unix(),
+	//}
+	//
+	//// get token
+	//signedToken, err := auth.NewToken(header, body, secret)
+	//if err != nil {
+	//	logger.Error(consts.GetAuthTokenTag, consts.MsgErrGeneratingSignedToken, err.Error())
+	//	return nil, status.Error(codes.Internal, err.Error())
+	//}
 
-	// call new token
+	// insert JWT detail into DB
 
-	return &pb.UserResponse{}, nil
+	return &pbsvc.UserResponse{}, nil
 }
 
 // VerifyToken checks if received token from Chrome is valid
-func (s *Service) VerifyToken(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+func (s *Service) VerifyToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	// TODO
 	logger.RequestService("Verify Token")
-	return &pb.UserResponse{}, nil
+	return &pbsvc.UserResponse{}, nil
 }
 
 // NewSecret generates and inserts a new secret into DB
-func (s *Service) NewSecret(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+func (s *Service) NewSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	// TODO
 	logger.RequestService("New Secret")
-	return &pb.UserResponse{}, nil
+	return &pbsvc.UserResponse{}, nil
 }

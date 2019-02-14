@@ -7,6 +7,6 @@ const (
 	UpdateUserTag       string = "UpdateUser -"
 	GetUserTag          string = "GetUser -"
 	UserServiceTag      string = "User Service -"
-	GetAuthTokenTag		string = "GetAuthToken -"
+	GetAuthTokenTag     string = "GetAuthToken -"
 	PSQL                string = "PSQL -"
 )

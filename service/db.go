@@ -4,11 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
+	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-lib/auth"
-	log "github.com/hwsc-org/hwsc-lib/logger"
+	authconst "github.com/hwsc-org/hwsc-lib/consts"
+	"github.com/hwsc-org/hwsc-lib/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
+	"log"
 	"time"
 
 	// database/sql uses this library indirectly
@@ -28,7 +30,7 @@ var (
 )
 
 func init() {
-	log.Info(consts.PSQL, "Connecting to postgres DB")
+	logger.Info(consts.PSQL, "Connecting to postgres DB")
 
 	// initialize connection string
 	connectionString = fmt.Sprintf(
@@ -39,13 +41,13 @@ func init() {
 	var err error
 	postgresDB, err = sql.Open(dbDriverName, connectionString)
 	if err != nil {
-		log.Fatal(consts.PSQL, "Failed to intialize connection object:", err.Error())
+		logger.Fatal(consts.PSQL, "Failed to intialize connection object:", err.Error())
 	}
 
 	// verify connection is alive, establishing connection if necessary
 	err = postgresDB.Ping()
 	if err != nil {
-		log.Fatal(consts.PSQL, "Ping failed, cannot establish connection:", err.Error())
+		logger.Fatal(consts.PSQL, "Ping failed, cannot establish connection:", err.Error())
 	}
 
 	// Handle Terminate Signal(Ctrl + C) gracefully
@@ -53,7 +55,7 @@ func init() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		log.Info(consts.PSQL, "Disconnecting postgres DB")
+		logger.Info(consts.PSQL, "Disconnecting postgres DB")
 		if postgresDB != nil {
 			_ = postgresDB.Close()
 		}
@@ -143,6 +145,9 @@ CREATE TABLE user_svc.shared_documents
   uuid ulid   REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE
 );
 
+
+
+
 CREATE SCHEMA user_security;
 
 CREATE TYPE user_security.algorithm_type AS ENUM
@@ -200,7 +205,7 @@ func refreshDBConnection() error {
 	if err := postgresDB.Ping(); err != nil {
 		_ = postgresDB.Close()
 		postgresDB = nil
-		log.Error(consts.PSQL, "Failed to ping and reconnect to postgres db:", err.Error())
+		logger.Error(consts.PSQL, "Failed to ping and reconnect to postgres db:", err.Error())
 		return err
 	}
 
@@ -210,7 +215,7 @@ func refreshDBConnection() error {
 // insertNewUser checks user field validity, hashes password and
 // inserts new users to user_svc.accounts table
 // Returns error if User is nil or if error with inserting to database
-func insertNewUser(user *pb.User) error {
+func insertNewUser(user *pblib.User) error {
 	if user == nil {
 		return consts.ErrNilRequestUser
 	}
@@ -258,7 +263,7 @@ func insertEmailToken(uuid string) error {
 	}
 
 	// create unique email token
-	token, err := generateEmailToken()
+	token, err := generateToken(emailTokenByteSize)
 	if err != nil {
 		return err
 	}
@@ -300,7 +305,7 @@ func deleteUserRow(uuid string) error {
 // retrieving non-existent uuid does not throw an error, db simply returns nothing
 // so we put in a check to see if uuid exists to return error if not found
 // Returns pb.User struct if found, nil otherwise, error if uuid does not exist or err with db
-func getUserRow(uuid string) (*pb.User, error) {
+func getUserRow(uuid string) (*pblib.User, error) {
 	// check if uuid is valid form
 	if err := validateUUID(uuid); err != nil {
 		return nil, err
@@ -316,7 +321,7 @@ func getUserRow(uuid string) (*pb.User, error) {
 
 	defer row.Close()
 
-	var userObject *pb.User
+	var userObject *pblib.User
 	for row.Next() {
 		var uid, firstName, lastName, email, organization, password string
 		var isVerified bool
@@ -326,7 +331,7 @@ func getUserRow(uuid string) (*pb.User, error) {
 		if err != nil {
 			return nil, err
 		}
-		userObject = &pb.User{
+		userObject = &pblib.User{
 			Uuid:         uid,
 			FirstName:    firstName,
 			LastName:     lastName,
@@ -351,7 +356,7 @@ func getUserRow(uuid string) (*pb.User, error) {
 // updateUser does a partial update by going through each User fields and replacing values
 // that are different from original values. It's partial b/c some fields like created_date & uuid are not touched
 // Return error if params are zero values or querying problem
-func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) (*pb.User, error) {
+func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (*pblib.User, error) {
 	if svcDerived == nil || dbDerived == nil {
 		return nil, consts.ErrNilRequestUser
 	}
@@ -393,7 +398,7 @@ func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) (*pb.Us
 		newEmail = svcDerived.GetEmail()
 
 		// create unique email token
-		token, err := generateEmailToken()
+		token, err := generateToken(emailTokenByteSize)
 		if err != nil {
 			return nil, err
 		}
@@ -435,7 +440,7 @@ func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) (*pb.Us
 		return nil, err
 	}
 
-	updatedUser := &pb.User{
+	updatedUser := &pblib.User{
 		Uuid:         uuid,
 		FirstName:    newFirstName,
 		LastName:     newLastName,
@@ -455,4 +460,60 @@ func updateUserRow(uuid string, svcDerived *pb.User, dbDerived *pb.User) (*pb.Us
 	}
 
 	return updatedUser, nil
+}
+
+//TODO work on later
+func insertNewSecret(secret *pblib.Secret) error {
+	if secret == nil {
+		return authconst.ErrNilSecret
+	}
+
+	command := `
+				INSERT INTO user_security.secret(
+					secret_key, created_timestamp
+				) VALUES($1, $2)
+				`
+
+	_, err := postgresDB.Exec(command, secret.Key, secret.CreatedTimestamp)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+//TODO work on later
+func insertJWToken(uuid string, header *auth.Header, body *auth.Body, token string, secretKey string) error {
+	if err := validateUUID(uuid); err != nil {
+		return consts.ErrInvalidUUID
+	}
+	if header == nil {
+		return authconst.ErrNilHeader
+	}
+	if body == nil {
+		return authconst.ErrNilBody
+	}
+	if token == "" {
+		return authconst.ErrEmptyToken
+	}
+	if secretKey == "" {
+		return authconst.ErrEmptySecret
+	}
+
+	command := `
+				INSERT INTO user_security.tokens(
+					token_string, secret_key, token_type, algorithm,
+					permission, expiration_date, uuid
+				) VALUES($1, $2, $3, $4, $5, $6, $7)
+				`
+
+	_, err := postgresDB.Exec(command, token, secretKey, header.TokenTyp, header.Alg,
+		auth.PermissionStringMap[body.Permission], time.Unix(body.ExpirationTimestamp, 0), uuid)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

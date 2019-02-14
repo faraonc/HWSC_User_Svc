@@ -30,12 +30,12 @@
   name = "github.com/hwsc-org/hwsc-api-blocks"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/hwsc-org/hwsc-lib"
+  name = "github.com/lib/pq"
+  version = "1.0.0"
 
 [[constraint]]
   name = "github.com/micro/go-config"
-  version = "0.12.0"
+  version = "0.14.0"
 
 [[constraint]]
   name = "github.com/oklog/ulid"
@@ -43,7 +43,7 @@
 
 [[constraint]]
   name = "github.com/stretchr/testify"
-  version = "1.2.2"
+  version = "1.3.0"
 
 [[constraint]]
   branch = "master"
@@ -56,10 +56,6 @@
 [[constraint]]
   name = "google.golang.org/grpc"
   version = "1.18.0"
-
-[[constraint]]
-  name = "github.com/lib/pq"
-  revision = "9eb73efc1fcc404148b56765b0d3f61d9a5ef8ee"
 
 [prune]
   go-tests = true
