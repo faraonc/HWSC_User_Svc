@@ -2,12 +2,10 @@ package service
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"io/ioutil"
-	"math/rand"
 	"net/smtp"
 	"os"
 	"regexp"
@@ -175,22 +173,6 @@ func (r *emailRequest) sendEmail(htmlTemplate string) error {
 	}
 
 	return nil
-}
-
-// generateEmailToken generates a 44 byte, base64 URL-safe string
-// built from securely generated random bytes
-// Return error if system's secure random number generator fails
-func generateEmailToken() (string, error) {
-	tokenLocker.Lock()
-	defer tokenLocker.Unlock()
-
-	randomBytes := make([]byte, emailTokenBytes)
-	_, err := rand.Read(randomBytes)
-	if err != nil {
-		return "", err
-	}
-
-	return base64.URLEncoding.EncodeToString(randomBytes), nil
 }
 
 // validateEmail checks for very basic valid email format and string length

@@ -1,7 +1,7 @@
 package service
 
 import (
-	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
+	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
@@ -51,20 +51,20 @@ func TestInsertNewUser(t *testing.T) {
 	insertUser2.IsVerified = true
 
 	// invalid - first name
-	insertUser3 := &pb.User{
+	insertUser3 := &pblib.User{
 		Uuid:      uuid2,
 		FirstName: "",
 	}
 
 	// invalid - last name
-	insertUser4 := &pb.User{
+	insertUser4 := &pblib.User{
 		Uuid:      uuid2,
 		FirstName: unitTestFailValue,
 		LastName:  "",
 	}
 
 	// invalid - email
-	insertUser5 := &pb.User{
+	insertUser5 := &pblib.User{
 		Uuid:      uuid2,
 		FirstName: unitTestFailValue,
 		LastName:  unitTestFailValue,
@@ -72,7 +72,7 @@ func TestInsertNewUser(t *testing.T) {
 	}
 
 	// invalid - password
-	insertUser6 := &pb.User{
+	insertUser6 := &pblib.User{
 		Uuid:      uuid2,
 		FirstName: unitTestFailValue,
 		LastName:  unitTestFailValue,
@@ -81,7 +81,7 @@ func TestInsertNewUser(t *testing.T) {
 	}
 
 	// invalid - organization
-	insertUser7 := &pb.User{
+	insertUser7 := &pblib.User{
 		Uuid:         uuid2,
 		FirstName:    unitTestFailValue,
 		LastName:     unitTestFailValue,
@@ -91,7 +91,7 @@ func TestInsertNewUser(t *testing.T) {
 	}
 
 	cases := []struct {
-		user     *pb.User
+		user     *pblib.User
 		isExpErr bool
 		expMsg   string
 	}{
@@ -104,8 +104,8 @@ func TestInsertNewUser(t *testing.T) {
 		{insertUser6, true, consts.ErrInvalidPassword.Error()},
 		{insertUser7, true, consts.ErrInvalidUserOrganization.Error()},
 		{nil, true, consts.ErrNilRequestUser.Error()},
-		{&pb.User{}, true, consts.ErrInvalidUUID.Error()},
-		{&pb.User{Uuid: "1234"}, true, consts.ErrInvalidUUID.Error()},
+		{&pblib.User{}, true, consts.ErrInvalidUUID.Error()},
+		{&pblib.User{Uuid: "1234"}, true, consts.ErrInvalidUUID.Error()},
 	}
 
 	for _, c := range cases {
@@ -208,13 +208,13 @@ func TestUpdateUserRow(t *testing.T) {
 	response2.GetUser().IsVerified = true
 
 	// update firstname and modified_date
-	svc := &pb.User{
+	svc := &pblib.User{
 		FirstName: response1.GetUser().GetFirstName() + " UPDATED",
 		Uuid:      response1.GetUser().GetUuid(),
 	}
 
 	// update prospective_email, is_verified, modified_date
-	svc2 := &pb.User{
+	svc2 := &pblib.User{
 		Email: response2.GetUser().GetEmail() + "-UPDATED",
 		Uuid:  response2.GetUser().GetUuid(),
 	}
@@ -223,22 +223,22 @@ func TestUpdateUserRow(t *testing.T) {
 
 	cases := []struct {
 		uuid       string
-		svcDerived *pb.User
-		dbDerived  *pb.User
+		svcDerived *pblib.User
+		dbDerived  *pblib.User
 		isExpErr   bool
 		expMsg     string
 	}{
 		{"", nil, nil, true, consts.ErrNilRequestUser.Error()},
 		{nonExistentUUID, nil, nil, true, consts.ErrNilRequestUser.Error()},
-		{nonExistentUUID, &pb.User{}, nil, true,
+		{nonExistentUUID, &pblib.User{}, nil, true,
 			consts.ErrNilRequestUser.Error()},
-		{nonExistentUUID, &pb.User{}, &pb.User{}, true,
+		{nonExistentUUID, &pblib.User{}, &pblib.User{}, true,
 			consts.ErrEmptyRequestUser.Error()},
-		{nonExistentUUID, &pb.User{FirstName: "@"}, &pb.User{}, true,
+		{nonExistentUUID, &pblib.User{FirstName: "@"}, &pblib.User{}, true,
 			consts.ErrInvalidUserFirstName.Error()},
-		{nonExistentUUID, &pb.User{LastName: "@"}, &pb.User{}, true,
+		{nonExistentUUID, &pblib.User{LastName: "@"}, &pblib.User{}, true,
 			consts.ErrInvalidUserLastName.Error()},
-		{nonExistentUUID, &pb.User{Email: "@"}, &pb.User{}, true,
+		{nonExistentUUID, &pblib.User{Email: "@"}, &pblib.User{}, true,
 			consts.ErrInvalidUserEmail.Error()},
 		{svc.Uuid, svc, response1.GetUser(), false, ""},
 		{svc2.Uuid, svc2, response2.GetUser(), false, ""},

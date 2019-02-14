@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
+	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/stretchr/testify/assert"
 	"sync"
@@ -54,7 +54,7 @@ func TestIsStateAvailable(t *testing.T) {
 
 func TestValidateUser(t *testing.T) {
 	// valid
-	validTest := pb.User{
+	validTest := pblib.User{
 		FirstName:    "Lisa",
 		LastName:     "Kim",
 		Email:        "lisa@test.com",
@@ -63,7 +63,7 @@ func TestValidateUser(t *testing.T) {
 	}
 
 	// invalid first name
-	invalidFirstName := pb.User{
+	invalidFirstName := pblib.User{
 		FirstName:    "",
 		LastName:     "Kim",
 		Email:        "lisa@test.com",
@@ -72,7 +72,7 @@ func TestValidateUser(t *testing.T) {
 	}
 
 	// invalid last name
-	invalidLastName := pb.User{
+	invalidLastName := pblib.User{
 		FirstName:    "Lisa",
 		LastName:     "",
 		Email:        "lisa@test.com",
@@ -81,7 +81,7 @@ func TestValidateUser(t *testing.T) {
 	}
 
 	// invalid email
-	invalidEmail := pb.User{
+	invalidEmail := pblib.User{
 		FirstName:    "Lisa",
 		LastName:     "Kim",
 		Email:        "@",
@@ -90,7 +90,7 @@ func TestValidateUser(t *testing.T) {
 	}
 
 	// invalid password
-	invalidPassword := pb.User{
+	invalidPassword := pblib.User{
 		FirstName:    "Lisa",
 		LastName:     "Kim",
 		Email:        "lisa@test.com",
@@ -99,7 +99,7 @@ func TestValidateUser(t *testing.T) {
 	}
 
 	// invalid organization
-	invalidOrg := pb.User{
+	invalidOrg := pblib.User{
 		FirstName:    "Lisa",
 		LastName:     "Kim",
 		Email:        "lisa@test.com",
@@ -108,7 +108,7 @@ func TestValidateUser(t *testing.T) {
 	}
 
 	cases := []struct {
-		user     *pb.User
+		user     *pblib.User
 		isExpErr bool
 		expMsg   string
 	}{
@@ -337,4 +337,46 @@ func TestComparePassword(t *testing.T) {
 
 	err = comparePassword("", "")
 	assert.EqualError(t, err, consts.ErrInvalidPassword.Error())
+}
+
+func TestGenerateToken(t *testing.T) {
+	// NOTE: unable to force a race condition given the nature of randomByte used in generateEmailToken()
+	// but functionality is same as generateUUID and that's been tested for race conditions
+
+	// test for invalid token byte size
+	token, err := generateToken(0)
+	assert.EqualError(t, err, consts.ErrInvalidTokenSize.Error())
+	assert.Equal(t, "", token)
+
+	token, err = generateToken(-256)
+	assert.EqualError(t, err, consts.ErrInvalidTokenSize.Error())
+	assert.Equal(t, "", token)
+
+	// test race condition
+	const count = 100
+	var tokens sync.Map
+	var wg sync.WaitGroup
+
+	wg.Add(count)
+	start := make(chan struct{})
+
+	for i := 0; i < count; i++ {
+		go func() {
+			<-start
+			defer wg.Done()
+
+			// store tokens in map to check for duplicates
+			token, err := generateToken(emailTokenByteSize)
+			assert.Nil(t, err)
+			assert.NotEqual(t, "", token)
+
+			_, ok := tokens.Load(token)
+			assert.Equal(t, false, ok)
+
+			tokens.Store(token, true)
+		}()
+	}
+
+	close(start)
+	wg.Wait()
 }

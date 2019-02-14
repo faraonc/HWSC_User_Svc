@@ -2,7 +2,8 @@ package service
 
 import (
 	"fmt"
-	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
+	pbsvc "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user"
+	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -12,7 +13,7 @@ import (
 var (
 	unitTestEmailTemplateDirectory = "../tmpl/"
 	unitTestEmailCounter           = 1
-	unitTestDefaultUser            = &pb.User{
+	unitTestDefaultUser            = &pblib.User{
 		FirstName:    "Unit Test",
 		Organization: "Unit Testing",
 	}
@@ -27,8 +28,8 @@ func unitTestEmailGenerator() string {
 	return email
 }
 
-func unitTestUserGenerator(lastName string) *pb.User {
-	return &pb.User{
+func unitTestUserGenerator(lastName string) *pblib.User {
+	return &pblib.User{
 		FirstName:    unitTestDefaultUser.GetFirstName(),
 		LastName:     lastName,
 		Email:        unitTestEmailGenerator(),
@@ -37,11 +38,11 @@ func unitTestUserGenerator(lastName string) *pb.User {
 	}
 }
 
-func unitTestInsertUser(lastName string) (*pb.UserResponse, error) {
+func unitTestInsertUser(lastName string) (*pbsvc.UserResponse, error) {
 	insertUser := unitTestUserGenerator(lastName)
 	s := Service{}
 
-	return s.CreateUser(context.TODO(), &pb.UserRequest{User: insertUser})
+	return s.CreateUser(context.TODO(), &pbsvc.UserRequest{User: insertUser})
 }
 
 // TODO temporary, remove after removing pending token is implemented
@@ -54,12 +55,12 @@ func unitTestRemovePendingToken(uuid string) error {
 func TestGetStatus(t *testing.T) {
 	// test service state locker
 	cases := []struct {
-		request     *pb.UserRequest
+		request     *pbsvc.UserRequest
 		serverState state
 		expMsg      string
 	}{
-		{&pb.UserRequest{}, available, codes.OK.String()},
-		{&pb.UserRequest{}, unavailable, codes.Unavailable.String()},
+		{&pbsvc.UserRequest{}, available, codes.OK.String()},
+		{&pbsvc.UserRequest{}, unavailable, codes.Unavailable.String()},
 	}
 
 	for _, c := range cases {
@@ -76,7 +77,7 @@ func TestGetStatus(t *testing.T) {
 	err := postgresDB.Close()
 	assert.Nil(t, err)
 
-	response, _ := s.GetStatus(context.TODO(), &pb.UserRequest{})
+	response, _ := s.GetStatus(context.TODO(), &pbsvc.UserRequest{})
 	assert.Equal(t, codes.Unavailable.String(), response.GetMessage())
 
 	// reconnect
@@ -94,7 +95,7 @@ func TestCreateUser(t *testing.T) {
 	testUser2 := unitTestUserGenerator("CreateUser-Two")
 
 	// fail: duplicate email test
-	testUser3 := &pb.User{
+	testUser3 := &pblib.User{
 		FirstName:    unitTestDefaultUser.GetFirstName(),
 		LastName:     "CreateUser Fail",
 		Email:        testUser1.GetEmail(),
@@ -103,12 +104,12 @@ func TestCreateUser(t *testing.T) {
 	}
 
 	// fail: invalid fields in userobject (it will fail on firstname)
-	testUser4 := &pb.User{
+	testUser4 := &pblib.User{
 		FirstName: "",
 	}
 
 	// fail: empty password
-	testUser5 := &pb.User{
+	testUser5 := &pblib.User{
 		FirstName: unitTestDefaultUser.GetFirstName(),
 		LastName:  "CreateUser Fail",
 		Email:     unitTestFailEmail,
@@ -116,14 +117,14 @@ func TestCreateUser(t *testing.T) {
 	}
 
 	// fail: blank email
-	testUser7 := &pb.User{
+	testUser7 := &pblib.User{
 		FirstName: unitTestDefaultUser.GetFirstName(),
 		LastName:  "CreateUser Fail",
 		Email:     "",
 	}
 
 	// fail: blank organization
-	testUser8 := &pb.User{
+	testUser8 := &pblib.User{
 		FirstName:    unitTestDefaultUser.GetFirstName(),
 		LastName:     "CreateUser Fail",
 		Email:        unitTestFailEmail,
@@ -132,32 +133,32 @@ func TestCreateUser(t *testing.T) {
 	}
 
 	// fail: blank last name
-	testUser9 := &pb.User{
+	testUser9 := &pblib.User{
 		FirstName: unitTestDefaultUser.GetFirstName(),
 		LastName:  "",
 	}
 
 	cases := []struct {
-		request  *pb.UserRequest
+		request  *pbsvc.UserRequest
 		isExpErr bool
 		expMsg   string
 	}{
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
-		{&pb.UserRequest{}, true, "rpc error: code = InvalidArgument " +
+		{&pbsvc.UserRequest{}, true, "rpc error: code = InvalidArgument " +
 			"desc = nil request User"},
-		{&pb.UserRequest{User: testUser1}, false, codes.OK.String()},
-		{&pb.UserRequest{User: testUser2}, false, codes.OK.String()},
-		{&pb.UserRequest{User: testUser3}, true, "rpc error: code = " +
+		{&pbsvc.UserRequest{User: testUser1}, false, codes.OK.String()},
+		{&pbsvc.UserRequest{User: testUser2}, false, codes.OK.String()},
+		{&pbsvc.UserRequest{User: testUser3}, true, "rpc error: code = " +
 			"Internal desc = pq: duplicate key value violates unique constraint \"accounts_email_key\""},
-		{&pb.UserRequest{User: testUser4}, true, "rpc error: code = " +
+		{&pbsvc.UserRequest{User: testUser4}, true, "rpc error: code = " +
 			"Internal desc = invalid User first name"},
-		{&pb.UserRequest{User: testUser5}, true, "rpc error: code = " +
+		{&pbsvc.UserRequest{User: testUser5}, true, "rpc error: code = " +
 			"Internal desc = invalid User password"},
-		{&pb.UserRequest{User: testUser7}, true, "rpc error: code = " +
+		{&pbsvc.UserRequest{User: testUser7}, true, "rpc error: code = " +
 			"Internal desc = invalid User email"},
-		{&pb.UserRequest{User: testUser8}, true, "rpc error: code = " +
+		{&pbsvc.UserRequest{User: testUser8}, true, "rpc error: code = " +
 			"Internal desc = invalid User organization"},
-		{&pb.UserRequest{User: testUser9}, true, "rpc error: code = " +
+		{&pbsvc.UserRequest{User: testUser9}, true, "rpc error: code = " +
 			"Internal desc = invalid User last name"},
 	}
 
@@ -185,35 +186,35 @@ func TestDeleteUser(t *testing.T) {
 	assert.NotNil(t, uuid)
 
 	// existing uuid
-	test1 := &pb.User{
+	test1 := &pblib.User{
 		Uuid: response.GetUser().GetUuid(),
 	}
 
 	// nonexistent uuid
-	test2 := &pb.User{
+	test2 := &pblib.User{
 		Uuid: uuid,
 	}
 
 	// invalid uuid's
-	test3 := &pb.User{
+	test3 := &pblib.User{
 		Uuid: "",
 	}
-	test4 := &pb.User{
+	test4 := &pblib.User{
 		Uuid: "01d1nba01gnzbrkbfrrvgrz2m",
 	}
 
 	cases := []struct {
-		request  *pb.UserRequest
+		request  *pbsvc.UserRequest
 		isExpErr bool
 		expMsg   string
 	}{
-		{&pb.UserRequest{User: test1}, false, codes.OK.String()},
-		{&pb.UserRequest{User: test2}, false, codes.OK.String()},
-		{&pb.UserRequest{User: test3}, true,
+		{&pbsvc.UserRequest{User: test1}, false, codes.OK.String()},
+		{&pbsvc.UserRequest{User: test2}, false, codes.OK.String()},
+		{&pbsvc.UserRequest{User: test3}, true,
 			"rpc error: code = InvalidArgument desc = invalid User uuid"},
-		{&pb.UserRequest{User: test4}, true,
+		{&pbsvc.UserRequest{User: test4}, true,
 			"rpc error: code = InvalidArgument desc = invalid User uuid"},
-		{&pb.UserRequest{User: nil}, true,
+		{&pbsvc.UserRequest{User: nil}, true,
 			"rpc error: code = InvalidArgument desc = nil request User"},
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
 	}
@@ -245,24 +246,24 @@ func TestGetUser(t *testing.T) {
 	assert.NotNil(t, uuid)
 
 	// exisiting uuid
-	test1 := &pb.User{
+	test1 := &pblib.User{
 		Uuid: response.GetUser().GetUuid(),
 	}
 
 	// nonexistent uuid
-	test2 := &pb.User{
+	test2 := &pblib.User{
 		Uuid: uuid,
 	}
 
 	cases := []struct {
-		request  *pb.UserRequest
+		request  *pbsvc.UserRequest
 		isExpErr bool
 		expMsg   string
 	}{
-		{&pb.UserRequest{User: test1}, false, ""},
-		{&pb.UserRequest{User: test2}, true,
+		{&pbsvc.UserRequest{User: test1}, false, ""},
+		{&pbsvc.UserRequest{User: test2}, true,
 			"rpc error: code = Internal desc = invalid User uuid"},
-		{&pb.UserRequest{User: nil}, true,
+		{&pbsvc.UserRequest{User: nil}, true,
 			"rpc error: code = InvalidArgument desc = nil request User"},
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
 	}
@@ -304,7 +305,7 @@ func TestUpdateUser(t *testing.T) {
 	// valid response1
 	// prospective email is NULL
 	// modified_date set
-	updateUser := &pb.User{
+	updateUser := &pblib.User{
 		LastName:     response1.GetUser().GetLastName() + " UPDATED",
 		Password:     "newPassword",
 		Organization: response1.GetUser().GetOrganization() + " UPDATED",
@@ -314,62 +315,62 @@ func TestUpdateUser(t *testing.T) {
 	// valid response2
 	// test prospective_email is set
 	// modified_date set
-	updateUser2 := &pb.User{
+	updateUser2 := &pblib.User{
 		LastName: response1.GetUser().GetLastName() + " UPDATED",
 		Email:    response2.GetUser().GetEmail() + "UPDATED",
 		Uuid:     response2.GetUser().GetUuid(),
 	}
 
 	// fail - invalid uuid
-	updateUser3 := &pb.User{
+	updateUser3 := &pblib.User{
 		LastName: unitTestFailValue,
 		Uuid:     "0000xsnjg0mqjhbf4qx",
 	}
 
 	// fail - non-existent uuid (uuid is in valid format)
-	updateUser4 := &pb.User{
+	updateUser4 := &pblib.User{
 		LastName: unitTestFailValue,
 		Uuid:     nonExistingUUID,
 	}
 
 	// fail - invalid email format
-	updateUser5 := &pb.User{
+	updateUser5 := &pblib.User{
 		LastName: unitTestFailValue,
 		Email:    "a",
 		Uuid:     response2.GetUser().GetUuid(),
 	}
 
 	// fail - invalid first name
-	updateUser6 := &pb.User{
+	updateUser6 := &pblib.User{
 		FirstName: "@@@",
 		Uuid:      response2.GetUser().GetUuid(),
 	}
 
 	// fail - invalid last name
-	updateUser7 := &pb.User{
+	updateUser7 := &pblib.User{
 		LastName: "@@@",
 		Uuid:     response2.GetUser().GetUuid(),
 	}
 
 	cases := []struct {
-		request  *pb.UserRequest
+		request  *pbsvc.UserRequest
 		isExpErr bool
 		expMsg   string
 	}{
-		{&pb.UserRequest{User: updateUser}, false, ""},
-		{&pb.UserRequest{User: updateUser2}, false, ""},
+		{&pbsvc.UserRequest{User: updateUser}, false, ""},
+		{&pbsvc.UserRequest{User: updateUser2}, false, ""},
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
-		{&pb.UserRequest{User: updateUser3}, true,
+		{&pbsvc.UserRequest{User: updateUser3}, true,
 			"rpc error: code = InvalidArgument desc = invalid User uuid"},
-		{&pb.UserRequest{User: updateUser4}, true,
+		{&pbsvc.UserRequest{User: updateUser4}, true,
 			"rpc error: code = Internal desc = invalid User uuid"},
-		{&pb.UserRequest{User: updateUser5}, true,
+		{&pbsvc.UserRequest{User: updateUser5}, true,
 			"rpc error: code = Internal desc = invalid User email"},
-		{&pb.UserRequest{User: updateUser6}, true,
+		{&pbsvc.UserRequest{User: updateUser6}, true,
 			"rpc error: code = Internal desc = invalid User first name"},
-		{&pb.UserRequest{User: updateUser7}, true,
+		{&pbsvc.UserRequest{User: updateUser7}, true,
 			"rpc error: code = Internal desc = invalid User last name"},
-		{&pb.UserRequest{User: nil}, true,
+		{&pbsvc.UserRequest{User: nil}, true,
 			"rpc error: code = InvalidArgument desc = nil request User"},
 	}
 
@@ -406,99 +407,99 @@ func TestAuthenticateUser(t *testing.T) {
 	assert.Nil(t, err)
 
 	// valid user
-	validUser := &pb.User{
+	validUser := &pblib.User{
 		Uuid:     validUUID,
 		Email:    validEmail,
 		Password: validPassword,
 	}
 
 	// non existing uuid
-	invalidUser1 := &pb.User{
+	invalidUser1 := &pblib.User{
 		Uuid:     nonExistingUUID,
 		Email:    validEmail,
 		Password: validPassword,
 	}
 
 	// non existing email
-	invalidUser2 := &pb.User{
+	invalidUser2 := &pblib.User{
 		Uuid:     validUUID,
 		Email:    unitTestFailEmail,
 		Password: validPassword,
 	}
 
 	// non matching password
-	invalidUser3 := &pb.User{
+	invalidUser3 := &pblib.User{
 		Uuid:     validUUID,
 		Email:    validEmail,
 		Password: unitTestFailValue,
 	}
 
 	// invalid uuid form
-	invalidUser4 := &pb.User{
+	invalidUser4 := &pblib.User{
 		Uuid:     "0000xsnjg0mq",
 		Email:    validEmail,
 		Password: validPassword,
 	}
 
 	// invalid email form
-	invalidUser5 := &pb.User{
+	invalidUser5 := &pblib.User{
 		Uuid:     validUUID,
 		Email:    "@",
 		Password: validPassword,
 	}
 
 	// invalid password
-	invalidUser6 := &pb.User{
+	invalidUser6 := &pblib.User{
 		Uuid:     validUUID,
 		Email:    validEmail,
 		Password: "",
 	}
 
 	// missing uuid
-	invalidUser7 := &pb.User{
+	invalidUser7 := &pblib.User{
 		Email:    validEmail,
 		Password: validPassword,
 	}
 
 	// missing email
-	invalidUser8 := &pb.User{
+	invalidUser8 := &pblib.User{
 		Uuid:     validUUID,
 		Password: validPassword,
 	}
 
 	// missing password
-	invalidUser9 := &pb.User{
+	invalidUser9 := &pblib.User{
 		Uuid:  validUUID,
 		Email: validEmail,
 	}
 
 	cases := []struct {
-		request  *pb.UserRequest
+		request  *pbsvc.UserRequest
 		isExpErr bool
 		expMsg   string
 	}{
-		{&pb.UserRequest{User: validUser}, false, ""},
+		{&pbsvc.UserRequest{User: validUser}, false, ""},
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
-		{&pb.UserRequest{User: nil}, true,
+		{&pbsvc.UserRequest{User: nil}, true,
 			"rpc error: code = InvalidArgument desc = nil request User"},
-		{&pb.UserRequest{User: invalidUser1}, true,
+		{&pbsvc.UserRequest{User: invalidUser1}, true,
 			"rpc error: code = Unknown desc = invalid User uuid"},
-		{&pb.UserRequest{User: invalidUser2}, true,
+		{&pbsvc.UserRequest{User: invalidUser2}, true,
 			"rpc error: code = InvalidArgument desc = email does not match"},
-		{&pb.UserRequest{User: invalidUser3}, true,
+		{&pbsvc.UserRequest{User: invalidUser3}, true,
 			"rpc error: code = Unauthenticated desc = " +
 				"crypto/bcrypt: hashedPassword is not the hash of the given password"},
-		{&pb.UserRequest{User: invalidUser4}, true,
+		{&pbsvc.UserRequest{User: invalidUser4}, true,
 			"rpc error: code = InvalidArgument desc = invalid User uuid"},
-		{&pb.UserRequest{User: invalidUser5}, true,
+		{&pbsvc.UserRequest{User: invalidUser5}, true,
 			"rpc error: code = InvalidArgument desc = invalid User email"},
-		{&pb.UserRequest{User: invalidUser6}, true,
+		{&pbsvc.UserRequest{User: invalidUser6}, true,
 			"rpc error: code = InvalidArgument desc = invalid User password"},
-		{&pb.UserRequest{User: invalidUser7}, true,
+		{&pbsvc.UserRequest{User: invalidUser7}, true,
 			"rpc error: code = InvalidArgument desc = invalid User uuid"},
-		{&pb.UserRequest{User: invalidUser8}, true,
+		{&pbsvc.UserRequest{User: invalidUser8}, true,
 			"rpc error: code = InvalidArgument desc = invalid User email"},
-		{&pb.UserRequest{User: invalidUser9}, true,
+		{&pbsvc.UserRequest{User: invalidUser9}, true,
 			"rpc error: code = InvalidArgument desc = invalid User password"},
 	}
 

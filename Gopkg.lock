@@ -26,6 +26,14 @@
   version = "v1.1.1"
 
 [[projects]]
+  digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
+  name = "github.com/fsnotify/fsnotify"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
+  version = "v1.4.7"
+
+[[projects]]
   digest = "1:2cd7915ab26ede7d95b8749e6b1f933f1c6d5398030684e6505940a10f31cfda"
   name = "github.com/ghodss/yaml"
   packages = ["."]
@@ -67,18 +75,18 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3d6ae6f92a15d8501afa67e2cb7e70296aac73fd338ddace67469e018a2a7112"
+  digest = "1:b66a408483a4ed7ccc0ae96796ed579dd9a01b0c3e38c79e530c9f08b2144d1c"
   name = "github.com/hwsc-org/hwsc-api-blocks"
   packages = [
-    "int/hwsc-app-gateway-svc/proto",
-    "int/hwsc-user-svc/proto",
+    "int/hwsc-user-svc/user",
+    "lib",
   ]
   pruneopts = "UT"
-  revision = "547722ba9edbb917fdfe7b3af4c72bf191ef06c2"
+  revision = "58054f93b29d5c362a568b8804f21d798f455c20"
 
 [[projects]]
   branch = "master"
-  digest = "1:8fc3752c8cd8e1fb00871b9a13a061eb85543305e2fd9f5b7a1b6d187442f54f"
+  digest = "1:f60e799f93c65bfadc69d808da4383802a13c1bbf237239085f23d227e2ec5a8"
   name = "github.com/hwsc-org/hwsc-lib"
   packages = [
     "auth",
@@ -86,7 +94,7 @@
     "logger",
   ]
   pruneopts = "UT"
-  revision = "43a835025fb58a045310b06051bc4ddd4274b244"
+  revision = "2913a483de7798c34b97a4522bd689af483814ee"
 
 [[projects]]
   digest = "1:a0cefd27d12712af4b5018dc7046f245e1e3b5760e2e848c30b171b570708f9b"
@@ -97,17 +105,18 @@
   version = "v0.3.7"
 
 [[projects]]
-  digest = "1:7cefc4f7f6a411c2598d3344563e4d23fd4e4d88fd1591831fe39cccff41ad28"
+  digest = "1:8ef506fc2bb9ced9b151dafa592d4046063d744c646c1bbe801982ce87e4bc24"
   name = "github.com/lib/pq"
   packages = [
     ".",
     "oid",
   ]
   pruneopts = "UT"
-  revision = "9eb73efc1fcc404148b56765b0d3f61d9a5ef8ee"
+  revision = "4ded0e9383f75c197b3a2aaa6d590ac52df6fd79"
+  version = "v1.0.0"
 
 [[projects]]
-  digest = "1:65b96744a06e62dca68e9cd589554fcf248d1638d4cc086f339cd06590586a5a"
+  digest = "1:86cb9d3d50039147d08544340272c307400cb802519da1dfca3a54327ccc63db"
   name = "github.com/micro/go-config"
   packages = [
     ".",
@@ -123,10 +132,11 @@
     "reader/json",
     "source",
     "source/env",
+    "source/file",
   ]
   pruneopts = "UT"
-  revision = "c6de52c5ef31e1c20bc9a563f2107ca16ac752e2"
-  version = "v0.12.0"
+  revision = "2a4da1fca4d75c5e1fb254a60b4aa987c73fab08"
+  version = "v0.14.0"
 
 [[projects]]
   digest = "1:4f5513cb656b73fb4c4f77ccd482c8366d6290278564d2b1d3285f45e45f4a1e"
@@ -177,15 +187,15 @@
     "trace",
   ]
   pruneopts = "UT"
-  revision = "65e2d4e15006aab9813ff8769e768bbf4bb667a0"
+  revision = "3a22650c66bd7f4fb6d1e8072ffd7b75c8a27898"
 
 [[projects]]
   branch = "master"
-  digest = "1:8b466798e96432c23185ca32826702885299f94eb644c9a8dedb79771dff383a"
+  digest = "1:8207c052fb873f83c61a5aa16f6add5feb9881eda2112b56f69fd3b9e7f55c3f"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "3b5209105503162ded1863c307ac66fec31120dd"
+  revision = "983097b1a8a340cd1cc7df17d735154d89e10b1a"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
@@ -270,7 +280,8 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto",
+    "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user",
+    "github.com/hwsc-org/hwsc-api-blocks/lib",
     "github.com/hwsc-org/hwsc-lib/auth",
     "github.com/hwsc-org/hwsc-lib/logger",
     "github.com/lib/pq",

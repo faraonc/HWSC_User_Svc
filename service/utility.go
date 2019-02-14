@@ -1,23 +1,27 @@
 package service
 
 import (
-	pb "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/proto"
+	"encoding/base64"
+	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/oklog/ulid"
 	"golang.org/x/crypto/bcrypt"
 	"math/rand"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
 const (
 	maxFirstNameLength = 32
 	maxLastNameLength  = 32
-	emailTokenBytes    = 32
+	emailTokenByteSize = 32
 )
 
 var (
+	tokenLocker         sync.Mutex
+	uuidLocker          sync.Mutex
 	multiSpaceRegex     = regexp.MustCompile(`[\s\p{Zs}]{2,}`)
 	nameValidCharsRegex = regexp.MustCompile(`^[[:alpha:]]+((['.\s-][[:alpha:]\s])?[[:alpha:]]*)*$`)
 )
@@ -33,7 +37,7 @@ func (s *stateLocker) isStateAvailable() bool {
 	return true
 }
 
-func validateUser(user *pb.User) error {
+func validateUser(user *pblib.User) error {
 	if user == nil {
 		return consts.ErrNilRequestUser
 	}
@@ -165,4 +169,25 @@ func comparePassword(hashedPassword string, password string) error {
 	}
 
 	return nil
+}
+
+// generateRandomToken generates a base64 URL-safe string
+// built from securely generated random bytes
+// number of bytes is determined by tokenSize
+// Return error if system's secure random number generator fails
+func generateToken(tokenSize int) (string, error) {
+	if tokenSize <= 0 {
+		return "", consts.ErrInvalidTokenSize
+	}
+
+	tokenLocker.Lock()
+	defer tokenLocker.Unlock()
+
+	randomBytes := make([]byte, tokenSize)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.URLEncoding.EncodeToString(randomBytes), nil
 }
