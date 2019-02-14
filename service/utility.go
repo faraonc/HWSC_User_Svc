@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	maxFirstNameLength       = 32
-	maxLastNameLength        = 32
-	emailTokenByteSize       = 32
-	universalTimeCoordinated = "UTC"
-	daysInWeek               = 7
+	maxFirstNameLength = 32
+	maxLastNameLength  = 32
+	emailTokenByteSize = 32
+	utc                = "UTC"
+	daysInWeek         = 7
 )
 
 var (
@@ -204,7 +204,7 @@ func generateSecretExpirationTimestamp(currentTimestamp time.Time) (*time.Time, 
 	}
 
 	timeZonedTimestamp := currentTimestamp
-	if currentTimestamp.Location().String() != universalTimeCoordinated {
+	if currentTimestamp.Location().String() != utc {
 		timeZonedTimestamp = currentTimestamp.UTC()
 	}
 

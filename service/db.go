@@ -496,21 +496,30 @@ func insertNewSecret() error {
 // queryLatestSecret looks for the secret that is less 2 minutes
 // Used to validate that a new secret has been inserted into database
 // Returns true if found, else false
-func queryLatestSecret() (bool, error) {
+func queryLatestSecret(minute int) (bool, error) {
+	if minute == 0 {
+		return false, consts.ErrInvalidAddTime
+	}
+
+	interval := time.Now().UTC().Add(time.Minute * time.Duration(-minute))
+
 	command := `
-				SELECT secret_key FROM user_security.secret 
-				WHERE created_timestamp > NOW() - INTERVAL '2 minutes' 
-				LIMIT 1
+				SELECT COUNT(*) FROM user_security.secret 
+				WHERE created_timestamp > $1 
 				`
 
-	var secret string
-	err := postgresDB.QueryRow(command).Scan(&secret)
+	var count int
+	err := postgresDB.QueryRow(command, interval).Scan(&count)
 	if err != nil {
 		return false, err
 	}
 
-	if secret == "" {
+	if count == 0 {
 		return false, consts.ErrNoRowsFound
+	}
+
+	if count > 1 {
+		return false, consts.ErrInvalidRowCount
 	}
 
 	return true, nil

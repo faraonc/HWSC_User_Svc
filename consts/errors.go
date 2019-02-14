@@ -29,7 +29,7 @@ var (
 	ErrServiceUnavailable           = errors.New("service unavailable")
 	ErrNilRequestUser               = errors.New("nil request User")
 	ErrEmptyRequestUser             = errors.New("empty fields in request User")
-	ErrInvalidTimeDate              = errors.New("invalid time.Time date")
+	ErrInvalidTimeStamp             = errors.New("zero timestamp")
 	ErrInvalidTokenSize             = errors.New("invalid token size")
 	ErrInvalidUUID                  = errors.New("invalid User uuid")
 	ErrInvalidUserFirstName         = errors.New("invalid User first name")
@@ -41,6 +41,9 @@ var (
 	ErrEmailNilFilePaths            = errors.New("nil email template file paths")
 	ErrEmailRequestFieldsEmpty      = errors.New("empty or nil fields in emailRequest struct")
 	ErrUUIDNotFound                 = errors.New("uuid does not exist in database")
+	ErrNoRowsFound                  = errors.New("no query row found in database")
+	ErrInvalidRowCount              = errors.New("query resulted more than one count")
+	ErrInvalidAddTime				= errors.New("add time is zero")
 	ResponseServiceUnavailable      = &pbsvc.UserResponse{
 		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.Unavailable)},
 		Message: codes.Unavailable.String(),
