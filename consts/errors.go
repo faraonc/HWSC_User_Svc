@@ -22,12 +22,14 @@ const (
 	MsgErrAuthenticateUser      string = "failed to authenticate user:"
 	MsgErrMatchPassword         string = "failed to match password:"
 	MsgErrMatchEmail            string = "email does not match"
+	MsgErrSecret                string = "failed to insert new secret into db:"
 )
 
 var (
 	ErrServiceUnavailable           = errors.New("service unavailable")
 	ErrNilRequestUser               = errors.New("nil request User")
 	ErrEmptyRequestUser             = errors.New("empty fields in request User")
+	ErrInvalidTimeDate              = errors.New("invalid time.Time date")
 	ErrInvalidTokenSize             = errors.New("invalid token size")
 	ErrInvalidUUID                  = errors.New("invalid User uuid")
 	ErrInvalidUserFirstName         = errors.New("invalid User first name")

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestIsStateAvailable(t *testing.T) {
@@ -379,4 +380,36 @@ func TestGenerateToken(t *testing.T) {
 
 	close(start)
 	wg.Wait()
+}
+
+func TestGenerateSecretExpirationDate(t *testing.T) {
+	expirationHour := 3
+	monday := 1 // time.Time weekday can be int, starting sunday = 0
+
+	// test zero value
+	date, err := generateSecretExpirationDate(time.Time{})
+	assert.EqualError(t, err, consts.ErrInvalidTimeDate.Error())
+	assert.Nil(t, date)
+
+	// test all days of the week
+	currentDate := time.Now().UTC()
+
+	cases := []struct {
+		date time.Time
+	}{
+		{currentDate},
+		{currentDate.AddDate(0, 0, 1)},
+		{currentDate.AddDate(0, 0, 2)},
+		{currentDate.AddDate(0, 0, 3)},
+		{currentDate.AddDate(0, 0, 4)},
+		{currentDate.AddDate(0, 0, 5)},
+		{currentDate.AddDate(0, 0, 6)},
+	}
+
+	for _, c := range cases {
+		expirationDate, err := generateSecretExpirationDate(c.date)
+		assert.Nil(t, err)
+		assert.Equal(t, monday, int(expirationDate.Weekday()))
+		assert.Equal(t, expirationHour, expirationDate.Hour())
+	}
 }

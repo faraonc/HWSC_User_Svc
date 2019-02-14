@@ -1,6 +1,7 @@
 package service
 
 import (
+	cryptorand "crypto/rand"
 	"encoding/base64"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
@@ -14,9 +15,11 @@ import (
 )
 
 const (
-	maxFirstNameLength = 32
-	maxLastNameLength  = 32
-	emailTokenByteSize = 32
+	maxFirstNameLength  = 32
+	maxLastNameLength   = 32
+	emailTokenByteSize  = 32
+	easternStandardTime = "EST"
+	daysInWeek          = 7
 )
 
 var (
@@ -184,10 +187,33 @@ func generateToken(tokenSize int) (string, error) {
 	defer tokenLocker.Unlock()
 
 	randomBytes := make([]byte, tokenSize)
-	_, err := rand.Read(randomBytes)
+	_, err := cryptorand.Read(randomBytes)
 	if err != nil {
 		return "", err
 	}
 
 	return base64.URLEncoding.EncodeToString(randomBytes), nil
+}
+
+// generateSecretExpirationDate returns the expiration date for secret keys used for signing JWT
+// currently sets expiration date to every Monday at 3AM UTC
+// Returns error if date object is nil or error with loading location
+func generateSecretExpirationDate(currentDate time.Time) (*time.Time, error) {
+	if currentDate.IsZero() {
+		return nil, consts.ErrInvalidTimeDate
+	}
+
+	timeZonedDate := currentDate.UTC()
+	currentWeekday := int(timeZonedDate.Weekday())
+
+	addDays := ((daysInWeek - currentWeekday) % daysInWeek) + 1
+
+	// add number of days to current weekday to get to Monday
+	modifiedDate := currentDate.AddDate(0, 0, int(addDays))
+
+	// reset time to 3 AM
+	expirationDate := time.Date(modifiedDate.Year(), modifiedDate.Month(), modifiedDate.Day(),
+		3, 0, 0, 0, timeZonedDate.Location())
+
+	return &expirationDate, nil
 }

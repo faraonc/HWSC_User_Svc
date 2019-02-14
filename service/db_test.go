@@ -255,3 +255,12 @@ func TestUpdateUserRow(t *testing.T) {
 		}
 	}
 }
+
+func TestInsertNewSecret(t *testing.T) {
+	counter := 3
+	for counter != 0 {
+		err := insertNewSecret()
+		assert.Nil(t, err)
+		counter--
+	}
+}
