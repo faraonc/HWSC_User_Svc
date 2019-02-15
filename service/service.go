@@ -35,7 +35,7 @@ const (
 var (
 	serviceStateLocker stateLocker
 	uuidMapLocker      sync.Map
-	secretKeyLocker    sync.RWMutex
+	secretLocker       sync.RWMutex
 
 	// converts the state of the service to a string
 	serviceStateMap = map[state]string{
@@ -403,9 +403,32 @@ func (s *Service) ShareDocument(ctx context.Context, req *pbsvc.UserRequest) (*p
 
 // GetSecret retrieves and returns the recent/active secret from the DB
 func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
-	// TODO
-	logger.RequestService("Get Secret")
-	return &pbsvc.UserResponse{}, nil
+	logger.RequestService("GetSecret")
+
+	if ok := serviceStateLocker.isStateAvailable(); !ok {
+		return nil, consts.ErrServiceUnavailable
+	}
+
+	if err := refreshDBConnection(); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	secretLocker.RLock()
+	defer secretLocker.RUnlock()
+
+	retrievedSecret, err := getActiveSecretRow()
+	if err != nil {
+		logger.Error(consts.GetSecret, consts.MsgErrGetActiveSecret, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pbsvc.UserResponse{
+		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
+		Message: codes.OK.String(),
+		Identification: &pblib.Identification{
+			Secret: retrievedSecret,
+		},
+	}, nil
 }
 
 // GetToken generates a token after verifying user's email and password,
@@ -527,18 +550,18 @@ func (s *Service) NewSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	secretKeyLocker.Lock()
-	defer secretKeyLocker.Unlock()
+	secretLocker.Lock()
+	defer secretLocker.Unlock()
 
 	// retrieve secretKey that is active
-	retrievedSecret, err := getActiveSecret()
+	retrievedSecret, err := getActiveSecretRow()
 	if err != nil {
 		logger.Error(consts.MakeNewSecret, consts.MsgErrGetActiveSecret, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// deactivate activeSecret
-	if err := deactivateSecret(retrievedSecret); err != nil {
+	if err := deactivateSecret(retrievedSecret.GetKey()); err != nil {
 		logger.Error(consts.MakeNewSecret, consts.MsgErrDeactivatingSecret, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
