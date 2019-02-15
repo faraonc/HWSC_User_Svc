@@ -280,6 +280,7 @@ func TestGetActiveSecretRow(t *testing.T) {
 	assert.NotNil(t, retrievedSecret)
 	assert.NotEmpty(t, retrievedSecret.Key)
 	assert.NotEmpty(t, retrievedSecret.CreatedTimestamp)
+	assert.NotEmpty(t, retrievedSecret.ExpirationTimestamp)
 }
 
 func TestDeactivateSecret(t *testing.T) {

@@ -75,14 +75,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b66a408483a4ed7ccc0ae96796ed579dd9a01b0c3e38c79e530c9f08b2144d1c"
+  digest = "1:af087770464f730c1aaa710654e03b09e0cd6bc8f1e84a0a4ac69fe94a37fd31"
   name = "github.com/hwsc-org/hwsc-api-blocks"
   packages = [
     "int/hwsc-user-svc/user",
     "lib",
   ]
   pruneopts = "UT"
-  revision = "20290d082f7c6fca20788027611be68982ef3105"
+  revision = "5fce68a4dfda026b8b0319d2c10bf332c135f029"
 
 [[projects]]
   branch = "master"
@@ -195,7 +195,7 @@
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "983097b1a8a340cd1cc7df17d735154d89e10b1a"
+  revision = "d0b11bdaac8adb652bff00e49bcacf992835621a"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"

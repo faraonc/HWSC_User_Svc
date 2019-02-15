@@ -466,7 +466,9 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 // getActiveSecret retrieves the secretKey from the row where is_active is marked true
 // Returns secret object if found, nil if not found, else any db error
 func getActiveSecretRow() (*pblib.Secret, error) {
-	command := `SELECT secret_key, created_timestamp FROM user_security.secret WHERE is_active = $1`
+	command := `SELECT secret_key, created_timestamp, expiration_timestamp 
+				FROM user_security.secret 
+				WHERE is_active = $1`
 
 	row, err := postgresDB.Query(command, true)
 	if err != nil {
@@ -475,17 +477,18 @@ func getActiveSecretRow() (*pblib.Secret, error) {
 
 	defer row.Close()
 	var secretKey string
-	var createdTimestamp time.Time
+	var createdTimestamp, expirationTimestamp time.Time
 	for row.Next() {
-		err := row.Scan(&secretKey, &createdTimestamp)
+		err := row.Scan(&secretKey, &createdTimestamp, &expirationTimestamp)
 		if err != nil {
 			return nil, err
 		}
 
 		if secretKey != "" {
 			return &pblib.Secret{
-				Key:              secretKey,
-				CreatedTimestamp: createdTimestamp.Unix(),
+				Key:                 secretKey,
+				CreatedTimestamp:    createdTimestamp.Unix(),
+				ExpirationTimestamp: expirationTimestamp.Unix(),
 			}, nil
 		}
 	}
