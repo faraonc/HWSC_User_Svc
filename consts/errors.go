@@ -23,6 +23,8 @@ const (
 	MsgErrMatchPassword         string = "failed to match password:"
 	MsgErrMatchEmail            string = "email does not match"
 	MsgErrSecret                string = "failed to insert new secret into db:"
+	MsgErrGetActiveSecret       string = "failed to get active secret from db:"
+	MsgErrDeactivatingSecret    string = "failed to deactivate secret from db:"
 )
 
 var (
@@ -43,7 +45,7 @@ var (
 	ErrUUIDNotFound                 = errors.New("uuid does not exist in database")
 	ErrNoRowsFound                  = errors.New("no query row found in database")
 	ErrInvalidRowCount              = errors.New("query resulted more than one count")
-	ErrInvalidAddTime				= errors.New("add time is zero")
+	ErrInvalidAddTime               = errors.New("add time is zero")
 	ResponseServiceUnavailable      = &pbsvc.UserResponse{
 		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.Unavailable)},
 		Message: codes.Unavailable.String(),

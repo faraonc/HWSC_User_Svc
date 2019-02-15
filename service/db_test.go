@@ -2,11 +2,17 @@ package service
 
 import (
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
+	"github.com/hwsc-org/hwsc-lib/auth"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"testing"
 )
+
+func deleteSecretTable() error {
+	_, err := postgresDB.Exec("DELETE FROM user_security.secret")
+	return err
+}
 
 func TestRefreshDBConnection(t *testing.T) {
 	assert.NotNil(t, postgresDB)
@@ -256,22 +262,72 @@ func TestUpdateUserRow(t *testing.T) {
 	}
 }
 
+func TestGetActiveSecret(t *testing.T) {
+	err := deleteSecretTable()
+	assert.Nil(t, err)
+
+	// test empty row
+	secretKey, err := getActiveSecret()
+	assert.Nil(t, err)
+	assert.Empty(t, secretKey)
+
+	// insert a key to test for active key retrieval
+	err = insertNewSecret()
+	assert.Nil(t, err)
+
+	retrievedSecretKey, err := getActiveSecret()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, retrievedSecretKey)
+}
+
+func TestDeactivateSecret(t *testing.T) {
+	err := deleteSecretTable()
+	assert.Nil(t, err)
+
+	// test empty string
+	err = deactivateSecret("")
+	assert.Nil(t, err)
+
+	// test non existing key
+	nonExistingSecret, err := generateSecretKey(auth.SecretByteSize)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, nonExistingSecret)
+
+	err = deactivateSecret(nonExistingSecret)
+	assert.Nil(t, err)
+
+	// test existing key
+	err = insertNewSecret()
+	assert.Nil(t, err)
+
+	retrievedSecret, err := getActiveSecret()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, retrievedSecret)
+
+	err = deactivateSecret(retrievedSecret)
+	assert.Nil(t, err)
+
+	// test there are no active keys
+	retrievedSecret, err = getActiveSecret()
+	assert.Nil(t, err)
+	assert.Empty(t, retrievedSecret)
+}
+
 func TestInsertNewSecret(t *testing.T) {
-	// delete secret table
-	_, err := postgresDB.Exec("DELETE FROM user_security.secret")
+	err := deleteSecretTable()
 	assert.Nil(t, err)
 
 	err = insertNewSecret()
 	assert.Nil(t, err)
 
+	// test that key was inserted
 	found, err := queryLatestSecret(2)
 	assert.Nil(t, err)
 	assert.Equal(t, true, found)
 }
 
 func TestQueryLatestSecret(t *testing.T) {
-	// delete secret table
-	_, err := postgresDB.Exec("DELETE FROM user_security.secret")
+	err := deleteSecretTable()
 	assert.Nil(t, err)
 
 	err = insertNewSecret()

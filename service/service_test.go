@@ -520,13 +520,36 @@ func TestNewSecret(t *testing.T) {
 	// no need to perform a check in the db here using a DAO,
 	// b/c this func is meant to be called by a client
 
-	counter := 4
-	for counter != 0 {
-		s := Service{}
-		response, err := s.NewSecret(context.TODO(), nil)
-		assert.Nil(t, err)
-		assert.Equal(t, codes.OK.String(), response.Message)
+	err := deleteSecretTable()
+	assert.Nil(t, err)
 
-		counter--
-	}
+	// test for no active secret
+	retrievedSecret, err := getActiveSecret()
+	assert.Nil(t, err)
+	assert.Empty(t, retrievedSecret)
+
+	s := Service{}
+
+	// test with no secret in table
+	response, err := s.NewSecret(context.TODO(), nil)
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), response.Message)
+
+	// test for the active secret
+	retrievedSecret, err = getActiveSecret()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, retrievedSecret)
+
+	// test with a secret already in table
+	response, err = s.NewSecret(context.TODO(), nil)
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), response.Message)
+
+	// retrieve the newest secret
+	retrievedNewestSecret, err := getActiveSecret()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, retrievedNewestSecret)
+
+	// test that two retrieved secrets are not equal
+	assert.NotEqual(t, retrievedSecret, retrievedNewestSecret)
 }
