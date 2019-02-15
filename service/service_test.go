@@ -524,9 +524,9 @@ func TestNewSecret(t *testing.T) {
 	assert.Nil(t, err)
 
 	// test for no active secret
-	retrievedSecret, err := getActiveSecret()
+	retrievedSecret, err := getActiveSecretRow()
 	assert.Nil(t, err)
-	assert.Empty(t, retrievedSecret)
+	assert.Nil(t, retrievedSecret)
 
 	s := Service{}
 
@@ -536,9 +536,9 @@ func TestNewSecret(t *testing.T) {
 	assert.Equal(t, codes.OK.String(), response.Message)
 
 	// test for the active secret
-	retrievedSecret, err = getActiveSecret()
+	retrievedSecret, err = getActiveSecretRow()
 	assert.Nil(t, err)
-	assert.NotEmpty(t, retrievedSecret)
+	assert.NotNil(t, retrievedSecret)
 
 	// test with a secret already in table
 	response, err = s.NewSecret(context.TODO(), nil)
@@ -546,10 +546,33 @@ func TestNewSecret(t *testing.T) {
 	assert.Equal(t, codes.OK.String(), response.Message)
 
 	// retrieve the newest secret
-	retrievedNewestSecret, err := getActiveSecret()
+	retrievedNewestSecret, err := getActiveSecretRow()
 	assert.Nil(t, err)
-	assert.NotEmpty(t, retrievedNewestSecret)
+	assert.NotNil(t, retrievedNewestSecret)
 
 	// test that two retrieved secrets are not equal
 	assert.NotEqual(t, retrievedSecret, retrievedNewestSecret)
+}
+
+func TestGetSecret(t *testing.T) {
+	err := deleteSecretTable()
+	assert.Nil(t, err)
+
+	s := Service{}
+
+	// insert a secret
+	response, err := s.NewSecret(context.TODO(), nil)
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), response.Message)
+
+	// test get secret row
+	retrievedSecret, err := getActiveSecretRow()
+	assert.Nil(t, err)
+	assert.NotNil(t, retrievedSecret)
+
+	// get secret by service
+	response, err = s.GetSecret(context.TODO(), nil)
+	assert.Nil(t, err)
+	assert.Equal(t, response.Identification.Secret.Key, retrievedSecret.Key)
+	assert.Equal(t, response.Identification.Secret.CreatedTimestamp, retrievedSecret.CreatedTimestamp)
 }

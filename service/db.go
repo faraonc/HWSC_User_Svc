@@ -464,29 +464,36 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 }
 
 // getActiveSecret retrieves the secretKey from the row where is_active is marked true
-// Returns secretKey if found, empty string if not found, else any db error
-func getActiveSecret() (string, error) {
-	command := `SELECT secret_key FROM user_security.secret WHERE is_active = $1`
+// Returns secret object if found, nil if not found, else any db error
+func getActiveSecretRow() (*pblib.Secret, error) {
+	command := `SELECT secret_key, created_timestamp, expiration_timestamp 
+				FROM user_security.secret 
+				WHERE is_active = $1`
 
 	row, err := postgresDB.Query(command, true)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	defer row.Close()
 	var secretKey string
+	var createdTimestamp, expirationTimestamp time.Time
 	for row.Next() {
-		err := row.Scan(&secretKey)
+		err := row.Scan(&secretKey, &createdTimestamp, &expirationTimestamp)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		if secretKey != "" {
-			return secretKey, err
+			return &pblib.Secret{
+				Key:                 secretKey,
+				CreatedTimestamp:    createdTimestamp.Unix(),
+				ExpirationTimestamp: expirationTimestamp.Unix(),
+			}, nil
 		}
 	}
 
-	return "", nil
+	return nil, nil
 }
 
 // deactivateSecret looks up the row by secretkey and sets the row's is_active to false

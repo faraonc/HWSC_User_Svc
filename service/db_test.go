@@ -262,22 +262,25 @@ func TestUpdateUserRow(t *testing.T) {
 	}
 }
 
-func TestGetActiveSecret(t *testing.T) {
+func TestGetActiveSecretRow(t *testing.T) {
 	err := deleteSecretTable()
 	assert.Nil(t, err)
 
 	// test empty row
-	secretKey, err := getActiveSecret()
+	retrievedSecret, err := getActiveSecretRow()
 	assert.Nil(t, err)
-	assert.Empty(t, secretKey)
+	assert.Nil(t, retrievedSecret)
 
 	// insert a key to test for active key retrieval
 	err = insertNewSecret()
 	assert.Nil(t, err)
 
-	retrievedSecretKey, err := getActiveSecret()
+	retrievedSecret, err = getActiveSecretRow()
 	assert.Nil(t, err)
-	assert.NotEmpty(t, retrievedSecretKey)
+	assert.NotNil(t, retrievedSecret)
+	assert.NotEmpty(t, retrievedSecret.Key)
+	assert.NotEmpty(t, retrievedSecret.CreatedTimestamp)
+	assert.NotEmpty(t, retrievedSecret.ExpirationTimestamp)
 }
 
 func TestDeactivateSecret(t *testing.T) {
@@ -300,17 +303,17 @@ func TestDeactivateSecret(t *testing.T) {
 	err = insertNewSecret()
 	assert.Nil(t, err)
 
-	retrievedSecret, err := getActiveSecret()
+	retrievedSecret, err := getActiveSecretRow()
 	assert.Nil(t, err)
-	assert.NotEmpty(t, retrievedSecret)
+	assert.NotNil(t, retrievedSecret)
 
-	err = deactivateSecret(retrievedSecret)
+	err = deactivateSecret(retrievedSecret.GetKey())
 	assert.Nil(t, err)
 
 	// test there are no active keys
-	retrievedSecret, err = getActiveSecret()
+	retrievedSecret, err = getActiveSecretRow()
 	assert.Nil(t, err)
-	assert.Empty(t, retrievedSecret)
+	assert.Nil(t, retrievedSecret)
 }
 
 func TestInsertNewSecret(t *testing.T) {

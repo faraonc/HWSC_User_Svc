@@ -9,5 +9,6 @@ const (
 	UserServiceTag      string = "User Service -"
 	GetAuthTokenTag     string = "GetAuthToken -"
 	MakeNewSecret       string = "MakeNewSecret -"
+	GetSecret           string = "GetSecret -"
 	PSQL                string = "PSQL -"
 )
