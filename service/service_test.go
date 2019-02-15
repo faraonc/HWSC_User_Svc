@@ -515,3 +515,18 @@ func TestAuthenticateUser(t *testing.T) {
 		}
 	}
 }
+
+func TestNewSecret(t *testing.T) {
+	// no need to perform a check in the db here using a DAO,
+	// b/c this func is meant to be called by a client
+
+	counter := 4
+	for counter != 0 {
+		s := Service{}
+		response, err := s.NewSecret(context.TODO(), nil)
+		assert.Nil(t, err)
+		assert.Equal(t, codes.OK.String(), response.Message)
+
+		counter--
+	}
+}

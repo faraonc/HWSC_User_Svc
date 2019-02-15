@@ -1,6 +1,7 @@
 package service
 
 import (
+	cryptorand "crypto/rand"
 	"encoding/base64"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
@@ -17,6 +18,8 @@ const (
 	maxFirstNameLength = 32
 	maxLastNameLength  = 32
 	emailTokenByteSize = 32
+	utc                = "UTC"
+	daysInWeek         = 7
 )
 
 var (
@@ -175,7 +178,7 @@ func comparePassword(hashedPassword string, password string) error {
 // built from securely generated random bytes
 // number of bytes is determined by tokenSize
 // Return error if system's secure random number generator fails
-func generateToken(tokenSize int) (string, error) {
+func generateSecretKey(tokenSize int) (string, error) {
 	if tokenSize <= 0 {
 		return "", consts.ErrInvalidTokenSize
 	}
@@ -184,10 +187,33 @@ func generateToken(tokenSize int) (string, error) {
 	defer tokenLocker.Unlock()
 
 	randomBytes := make([]byte, tokenSize)
-	_, err := rand.Read(randomBytes)
+	_, err := cryptorand.Read(randomBytes)
 	if err != nil {
 		return "", err
 	}
 
 	return base64.URLEncoding.EncodeToString(randomBytes), nil
+}
+
+// generateSecretExpirationDate returns the expiration date for secret keys used for signing JWT
+// currently sets expiration date to one week later at 3AM UTC
+// Returns error if date object is nil or error with loading location
+func generateSecretExpirationTimestamp(currentTimestamp time.Time) (*time.Time, error) {
+	if currentTimestamp.IsZero() {
+		return nil, consts.ErrInvalidTimeStamp
+	}
+
+	timeZonedTimestamp := currentTimestamp
+	if currentTimestamp.Location().String() != utc {
+		timeZonedTimestamp = currentTimestamp.UTC()
+	}
+
+	// add 7 days to current weekday to get to one week later
+	modifiedTimestamp := timeZonedTimestamp.AddDate(0, 0, daysInWeek)
+
+	// reset time to 3 AM
+	expirationTimestamp := time.Date(modifiedTimestamp.Year(), modifiedTimestamp.Month(), modifiedTimestamp.Day(),
+		3, 0, 0, 0, timeZonedTimestamp.Location())
+
+	return &expirationTimestamp, nil
 }

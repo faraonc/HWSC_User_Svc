@@ -6,7 +6,6 @@ import (
 	"fmt"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-lib/auth"
-	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-lib/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
@@ -165,8 +164,9 @@ CREATE TYPE user_security.token_type AS ENUM
 
 CREATE TABLE user_security.secret
 (
-  secret_key        TEXT PRIMARY KEY,
-  created_timestamp TIMESTAMPTZ NOT NULL
+  secret_key        	TEXT PRIMARY KEY,
+  created_timestamp 	TIMESTAMPTZ NOT NULL,
+  expiration_timestamp  TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE user_security.tokens
@@ -263,7 +263,7 @@ func insertEmailToken(uuid string) error {
 	}
 
 	// create unique email token
-	token, err := generateToken(emailTokenByteSize)
+	token, err := generateSecretKey(emailTokenByteSize)
 	if err != nil {
 		return err
 	}
@@ -398,7 +398,7 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 		newEmail = svcDerived.GetEmail()
 
 		// create unique email token
-		token, err := generateToken(emailTokenByteSize)
+		token, err := generateSecretKey(emailTokenByteSize)
 		if err != nil {
 			return nil, err
 		}
@@ -462,58 +462,100 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 	return updatedUser, nil
 }
 
-//TODO work on later
-func insertNewSecret(secret *pblib.Secret) error {
-	if secret == nil {
-		return authconst.ErrNilSecret
+// insertNewSecret inserts a newly generated secret key to database
+// secret key is used to sign JWT's
+// Returns err if secret is empty or error with database
+func insertNewSecret() error {
+	// generate a new secret
+	secretKey, err := generateSecretKey(auth.SecretByteSize)
+	if err != nil {
+		return err
 	}
 
 	command := `
 				INSERT INTO user_security.secret(
-					secret_key, created_timestamp
-				) VALUES($1, $2)
+					secret_key, created_timestamp, expiration_timestamp
+				) VALUES($1, $2, $3)
 				`
 
-	_, err := postgresDB.Exec(command, secret.Key, secret.CreatedTimestamp)
+	createdTimeStamp := time.Now().UTC()
+	expirationTimestamp, err := generateSecretExpirationTimestamp(createdTimeStamp)
+	if err != nil {
+		return err
+	}
+
+	_, err = postgresDB.Exec(command, secretKey, createdTimeStamp, expirationTimestamp)
 
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// queryLatestSecret looks for the secret that is less 2 minutes
+// Used to validate that a new secret has been inserted into database
+// Returns true if found, else false
+func queryLatestSecret(minute int) (bool, error) {
+	if minute == 0 {
+		return false, consts.ErrInvalidAddTime
+	}
+
+	interval := time.Now().UTC().Add(time.Minute * time.Duration(-minute))
+
+	command := `
+				SELECT COUNT(*) FROM user_security.secret 
+				WHERE created_timestamp > $1 
+				`
+
+	var count int
+	err := postgresDB.QueryRow(command, interval).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	if count == 0 {
+		return false, consts.ErrNoRowsFound
+	}
+
+	if count > 1 {
+		return false, consts.ErrInvalidRowCount
+	}
+
+	return true, nil
 }
 
 //TODO work on later
-func insertJWToken(uuid string, header *auth.Header, body *auth.Body, token string, secretKey string) error {
-	if err := validateUUID(uuid); err != nil {
-		return consts.ErrInvalidUUID
-	}
-	if header == nil {
-		return authconst.ErrNilHeader
-	}
-	if body == nil {
-		return authconst.ErrNilBody
-	}
-	if token == "" {
-		return authconst.ErrEmptyToken
-	}
-	if secretKey == "" {
-		return authconst.ErrEmptySecret
-	}
-
-	command := `
-				INSERT INTO user_security.tokens(
-					token_string, secret_key, token_type, algorithm,
-					permission, expiration_date, uuid
-				) VALUES($1, $2, $3, $4, $5, $6, $7)
-				`
-
-	_, err := postgresDB.Exec(command, token, secretKey, header.TokenTyp, header.Alg,
-		auth.PermissionStringMap[body.Permission], time.Unix(body.ExpirationTimestamp, 0), uuid)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+//func insertJWToken(uuid string, header *auth.Header, body *auth.Body, token string, secretKey string) error {
+//	if err := validateUUID(uuid); err != nil {
+//		return consts.ErrInvalidUUID
+//	}
+//	if header == nil {
+//		return authconst.ErrNilHeader
+//	}
+//	if body == nil {
+//		return authconst.ErrNilBody
+//	}
+//	if token == "" {
+//		return authconst.ErrEmptyToken
+//	}
+//	if secretKey == "" {
+//		return authconst.ErrEmptySecret
+//	}
+//
+//	command := `
+//				INSERT INTO user_security.tokens(
+//					token_string, secret_key, token_type, algorithm,
+//					permission, expiration_date, uuid
+//				) VALUES($1, $2, $3, $4, $5, $6, $7)
+//				`
+//
+//	_, err := postgresDB.Exec(command, token, secretKey, header.TokenTyp, header.Alg,
+//		auth.PermissionStringMap[body.Permission], time.Unix(body.ExpirationTimestamp, 0), uuid)
+//
+//	if err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}

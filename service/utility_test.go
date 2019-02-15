@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestIsStateAvailable(t *testing.T) {
@@ -339,16 +340,16 @@ func TestComparePassword(t *testing.T) {
 	assert.EqualError(t, err, consts.ErrInvalidPassword.Error())
 }
 
-func TestGenerateToken(t *testing.T) {
+func TestGenerateSecretKey(t *testing.T) {
 	// NOTE: unable to force a race condition given the nature of randomByte used in generateEmailToken()
 	// but functionality is same as generateUUID and that's been tested for race conditions
 
 	// test for invalid token byte size
-	token, err := generateToken(0)
+	token, err := generateSecretKey(0)
 	assert.EqualError(t, err, consts.ErrInvalidTokenSize.Error())
 	assert.Equal(t, "", token)
 
-	token, err = generateToken(-256)
+	token, err = generateSecretKey(-256)
 	assert.EqualError(t, err, consts.ErrInvalidTokenSize.Error())
 	assert.Equal(t, "", token)
 
@@ -366,7 +367,7 @@ func TestGenerateToken(t *testing.T) {
 			defer wg.Done()
 
 			// store tokens in map to check for duplicates
-			token, err := generateToken(emailTokenByteSize)
+			token, err := generateSecretKey(emailTokenByteSize)
 			assert.Nil(t, err)
 			assert.NotEqual(t, "", token)
 
@@ -379,4 +380,38 @@ func TestGenerateToken(t *testing.T) {
 
 	close(start)
 	wg.Wait()
+}
+
+func TestGenerateSecretExpirationTimestamp(t *testing.T) {
+	expirationHour := 3
+
+	// test zero value
+	date, err := generateSecretExpirationTimestamp(time.Time{})
+	assert.EqualError(t, err, consts.ErrInvalidTimeStamp.Error())
+	assert.Nil(t, date)
+
+	// test all days of the week
+	currentDate := time.Now()
+
+	// non UTC date
+	timeZonedDate := currentDate.UTC()
+
+	cases := []struct {
+		date time.Time
+	}{
+		{currentDate},
+		{currentDate.AddDate(0, 0, 1)},
+		{currentDate.AddDate(0, 0, 2)},
+		{currentDate.AddDate(0, 0, 3)},
+		{timeZonedDate.AddDate(0, 0, 4)},
+		{timeZonedDate.AddDate(0, 0, 5)},
+		{timeZonedDate.AddDate(0, 0, 6)},
+	}
+
+	for _, c := range cases {
+		expirationDate, err := generateSecretExpirationTimestamp(c.date)
+		assert.Nil(t, err)
+		assert.Equal(t, (c.date.Weekday()+daysInWeek)%daysInWeek, expirationDate.Weekday())
+		assert.Equal(t, expirationHour, expirationDate.Hour())
+	}
 }

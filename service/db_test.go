@@ -255,3 +255,33 @@ func TestUpdateUserRow(t *testing.T) {
 		}
 	}
 }
+
+func TestInsertNewSecret(t *testing.T) {
+	// delete secret table
+	_, err := postgresDB.Exec("DELETE FROM user_security.secret")
+	assert.Nil(t, err)
+
+	err = insertNewSecret()
+	assert.Nil(t, err)
+
+	found, err := queryLatestSecret(2)
+	assert.Nil(t, err)
+	assert.Equal(t, true, found)
+}
+
+func TestQueryLatestSecret(t *testing.T) {
+	// delete secret table
+	_, err := postgresDB.Exec("DELETE FROM user_security.secret")
+	assert.Nil(t, err)
+
+	err = insertNewSecret()
+	assert.Nil(t, err)
+
+	found, err := queryLatestSecret(0)
+	assert.EqualError(t, err, consts.ErrInvalidAddTime.Error())
+	assert.Equal(t, false, found)
+
+	found, err = queryLatestSecret(2)
+	assert.Nil(t, err)
+	assert.Equal(t, true, found)
+}
