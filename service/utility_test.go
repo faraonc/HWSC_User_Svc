@@ -411,6 +411,10 @@ func TestGenerateSecretExpirationTimestamp(t *testing.T) {
 	for _, c := range cases {
 		expirationDate, err := generateSecretExpirationTimestamp(c.date)
 		assert.Nil(t, err)
+
+		if c.date.Location().String() != utc {
+			c.date = c.date.UTC()
+		}
 		assert.Equal(t, (c.date.Weekday()+daysInWeek)%daysInWeek, expirationDate.Weekday())
 		assert.Equal(t, expirationHour, expirationDate.Hour())
 	}

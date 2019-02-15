@@ -166,7 +166,8 @@ CREATE TABLE user_security.secret
 (
   secret_key        	TEXT PRIMARY KEY,
   created_timestamp 	TIMESTAMPTZ NOT NULL,
-  expiration_timestamp  TIMESTAMPTZ NOT NULL
+  expiration_timestamp  TIMESTAMPTZ NOT NULL,
+  is_active             BOOLEAN NOT NULL
 );
 
 CREATE TABLE user_security.tokens
@@ -462,6 +463,52 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 	return updatedUser, nil
 }
 
+// getActiveSecret retrieves the secretKey from the row where is_active is marked true
+// Returns secretKey if found, empty string if not found, else any db error
+func getActiveSecret() (string, error) {
+	command := `SELECT secret_key FROM user_security.secret WHERE is_active = $1`
+
+	row, err := postgresDB.Query(command, true)
+	if err != nil {
+		return "", err
+	}
+
+	defer row.Close()
+	var secretKey string
+	for row.Next() {
+		err := row.Scan(&secretKey)
+		if err != nil {
+			return "", err
+		}
+
+		if secretKey != "" {
+			return secretKey, err
+		}
+	}
+
+	return "", nil
+}
+
+// deactivateSecret looks up the row by secretkey and sets the row's is_active to false
+// If a row wasn't match, it will still return nil safely
+// Returns nil if updated or if not matched, else errors
+func deactivateSecret(secretKey string) error {
+	if secretKey == "" {
+		return nil
+	}
+
+	command := `UPDATE user_security.secret 
+				SET	is_active = $1 
+				WHERE secret_key = $2
+				`
+	_, err := postgresDB.Exec(command, false, secretKey)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // insertNewSecret inserts a newly generated secret key to database
 // secret key is used to sign JWT's
 // Returns err if secret is empty or error with database
@@ -472,10 +519,9 @@ func insertNewSecret() error {
 		return err
 	}
 
-	command := `
-				INSERT INTO user_security.secret(
-					secret_key, created_timestamp, expiration_timestamp
-				) VALUES($1, $2, $3)
+	command := `INSERT INTO user_security.secret(
+					secret_key, created_timestamp, expiration_timestamp, is_active
+				) VALUES($1, $2, $3, $4)
 				`
 
 	createdTimeStamp := time.Now().UTC()
@@ -484,7 +530,7 @@ func insertNewSecret() error {
 		return err
 	}
 
-	_, err = postgresDB.Exec(command, secretKey, createdTimeStamp, expirationTimestamp)
+	_, err = postgresDB.Exec(command, secretKey, createdTimeStamp, expirationTimestamp, true)
 
 	if err != nil {
 		return err
@@ -505,11 +551,11 @@ func queryLatestSecret(minute int) (bool, error) {
 
 	command := `
 				SELECT COUNT(*) FROM user_security.secret 
-				WHERE created_timestamp > $1 
+				WHERE created_timestamp > $1 AND is_active = $2
 				`
 
 	var count int
-	err := postgresDB.QueryRow(command, interval).Scan(&count)
+	err := postgresDB.QueryRow(command, interval, true).Scan(&count)
 	if err != nil {
 		return false, err
 	}

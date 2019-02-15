@@ -530,6 +530,20 @@ func (s *Service) NewSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 	secretKeyLocker.Lock()
 	defer secretKeyLocker.Unlock()
 
+	// retrieve secretKey that is active
+	retrievedSecret, err := getActiveSecret()
+	if err != nil {
+		logger.Error(consts.MakeNewSecret, consts.MsgErrGetActiveSecret, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// deactivate activeSecret
+	if err := deactivateSecret(retrievedSecret); err != nil {
+		logger.Error(consts.MakeNewSecret, consts.MsgErrDeactivatingSecret, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// insert new secret
 	if err := insertNewSecret(); err != nil {
 		logger.Error(consts.MakeNewSecret, consts.MsgErrSecret, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
