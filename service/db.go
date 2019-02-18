@@ -6,7 +6,9 @@ import (
 	"fmt"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-lib/auth"
+	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-lib/logger"
+	"github.com/hwsc-org/hwsc-lib/validation"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"log"
@@ -187,6 +189,11 @@ VALUES
     ('1000xsnjg0mqjhbf4qx1efd6y7', 'Integrate Test', 'DeleteUser', 'integrate@delete.com', '12345678', 'delete', current_timestamp, TRUE, 'NO_PERM'),
 	('0000xsnjg0mqjhbf4qx1efd6y5', 'Integrate Test', 'GetUser', 'integrate@get.com', '12345678', 'abc', current_timestamp, TRUE, 'NO_PERM'),
     ('0000xsnjg0mqjhbf4qx1efd6y3', 'Integrate Test', 'UpdateUser', 'integrate@update.com', '$2a$04$k0Ee2g8dwRV.xTrBBxKWQupAZUyVYAP5AiwEBQm1DP3nz9uJhs/WG', 'uwb', current_timestamp, TRUE, 'NO_PERM');
+
+INSERT INTO user_security.secret (secret_key, created_timestamp, expiration_timestamp, is_active)
+VALUES
+  ('Integrate-Test-Active-Secret', current_timestamp, current_timestamp, true),
+  ('Integrate-Wrong-Secret', current_timestamp, current_timestamp, false);
 `
 	_, err := postgresDB.Exec(userSchema)
 	devCheckError(err)
@@ -222,7 +229,7 @@ func insertNewUser(user *pblib.User) error {
 	}
 
 	// check if uuid is valid form
-	if err := validateUUID(user.GetUuid()); err != nil {
+	if err := validation.ValidateUserUUID(user.GetUuid()); err != nil {
 		return err
 	}
 
@@ -259,7 +266,7 @@ func insertNewUser(user *pblib.User) error {
 // Returns error if strings are empty or error with inserting to database
 func insertEmailToken(uuid string) error {
 	// check if uuid is valid form
-	if err := validateUUID(uuid); err != nil {
+	if err := validation.ValidateUserUUID(uuid); err != nil {
 		return err
 	}
 
@@ -288,7 +295,7 @@ func insertEmailToken(uuid string) error {
 // Returns error if string is empty or error with deleting from database
 func deleteUserRow(uuid string) error {
 	// check if uuid is valid form
-	if err := validateUUID(uuid); err != nil {
+	if err := validation.ValidateUserUUID(uuid); err != nil {
 		return err
 	}
 
@@ -308,7 +315,7 @@ func deleteUserRow(uuid string) error {
 // Returns pb.User struct if found, nil otherwise, error if uuid does not exist or err with db
 func getUserRow(uuid string) (*pblib.User, error) {
 	// check if uuid is valid form
-	if err := validateUUID(uuid); err != nil {
+	if err := validation.ValidateUserUUID(uuid); err != nil {
 		return nil, err
 	}
 
@@ -348,7 +355,7 @@ func getUserRow(uuid string) (*pblib.User, error) {
 	}
 
 	if userObject.GetUuid() != uuid {
-		return nil, consts.ErrInvalidUUID
+		return nil, authconst.ErrInvalidUUID
 	}
 
 	return userObject, nil
@@ -362,7 +369,7 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 		return nil, consts.ErrNilRequestUser
 	}
 
-	if err := validateUUID(uuid); err != nil {
+	if err := validation.ValidateUserUUID(uuid); err != nil {
 		return nil, err
 	}
 
