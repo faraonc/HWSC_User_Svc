@@ -600,21 +600,20 @@ func queryLatestSecret(minute int) (bool, error) {
 	return true, nil
 }
 
-func insertJWToken(uuid string, header *auth.Header, body *auth.Body, token string, secretKey string) error {
-	if err := validateUUID(uuid); err != nil {
-		return authconst.ErrInvalidUUID
-	}
-	if header == nil {
-		return authconst.ErrNilHeader
-	}
-	if body == nil {
-		return authconst.ErrNilBody
-	}
+// insertJWToken inserts new token information for auditing in the database
+// Returns error if parameters are zero values, expired secret, db error
+func insertJWToken(token string, header *auth.Header, body *auth.Body, secret *pblib.Secret) error {
 	if token == "" {
 		return authconst.ErrEmptyToken
 	}
-	if secretKey == "" {
-		return authconst.ErrEmptySecret
+	if err := auth.ValidateHeader(header); err != nil {
+		return err
+	}
+	if err := auth.ValidateBody(body); err != nil {
+		return err
+	}
+	if err := auth.ValidateSecret(secret); err != nil {
+		return err
 	}
 
 	command := `
@@ -624,8 +623,8 @@ func insertJWToken(uuid string, header *auth.Header, body *auth.Body, token stri
 				) VALUES($1, $2, $3, $4, $5, $6, $7)
 				`
 
-	_, err := postgresDB.Exec(command, token, secretKey, header.TokenTyp, header.Alg,
-		auth.PermissionStringMap[body.Permission], time.Unix(body.ExpirationTimestamp, 0), uuid)
+	_, err := postgresDB.Exec(command, token, secret.Key, header.TokenTyp, header.Alg,
+		auth.PermissionStringMap[body.Permission], time.Unix(body.ExpirationTimestamp, 0), body.UUID)
 
 	if err != nil {
 		return err

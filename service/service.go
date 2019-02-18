@@ -35,6 +35,7 @@ const (
 	// unavailable - service is locked
 	unavailable state = 1
 
+	// jwtExpirationTime in hours
 	jwtExpirationTime = 2
 )
 
@@ -533,7 +534,7 @@ func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.
 	}
 
 	// insert token into db for auditing
-	if err := insertJWToken(retrievedUser.GetUuid(), header, body, newToken, currSecret.Key); err != nil {
+	if err := insertJWToken(newToken, header, body, currSecret); err != nil {
 		logger.Error(consts.GetAuthTokenTag, consts.MsgErrInsertingJWToken, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
