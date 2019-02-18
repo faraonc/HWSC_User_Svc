@@ -553,13 +553,13 @@ func insertNewSecret() error {
 				) VALUES($1, $2, $3, $4)
 				`
 
-	createdTimeStamp := time.Now().UTC()
-	expirationTimestamp, err := generateSecretExpirationTimestamp(createdTimeStamp)
+	createdTimestamp := time.Now().UTC()
+	expirationTimestamp, err := generateSecretExpirationTimestamp(createdTimestamp)
 	if err != nil {
 		return err
 	}
 
-	_, err = postgresDB.Exec(command, secretKey, createdTimeStamp, expirationTimestamp, true)
+	_, err = postgresDB.Exec(command, secretKey, createdTimestamp, expirationTimestamp, true)
 
 	if err != nil {
 		return err
@@ -623,7 +623,9 @@ func insertJWToken(token string, header *auth.Header, body *auth.Body, secret *p
 				) VALUES($1, $2, $3, $4, $5, $6, $7)
 				`
 
-	_, err := postgresDB.Exec(command, token, secret.Key, header.TokenTyp, header.Alg,
+	// TODO need header.TokenTyp map to string value
+	// TODO remove harded coded values JWT and HS256
+	_, err := postgresDB.Exec(command, token, secret.Key, "JWT", "HS256",
 		auth.PermissionStringMap[body.Permission], time.Unix(body.ExpirationTimestamp, 0), body.UUID)
 
 	if err != nil {

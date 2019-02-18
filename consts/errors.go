@@ -9,22 +9,22 @@ import (
 )
 
 const (
-	MsgErrInsertUser            string = "unable to insert new user into db:"
-	MsgErrInsertToken           string = "unable to insert token into db:"
-	MsgErrGeneratingUUID        string = "generating uuid:"
-	MsgErrGeneratingToken       string = "generating token:"
-	MsgErrEmailRequest          string = "unable to make email request object:"
-	MsgErrSendEmail             string = "unable to send email:"
-	MsgErrDeleteUser            string = "unable to delete user:"
-	MsgErrGetUserRow            string = "unable to get user row:"
-	MsgErrUpdateUserRow         string = "unable to update user row:"
-	MsgErrAuthenticateUser      string = "failed to authenticate user:"
-	MsgErrMatchPassword         string = "failed to match password:"
-	MsgErrMatchEmail            string = "email does not match"
-	MsgErrSecret                string = "failed to insert new secret into db:"
-	MsgErrGetActiveSecret       string = "failed to get active secret row from db:"
-	MsgErrDeactivatingSecret    string = "failed to deactivate secret from db:"
-	MsgErrInsertingJWToken		string = "failed to insert jwt into db:"
+	MsgErrInsertUser         string = "unable to insert new user into db:"
+	MsgErrInsertToken        string = "unable to insert token into db:"
+	MsgErrGeneratingUUID     string = "generating uuid:"
+	MsgErrGeneratingToken    string = "generating token:"
+	MsgErrEmailRequest       string = "unable to make email request object:"
+	MsgErrSendEmail          string = "unable to send email:"
+	MsgErrDeleteUser         string = "unable to delete user:"
+	MsgErrGetUserRow         string = "unable to get user row:"
+	MsgErrUpdateUserRow      string = "unable to update user row:"
+	MsgErrAuthenticateUser   string = "failed to authenticate user:"
+	MsgErrMatchPassword      string = "failed to match password:"
+	MsgErrMatchEmail         string = "email does not match"
+	MsgErrSecret             string = "failed to insert new secret into db:"
+	MsgErrGetActiveSecret    string = "failed to get active secret row from db:"
+	MsgErrDeactivatingSecret string = "failed to deactivate secret from db:"
+	MsgErrInsertingJWToken   string = "failed to insert jwt into db:"
 )
 
 var (
