@@ -554,10 +554,16 @@ func TestGetSecret(t *testing.T) {
 
 	s := Service{}
 
-	// insert a secret
-	response, err := s.NewSecret(context.TODO(), nil)
+	// test secret is generated if no secret present
+	response, err := s.GetSecret(context.TODO(), nil)
 	assert.Nil(t, err)
-	assert.Equal(t, codes.OK.String(), response.Message)
+	assert.Equal(t, codes.OK.String(), response.GetMessage())
+	assert.NotEmpty(t, response.GetIdentification().GetSecret())
+
+	// test it exists (might be redundant with getActiveSecretRow)
+	found, err := queryLatestSecret(2)
+	assert.Nil(t, err)
+	assert.Equal(t, true, found)
 
 	// test get secret row
 	retrievedSecret, err := getActiveSecretRow()
