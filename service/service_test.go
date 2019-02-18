@@ -576,3 +576,7 @@ func TestGetSecret(t *testing.T) {
 	assert.Equal(t, response.Identification.Secret.Key, retrievedSecret.Key)
 	assert.Equal(t, response.Identification.Secret.CreatedTimestamp, retrievedSecret.CreatedTimestamp)
 }
+
+func TestGetToken(t *testing.T) {
+
+}

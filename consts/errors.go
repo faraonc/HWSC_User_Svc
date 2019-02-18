@@ -13,10 +13,8 @@ const (
 	MsgErrInsertToken           string = "unable to insert token into db:"
 	MsgErrGeneratingUUID        string = "generating uuid:"
 	MsgErrGeneratingToken       string = "generating token:"
-	MsgErrGeneratingSignedToken string = "generating signed token:"
 	MsgErrEmailRequest          string = "unable to make email request object:"
 	MsgErrSendEmail             string = "unable to send email:"
-	MsgErrCheckUser             string = "checking user exists:"
 	MsgErrDeleteUser            string = "unable to delete user:"
 	MsgErrGetUserRow            string = "unable to get user row:"
 	MsgErrUpdateUserRow         string = "unable to update user row:"
@@ -24,8 +22,9 @@ const (
 	MsgErrMatchPassword         string = "failed to match password:"
 	MsgErrMatchEmail            string = "email does not match"
 	MsgErrSecret                string = "failed to insert new secret into db:"
-	MsgErrGetActiveSecret       string = "failed to get active secret from db:"
+	MsgErrGetActiveSecret       string = "failed to get active secret row from db:"
 	MsgErrDeactivatingSecret    string = "failed to deactivate secret from db:"
+	MsgErrInsertingJWToken		string = "failed to insert jwt into db:"
 )
 
 var (

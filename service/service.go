@@ -3,6 +3,7 @@ package service
 import (
 	pbsvc "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
+	"github.com/hwsc-org/hwsc-lib/auth"
 	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-lib/logger"
 	"github.com/hwsc-org/hwsc-lib/validation"
@@ -12,6 +13,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"sync"
+	"time"
 )
 
 // Service struct type, implements the generated (pb file) UserServiceServer interface
@@ -32,6 +34,8 @@ const (
 
 	// unavailable - service is locked
 	unavailable state = 1
+
+	jwtExpirationTime = 2
 )
 
 var (
@@ -424,6 +428,21 @@ func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// if no active key in DB, create a new secret
+	if retrievedSecret == nil {
+		// insert new secret
+		if err := insertNewSecret(); err != nil {
+			logger.Error(consts.GetSecret, consts.MsgErrSecret, err.Error())
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		// retrieve inserted secret
+		retrievedSecret, err = getActiveSecretRow()
+		if err != nil {
+			logger.Error(consts.GetSecret, consts.MsgErrGetActiveSecret, err.Error())
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
 	return &pbsvc.UserResponse{
 		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
@@ -435,100 +454,98 @@ func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 
 // GetToken generates a token after verifying user's email and password,
 // stores generated token related info in DB, returns said token
+// TODO rename to GetAuthToken
 func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
-	//TODO
 	logger.RequestService("GetAuthToken")
-	//
-	//if ok := serviceStateLocker.isStateAvailable(); !ok {
-	//	logger.Error(consts.GetAuthTokenTag, consts.ErrServiceUnavailable.Error())
-	//	return nil, consts.ErrStatusServiceUnavailable
-	//}
-	//
-	//if req == nil {
-	//	return nil, consts.ErrStatusNilRequestUser
-	//}
-	//
-	//if err := refreshDBConnection(); err != nil {
-	//	return nil, status.Error(codes.Internal, err.Error())
-	//}
-	//
-	//user := req.GetUser()
-	//if user == nil {
-	//	return nil, consts.ErrStatusNilRequestUser
-	//}
-	//
-	//// validate uuid, email, password
-	//if err := validateUUID(user.GetUuid()); err != nil {
-	//	logger.Error(consts.GetAuthTokenTag, consts.ErrInvalidUUID.Error())
-	//	return nil, consts.ErrStatusUUIDInvalid
-	//}
-	//if err := validateEmail(user.GetEmail()); err != nil {
-	//	logger.Error(consts.GetAuthTokenTag, consts.ErrInvalidUserEmail.Error())
-	//	return nil, status.Error(codes.InvalidArgument, consts.ErrInvalidUserEmail.Error())
-	//}
-	//if err := validatePassword(user.GetPassword()); err != nil {
-	//	logger.Error(consts.GetAuthTokenTag, consts.ErrInvalidPassword.Error())
-	//	return nil, status.Error(codes.InvalidArgument, consts.ErrInvalidPassword.Error())
-	//}
-	//
-	//// write lock b/c we are writing to DB
-	//lock, _ := uuidMapLocker.LoadOrStore(user.GetUuid(), &sync.RWMutex{})
-	//lock.(*sync.RWMutex).Lock()
-	//defer lock.(*sync.RWMutex).Unlock()
-	//
-	//// look up email and password
-	//retrievedUser, err := getUserRow(user.GetUuid())
-	//if err != nil {
-	//	logger.Error(consts.GetAuthTokenTag, consts.MsgErrAuthenticateUser, err.Error())
-	//	return nil, status.Error(codes.Unknown, err.Error())
-	//}
-	//
-	//if retrievedUser.GetEmail() != user.GetEmail() {
-	//	logger.Error(consts.GetAuthTokenTag, consts.MsgErrMatchEmail)
-	//	return nil, status.Error(codes.InvalidArgument, consts.MsgErrMatchEmail)
-	//}
-	//
-	//if err := comparePassword(retrievedUser.GetPassword(), user.GetPassword()); err != nil {
-	//	logger.Error(consts.GetAuthTokenTag, consts.MsgErrMatchPassword, err.Error())
-	//	return nil, status.Error(codes.Unauthenticated, err.Error())
-	//}
 
-	// TODO permission string "USER" should come from retrievedUser.permission_level
-	//permission := auth.PermissionEnumMap["USER"]
-	//algorithm := auth.AlgorithmMap[permission]
-	//
-	////create JWT header and payload
-	//header := &auth.Header{
-	//	Alg: algorithm,
-	//	TokenTyp: auth.Jwt,
-	//}
-	//// expiration date is set by auth's NewToken
-	//body := &auth.Body{
-	//	UUID: retrievedUser.GetUuid(),
-	//	Permission: permission,
-	//}
-	//
-	//// make secret key to sign jwtoken
-	//secretKey, err := generateToken(auth.SignatureBytesMap[algorithm])
-	//if err != nil {
-	//	logger.Error(consts.GetAuthTokenTag, consts.MsgErrGeneratingToken, err.Error())
-	//	return nil, status.Error(codes.Internal, err.Error())
-	//}
-	//secret := &pblib.Secret{
-	//	Key: secretKey,
-	//	CreatedTimestamp: time.Now().UTC().Unix(),
-	//}
-	//
-	//// get token
-	//signedToken, err := auth.NewToken(header, body, secret)
-	//if err != nil {
-	//	logger.Error(consts.GetAuthTokenTag, consts.MsgErrGeneratingSignedToken, err.Error())
-	//	return nil, status.Error(codes.Internal, err.Error())
-	//}
+	if ok := serviceStateLocker.isStateAvailable(); !ok {
+		logger.Error(consts.GetAuthTokenTag, consts.ErrServiceUnavailable.Error())
+		return nil, consts.ErrStatusServiceUnavailable
+	}
 
-	// insert JWT detail into DB
+	if req == nil {
+		return nil, consts.ErrStatusNilRequestUser
+	}
 
-	return &pbsvc.UserResponse{}, nil
+	if err := refreshDBConnection(); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	user := req.GetUser()
+	if user == nil {
+		return nil, consts.ErrStatusNilRequestUser
+	}
+
+	// validate uuid, email, password
+	if err := validation.ValidateUserUUID(user.GetUuid()); err != nil {
+		logger.Error(consts.GetAuthTokenTag, authconst.ErrInvalidUUID.Error())
+		return nil, consts.ErrStatusUUIDInvalid
+	}
+	if err := validateEmail(user.GetEmail()); err != nil {
+		logger.Error(consts.GetAuthTokenTag, consts.ErrInvalidUserEmail.Error())
+		return nil, status.Error(codes.InvalidArgument, consts.ErrInvalidUserEmail.Error())
+	}
+	if err := validatePassword(user.GetPassword()); err != nil {
+		logger.Error(consts.GetAuthTokenTag, consts.ErrInvalidPassword.Error())
+		return nil, status.Error(codes.InvalidArgument, consts.ErrInvalidPassword.Error())
+	}
+
+	// write lock b/c we are writing to DB
+	lock, _ := uuidMapLocker.LoadOrStore(user.GetUuid(), &sync.RWMutex{})
+	lock.(*sync.RWMutex).Lock()
+	defer lock.(*sync.RWMutex).Unlock()
+
+	// look up email and password
+	retrievedUser, err := getUserRow(user.GetUuid())
+	if err != nil {
+		logger.Error(consts.GetAuthTokenTag, consts.MsgErrAuthenticateUser, err.Error())
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	if retrievedUser.GetEmail() != user.GetEmail() {
+		logger.Error(consts.GetAuthTokenTag, consts.MsgErrMatchEmail)
+		return nil, status.Error(codes.InvalidArgument, consts.MsgErrMatchEmail)
+	}
+
+	if err := comparePassword(retrievedUser.GetPassword(), user.GetPassword()); err != nil {
+		logger.Error(consts.GetAuthTokenTag, consts.MsgErrMatchPassword, err.Error())
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
+	// TODO include mapping table in db
+	permissionLevel := auth.PermissionEnumMap[retrievedUser.GetPermissionLevel()]
+
+	// build token header, body, secret
+	header := &auth.Header{
+		Alg:      auth.AlgorithmMap[permissionLevel],
+		TokenTyp: auth.Jwt,
+	}
+	body := &auth.Body{
+		UUID:                retrievedUser.GetUuid(),
+		Permission:          permissionLevel,
+		ExpirationTimestamp: time.Now().UTC().Add(time.Hour * time.Duration(jwtExpirationTime)).Unix(),
+	}
+
+	newToken, err := auth.NewToken(header, body, currSecret)
+	if err != nil {
+		logger.Error(consts.GetAuthTokenTag, consts.MsgErrGeneratingToken, err.Error())
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
+	// insert token into db for auditing
+	if err := insertJWToken(retrievedUser.GetUuid(), header, body, newToken, currSecret.Key); err != nil {
+		logger.Error(consts.GetAuthTokenTag, consts.MsgErrInsertingJWToken, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pbsvc.UserResponse{
+		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
+		Message: codes.OK.String(),
+		Identification: &pblib.Identification{
+			Token:  newToken,
+			Secret: currSecret,
+		},
+	}, nil
 }
 
 // VerifyToken checks if received token from Chrome is valid

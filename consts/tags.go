@@ -11,4 +11,5 @@ const (
 	MakeNewSecret       string = "MakeNewSecret -"
 	GetSecret           string = "GetSecret -"
 	PSQL                string = "PSQL -"
+	IntializeSecret     string = "Intializing Secret - "
 )
