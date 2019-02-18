@@ -82,19 +82,20 @@
     "lib",
   ]
   pruneopts = "UT"
-  revision = "5fce68a4dfda026b8b0319d2c10bf332c135f029"
+  revision = "1729749fa868a1152434fea9bede5c9fb2a50835"
 
 [[projects]]
   branch = "master"
-  digest = "1:793e1be320c94823b4f2feee7be30efba98ae1b8184cf473f6ee8972229b7b07"
+  digest = "1:f5baae8a4792abb68ae150a64a9448dbd992404727e899e150d241f66d76165a"
   name = "github.com/hwsc-org/hwsc-lib"
   packages = [
     "auth",
     "consts",
     "logger",
+    "validation",
   ]
   pruneopts = "UT"
-  revision = "3fd1105ad387759fd645140bd84d7815ce2ed5e0"
+  revision = "e1f37f02aab5a36a900e4c40f4f921f28c17540d"
 
 [[projects]]
   digest = "1:a0cefd27d12712af4b5018dc7046f245e1e3b5760e2e848c30b171b570708f9b"
@@ -226,7 +227,7 @@
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   pruneopts = "UT"
-  revision = "4b09977fb92221987e99d190c8f88f2c92727a29"
+  revision = "bd968387e4aa590b3c6e4ba38ecac1ed314d43ad"
 
 [[projects]]
   digest = "1:9ab5a33d8cb5c120602a34d2e985ce17956a4e8c2edce7e6961568f95e40c09a"

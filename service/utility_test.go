@@ -266,33 +266,6 @@ func TestGenerateUUID(t *testing.T) {
 	wg.Wait()
 }
 
-func TestValidateUUID(t *testing.T) {
-	// generate a valid uuid
-	uuid, err := generateUUID()
-	assert.Nil(t, err)
-	assert.NotNil(t, uuid)
-
-	cases := []struct {
-		uuid     string
-		isExpErr bool
-	}{
-		{uuid, false},
-		{"", true},
-		{"01d1na5ekzr7p98hragv5fmvx", true},
-		{"abcd", true},
-	}
-
-	for _, c := range cases {
-		err := validateUUID(c.uuid)
-
-		if c.isExpErr {
-			assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
-		} else {
-			assert.Nil(t, err)
-		}
-	}
-}
-
 func TestHashPassword(t *testing.T) {
 	// test empty password
 	hashed, err := hashPassword("")

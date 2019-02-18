@@ -3,7 +3,9 @@ package service
 import (
 	pbsvc "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
+	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-lib/logger"
+	"github.com/hwsc-org/hwsc-lib/validation"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"golang.org/x/net/context"
@@ -171,8 +173,8 @@ func (s *Service) DeleteUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 		return nil, consts.ErrStatusNilRequestUser
 	}
 
-	if err := validateUUID(user.GetUuid()); err != nil {
-		logger.Error(consts.DeleteUserTag, consts.ErrInvalidUUID.Error())
+	if err := validation.ValidateUserUUID(user.GetUuid()); err != nil {
+		logger.Error(consts.DeleteUserTag, authconst.ErrInvalidUUID.Error())
 		return nil, consts.ErrStatusUUIDInvalid
 	}
 
@@ -222,8 +224,8 @@ func (s *Service) UpdateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 		return nil, consts.ErrStatusNilRequestUser
 	}
 
-	if err := validateUUID(svcDerivedUser.GetUuid()); err != nil {
-		logger.Error(consts.UpdateUserTag, consts.ErrInvalidUUID.Error())
+	if err := validation.ValidateUserUUID(svcDerivedUser.GetUuid()); err != nil {
+		logger.Error(consts.UpdateUserTag, authconst.ErrInvalidUUID.Error())
 		return nil, consts.ErrStatusUUIDInvalid
 	}
 
@@ -286,8 +288,8 @@ func (s *Service) AuthenticateUser(ctx context.Context, req *pbsvc.UserRequest) 
 	}
 
 	// validate uuid, email, password
-	if err := validateUUID(user.GetUuid()); err != nil {
-		logger.Error(consts.AuthenticateUserTag, consts.ErrInvalidUUID.Error())
+	if err := validation.ValidateUserUUID(user.GetUuid()); err != nil {
+		logger.Error(consts.AuthenticateUserTag, authconst.ErrInvalidUUID.Error())
 		return nil, consts.ErrStatusUUIDInvalid
 	}
 	if err := validateEmail(user.GetEmail()); err != nil {
@@ -362,8 +364,8 @@ func (s *Service) GetUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.U
 		return nil, consts.ErrStatusNilRequestUser
 	}
 
-	if err := validateUUID(user.GetUuid()); err != nil {
-		logger.Error(consts.GetUserTag, consts.ErrInvalidUUID.Error())
+	if err := validation.ValidateUserUUID(user.GetUuid()); err != nil {
+		logger.Error(consts.GetUserTag, authconst.ErrInvalidUUID.Error())
 		return nil, consts.ErrStatusUUIDInvalid
 	}
 

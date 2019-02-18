@@ -3,6 +3,7 @@ package consts
 import (
 	"errors"
 	pbsvc "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user"
+	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -33,7 +34,6 @@ var (
 	ErrEmptyRequestUser             = errors.New("empty fields in request User")
 	ErrInvalidTimeStamp             = errors.New("zero timestamp")
 	ErrInvalidTokenSize             = errors.New("invalid token size")
-	ErrInvalidUUID                  = errors.New("invalid User uuid")
 	ErrInvalidUserFirstName         = errors.New("invalid User first name")
 	ErrInvalidUserLastName          = errors.New("invalid User last name")
 	ErrInvalidUserEmail             = errors.New("invalid User email")
@@ -53,5 +53,5 @@ var (
 	ErrStatusServiceUnavailable = status.Error(codes.Unavailable, ErrServiceUnavailable.Error())
 	ErrStatusNilRequestUser     = status.Error(codes.InvalidArgument, ErrNilRequestUser.Error())
 	ErrStatusUUIDNotFound       = status.Error(codes.NotFound, ErrUUIDNotFound.Error())
-	ErrStatusUUIDInvalid        = status.Error(codes.InvalidArgument, ErrInvalidUUID.Error())
+	ErrStatusUUIDInvalid        = status.Error(codes.InvalidArgument, authconst.ErrInvalidUUID.Error())
 )

@@ -3,6 +3,7 @@ package service
 import (
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-lib/auth"
+	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
@@ -110,8 +111,8 @@ func TestInsertNewUser(t *testing.T) {
 		{insertUser6, true, consts.ErrInvalidPassword.Error()},
 		{insertUser7, true, consts.ErrInvalidUserOrganization.Error()},
 		{nil, true, consts.ErrNilRequestUser.Error()},
-		{&pblib.User{}, true, consts.ErrInvalidUUID.Error()},
-		{&pblib.User{Uuid: "1234"}, true, consts.ErrInvalidUUID.Error()},
+		{&pblib.User{}, true, authconst.ErrInvalidUUID.Error()},
+		{&pblib.User{Uuid: "1234"}, true, authconst.ErrInvalidUUID.Error()},
 	}
 
 	for _, c := range cases {
@@ -135,11 +136,11 @@ func TestInsertEmailToken(t *testing.T) {
 
 	// invalid
 	err = insertEmailToken("")
-	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
+	assert.EqualError(t, err, authconst.ErrInvalidUUID.Error())
 
 	// invalid
 	err = insertEmailToken("1234")
-	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
+	assert.EqualError(t, err, authconst.ErrInvalidUUID.Error())
 
 	// valid
 	err = insertEmailToken(response.GetUser().GetUuid())
@@ -162,10 +163,10 @@ func TestDeleteUserRow(t *testing.T) {
 	assert.Nil(t, err)
 
 	err = deleteUserRow("")
-	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
+	assert.EqualError(t, err, authconst.ErrInvalidUUID.Error())
 
 	err = deleteUserRow("1234")
-	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
+	assert.EqualError(t, err, authconst.ErrInvalidUUID.Error())
 
 	err = deleteUserRow(response.GetUser().GetUuid())
 	assert.Nil(t, err)
@@ -181,7 +182,7 @@ func TestGetUserRow(t *testing.T) {
 	// non existent uuid
 	nonExistentUUID, _ := generateUUID()
 	retrievedUser, err := getUserRow(nonExistentUUID)
-	assert.EqualError(t, err, consts.ErrInvalidUUID.Error())
+	assert.EqualError(t, err, authconst.ErrInvalidUUID.Error())
 	assert.Nil(t, retrievedUser)
 
 	// existent uuid
