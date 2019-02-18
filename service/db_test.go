@@ -16,6 +16,18 @@ func deleteSecretTable() error {
 	return err
 }
 
+func deleteInsertGetSecret() (*pblib.Secret, error) {
+	if err := deleteSecretTable(); err != nil {
+		return nil, err
+	}
+
+	if err := insertNewSecret(); err != nil {
+		return nil, err
+	}
+
+	return getActiveSecretRow()
+}
+
 func TestRefreshDBConnection(t *testing.T) {
 	assert.NotNil(t, postgresDB)
 
@@ -127,8 +139,6 @@ func TestInsertNewUser(t *testing.T) {
 }
 
 func TestInsertEmailToken(t *testing.T) {
-	templateDirectory = unitTestEmailTemplateDirectory
-
 	response, err := unitTestInsertUser("InsertEmailToken-One")
 	assert.Nil(t, err)
 	// TODO temporary
@@ -158,8 +168,6 @@ func TestInsertEmailToken(t *testing.T) {
 }
 
 func TestDeleteUserRow(t *testing.T) {
-	templateDirectory = unitTestEmailTemplateDirectory
-
 	response, err := unitTestInsertUser("DeleteUserRow-One")
 	assert.Nil(t, err)
 
@@ -178,8 +186,6 @@ func TestDeleteUserRow(t *testing.T) {
 }
 
 func TestGetUserRow(t *testing.T) {
-	templateDirectory = unitTestEmailTemplateDirectory
-
 	// non existent uuid
 	nonExistentUUID, _ := generateUUID()
 	retrievedUser, err := getUserRow(nonExistentUUID)
@@ -200,8 +206,6 @@ func TestGetUserRow(t *testing.T) {
 }
 
 func TestUpdateUserRow(t *testing.T) {
-	templateDirectory = unitTestEmailTemplateDirectory
-
 	// insert some new users
 	response1, err := unitTestInsertUser("UpdateUserRow-One")
 	assert.Nil(t, err)
@@ -350,15 +354,8 @@ func TestQueryLatestSecret(t *testing.T) {
 func TestInsertJWToken(t *testing.T) {
 	token := "someToken"
 
-	err := deleteSecretTable()
-	assert.Nil(t, err)
-
-	// insert fresh secret
-	err = insertNewSecret()
-	assert.Nil(t, err)
-
 	// retrieve freshly active secret
-	retrievedSecret, err := getActiveSecretRow()
+	retrievedSecret, err := deleteInsertGetSecret()
 	assert.Nil(t, err)
 	assert.NotNil(t, retrievedSecret)
 	currSecret = retrievedSecret
@@ -408,8 +405,8 @@ func TestInsertJWToken(t *testing.T) {
 		// body contains invalid timestamp
 		{
 			&auth.Body{
-				UUID:       validBody.UUID,
-				Permission: validBody.Permission,
+				UUID:                validBody.UUID,
+				Permission:          validBody.Permission,
 				ExpirationTimestamp: 12,
 			}, currSecret, validHeader, token, true, authconst.ErrExpiredBody.Error(),
 		},
@@ -435,8 +432,8 @@ func TestInsertJWToken(t *testing.T) {
 		{
 			validBody,
 			&pblib.Secret{
-				Key:              currSecret.Key,
-				CreatedTimestamp: currSecret.CreatedTimestamp,
+				Key:                 currSecret.Key,
+				CreatedTimestamp:    currSecret.CreatedTimestamp,
 				ExpirationTimestamp: 12,
 			}, validHeader, token, true, authconst.ErrExpiredSecret.Error(),
 		},

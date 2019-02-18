@@ -11,15 +11,18 @@ import (
 )
 
 var (
-	unitTestEmailTemplateDirectory = "../tmpl/"
-	unitTestEmailCounter           = 1
-	unitTestDefaultUser            = &pblib.User{
+	unitTestEmailCounter = 1
+	unitTestDefaultUser  = &pblib.User{
 		FirstName:    "Unit Test",
 		Organization: "Unit Testing",
 	}
 	unitTestFailValue = "shouldFail"
 	unitTestFailEmail = "should@fail.com"
 )
+
+func init() {
+	templateDirectory = "../tmpl/"
+}
 
 func unitTestEmailGenerator() string {
 	email := "hwsc.test+user" + fmt.Sprint(unitTestEmailCounter) + "@gmail.com"
@@ -86,8 +89,6 @@ func TestGetStatus(t *testing.T) {
 }
 
 func TestCreateUser(t *testing.T) {
-	templateDirectory = unitTestEmailTemplateDirectory
-
 	// valid
 	testUser1 := unitTestUserGenerator("CreateUser-One")
 
@@ -174,7 +175,6 @@ func TestCreateUser(t *testing.T) {
 }
 
 func TestDeleteUser(t *testing.T) {
-	templateDirectory = unitTestEmailTemplateDirectory
 	// insert valid user
 	response, err := unitTestInsertUser("DeleteUser-One")
 	assert.Nil(t, err)
@@ -233,8 +233,6 @@ func TestDeleteUser(t *testing.T) {
 }
 
 func TestGetUser(t *testing.T) {
-	templateDirectory = unitTestEmailTemplateDirectory
-
 	// insert valid user
 	response, err := unitTestInsertUser("GetUser-One")
 	assert.Nil(t, err)
@@ -283,8 +281,6 @@ func TestGetUser(t *testing.T) {
 }
 
 func TestUpdateUser(t *testing.T) {
-	templateDirectory = unitTestEmailTemplateDirectory
-
 	// insert valid user 1
 	response1, err := unitTestInsertUser("UpdateUser-One")
 	assert.Nil(t, err)
@@ -389,8 +385,6 @@ func TestUpdateUser(t *testing.T) {
 }
 
 func TestAuthenticateUser(t *testing.T) {
-	templateDirectory = unitTestEmailTemplateDirectory
-
 	validPassword := "AuthenticateUser-One"
 
 	response, err := unitTestInsertUser(validPassword)
@@ -578,5 +572,73 @@ func TestGetSecret(t *testing.T) {
 }
 
 func TestGetToken(t *testing.T) {
+	lastName := "GetToken-One"
 
+	// refresh secret table
+	retrievedSecret, err := deleteInsertGetSecret()
+	assert.Nil(t, err)
+	assert.NotNil(t, retrievedSecret)
+	currSecret = retrievedSecret
+
+	// insert a user
+	response, err := unitTestInsertUser(lastName)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, response)
+	response.GetUser().Password = lastName
+
+	cases := []struct {
+		request  *pbsvc.UserRequest
+		isExpErr bool
+		expMsg   string
+	}{
+		// valid
+		{&pbsvc.UserRequest{User: response.GetUser()}, false, ""},
+		// nil request object
+		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
+		// nil user object
+		{&pbsvc.UserRequest{User: nil}, true, "rpc error: code = InvalidArgument desc = nil request User"},
+		// user contains invalid uuid
+		{&pbsvc.UserRequest{
+			User: &pblib.User{
+				Uuid:     "invalid",
+				Email:    response.GetUser().GetEmail(),
+				Password: response.GetUser().GetPassword(),
+			}},
+			true, "rpc error: code = InvalidArgument desc = invalid uuid",
+		},
+		// user contains invalid email
+		{&pbsvc.UserRequest{
+			User: &pblib.User{
+				Uuid:     response.GetUser().GetUuid(),
+				Email:    "@",
+				Password: response.GetUser().GetPassword(),
+			}},
+			true, "rpc error: code = InvalidArgument desc = invalid User email",
+		},
+		// user contains invalid password
+		{&pbsvc.UserRequest{
+			User: &pblib.User{
+				Uuid:     response.GetUser().GetUuid(),
+				Email:    response.GetUser().GetEmail(),
+				Password: "",
+			}},
+			true, "rpc error: code = InvalidArgument desc = invalid User password",
+		},
+	}
+
+	for _, c := range cases {
+		s := Service{}
+		response, err := s.GetToken(context.TODO(), c.request)
+
+		if c.isExpErr {
+			assert.EqualError(t, err, c.expMsg)
+			assert.Nil(t, response)
+		} else {
+			assert.Nil(t, err)
+			assert.Equal(t, codes.OK.String(), response.GetMessage())
+			assert.NotEmpty(t, response.GetIdentification())
+			assert.NotEmpty(t, response.GetIdentification().GetSecret())
+			assert.NotEmpty(t, response.GetIdentification().GetToken())
+		}
+	}
 }
