@@ -86,7 +86,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f5baae8a4792abb68ae150a64a9448dbd992404727e899e150d241f66d76165a"
+  digest = "1:44e9a9c20cb9c3e68f5d7155297af7d2ec2cba9df44b108043233863c256baed"
   name = "github.com/hwsc-org/hwsc-lib"
   packages = [
     "auth",
@@ -95,7 +95,7 @@
     "validation",
   ]
   pruneopts = "UT"
-  revision = "e1f37f02aab5a36a900e4c40f4f921f28c17540d"
+  revision = "bd43cc893860be086be69bb2bdbc0c57469f6b4b"
 
 [[projects]]
   digest = "1:a0cefd27d12712af4b5018dc7046f245e1e3b5760e2e848c30b171b570708f9b"
@@ -284,7 +284,9 @@
     "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user",
     "github.com/hwsc-org/hwsc-api-blocks/lib",
     "github.com/hwsc-org/hwsc-lib/auth",
+    "github.com/hwsc-org/hwsc-lib/consts",
     "github.com/hwsc-org/hwsc-lib/logger",
+    "github.com/hwsc-org/hwsc-lib/validation",
     "github.com/lib/pq",
     "github.com/micro/go-config",
     "github.com/micro/go-config/source/env",

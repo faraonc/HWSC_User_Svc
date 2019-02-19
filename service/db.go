@@ -28,6 +28,7 @@ const (
 var (
 	connectionString string
 	postgresDB       *sql.DB
+	currSecret       *pblib.Secret
 )
 
 func init() {
@@ -51,6 +52,20 @@ func init() {
 		logger.Fatal(consts.PSQL, "Ping failed, cannot establish connection:", err.Error())
 	}
 
+	// TODO delete after dev-ops working
+	devCreateTables()
+	// TODO delete for production
+	_ = insertNewSecret()
+
+	// retrieve secretKey
+	activeSecret, err := getActiveSecretRow()
+	if err != nil {
+		logger.Fatal(consts.IntializeSecret, consts.MsgErrGetActiveSecret)
+	}
+	if activeSecret != nil {
+		currSecret = activeSecret
+	}
+
 	// Handle Terminate Signal(Ctrl + C) gracefully
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -62,9 +77,6 @@ func init() {
 		}
 		log.Fatal(consts.PSQL, "hwsc-user-svc terminated")
 	}()
-
-	// TODO delete after dev-ops working
-	devCreateUserTable()
 }
 
 // TODO delete after dev-ops working
@@ -75,7 +87,7 @@ func devCheckError(err error) {
 }
 
 // TODO delete after dev-ops working
-func devCreateUserTable() {
+func devCreateTables() {
 	if postgresDB == nil {
 		log.Fatal("postgres connection is null for some reason")
 	}
@@ -319,7 +331,8 @@ func getUserRow(uuid string) (*pblib.User, error) {
 		return nil, err
 	}
 
-	command := `SELECT uuid, first_name, last_name, email, organization, created_date, is_verified, password
+	command := `SELECT uuid, first_name, last_name, email, organization, 
+       				created_date, is_verified, password, permission_level
 				FROM user_svc.accounts WHERE user_svc.accounts.uuid = $1
 				`
 	row, err := postgresDB.Query(command, uuid)
@@ -331,23 +344,25 @@ func getUserRow(uuid string) (*pblib.User, error) {
 
 	var userObject *pblib.User
 	for row.Next() {
-		var uid, firstName, lastName, email, organization, password string
+		var uid, firstName, lastName, email, organization, password, permissionLevel string
 		var isVerified bool
 		var createdDate time.Time
 
-		err := row.Scan(&uid, &firstName, &lastName, &email, &organization, &createdDate, &isVerified, &password)
+		err := row.Scan(&uid, &firstName, &lastName, &email, &organization,
+			&createdDate, &isVerified, &password, &permissionLevel)
 		if err != nil {
 			return nil, err
 		}
 		userObject = &pblib.User{
-			Uuid:         uid,
-			FirstName:    firstName,
-			LastName:     lastName,
-			Email:        email,
-			Organization: organization,
-			CreatedDate:  createdDate.Unix(),
-			IsVerified:   isVerified,
-			Password:     password,
+			Uuid:            uid,
+			FirstName:       firstName,
+			LastName:        lastName,
+			Email:           email,
+			Organization:    organization,
+			CreatedDate:     createdDate.Unix(),
+			IsVerified:      isVerified,
+			Password:        password,
+			PermissionLevel: permissionLevel,
 		}
 	}
 	if err := row.Err(); err != nil {
@@ -538,13 +553,13 @@ func insertNewSecret() error {
 				) VALUES($1, $2, $3, $4)
 				`
 
-	createdTimeStamp := time.Now().UTC()
-	expirationTimestamp, err := generateSecretExpirationTimestamp(createdTimeStamp)
+	createdTimestamp := time.Now().UTC()
+	expirationTimestamp, err := generateSecretExpirationTimestamp(createdTimestamp)
 	if err != nil {
 		return err
 	}
 
-	_, err = postgresDB.Exec(command, secretKey, createdTimeStamp, expirationTimestamp, true)
+	_, err = postgresDB.Exec(command, secretKey, createdTimestamp, expirationTimestamp, true)
 
 	if err != nil {
 		return err
@@ -585,37 +600,37 @@ func queryLatestSecret(minute int) (bool, error) {
 	return true, nil
 }
 
-//TODO work on later
-//func insertJWToken(uuid string, header *auth.Header, body *auth.Body, token string, secretKey string) error {
-//	if err := validateUUID(uuid); err != nil {
-//		return consts.ErrInvalidUUID
-//	}
-//	if header == nil {
-//		return authconst.ErrNilHeader
-//	}
-//	if body == nil {
-//		return authconst.ErrNilBody
-//	}
-//	if token == "" {
-//		return authconst.ErrEmptyToken
-//	}
-//	if secretKey == "" {
-//		return authconst.ErrEmptySecret
-//	}
-//
-//	command := `
-//				INSERT INTO user_security.tokens(
-//					token_string, secret_key, token_type, algorithm,
-//					permission, expiration_date, uuid
-//				) VALUES($1, $2, $3, $4, $5, $6, $7)
-//				`
-//
-//	_, err := postgresDB.Exec(command, token, secretKey, header.TokenTyp, header.Alg,
-//		auth.PermissionStringMap[body.Permission], time.Unix(body.ExpirationTimestamp, 0), uuid)
-//
-//	if err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
+// insertJWToken inserts new token information for auditing in the database
+// Returns error if parameters are zero values, expired secret, db error
+func insertJWToken(token string, header *auth.Header, body *auth.Body, secret *pblib.Secret) error {
+	if token == "" {
+		return authconst.ErrEmptyToken
+	}
+	if err := auth.ValidateHeader(header); err != nil {
+		return err
+	}
+	if err := auth.ValidateBody(body); err != nil {
+		return err
+	}
+	if err := auth.ValidateSecret(secret); err != nil {
+		return err
+	}
+
+	command := `
+				INSERT INTO user_security.tokens(
+					token_string, secret_key, token_type, algorithm,
+					permission, expiration_date, uuid
+				) VALUES($1, $2, $3, $4, $5, $6, $7)
+				`
+
+	// TODO need header.TokenTyp map to string value
+	// TODO remove harded coded values JWT and HS256
+	_, err := postgresDB.Exec(command, token, secret.Key, "JWT", "HS256",
+		auth.PermissionStringMap[body.Permission], time.Unix(body.ExpirationTimestamp, 0), body.UUID)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
