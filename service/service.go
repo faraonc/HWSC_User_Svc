@@ -515,10 +515,7 @@ func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.
 
 	// lookup user in token table for existing user
 	existingToken, err := getExistingToken(retrievedUser.GetUuid())
-	if err != nil {
-		logger.Error(consts.GetAuthTokenTag, consts.MsgErrGetExistingToken, err.Error())
-	}
-	if existingToken != nil && existingToken.permission == retrievedUser.GetPermissionLevel() {
+	if err == nil && existingToken != nil && existingToken.permission == retrievedUser.GetPermissionLevel() {
 		return &pbsvc.UserResponse{
 			Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
 			Message: codes.OK.String(),

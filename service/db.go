@@ -684,5 +684,5 @@ func getExistingToken(uuid string) (*tokenRow, error) {
 		}, nil
 	}
 
-	return nil, nil
+	return nil, consts.ErrNoExistingTokenFound
 }
