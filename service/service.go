@@ -577,8 +577,29 @@ func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.
 // VerifyToken checks if received token from Chrome is valid
 // TODO This is an exposed API, what are the return values?
 func (s *Service) VerifyToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
-	// TODO
 	logger.RequestService("Verify Token")
+
+	if ok := serviceStateLocker.isStateAvailable(); !ok {
+		return nil, consts.ErrStatusServiceUnavailable
+	}
+
+	if req == nil {
+		return nil, consts.ErrNilRequestUser
+	}
+
+	if err := refreshDBConnection(); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// get identification object
+	identity := req.GetIdentification()
+	if identity == nil {
+		return nil, status.Error(codes.InvalidArgument, consts.ErrNilRequestIdentification.Error())
+	}
+
+	// verify token with database
+
+
 	return &pbsvc.UserResponse{}, nil
 }
 

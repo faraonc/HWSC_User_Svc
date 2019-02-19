@@ -32,6 +32,7 @@ const (
 var (
 	ErrServiceUnavailable           = errors.New("service unavailable")
 	ErrNilRequestUser               = errors.New("nil request User")
+	ErrNilRequestIdentification		= errors.New("nil request identification")
 	ErrEmptyRequestUser             = errors.New("empty fields in request User")
 	ErrInvalidTimeStamp             = errors.New("zero timestamp")
 	ErrInvalidTokenSize             = errors.New("invalid token size")
