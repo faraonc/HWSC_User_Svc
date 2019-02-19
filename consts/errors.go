@@ -25,6 +25,7 @@ const (
 	MsgErrGetActiveSecret    string = "failed to get active secret row from db:"
 	MsgErrDeactivatingSecret string = "failed to deactivate secret from db:"
 	MsgErrInsertingJWToken   string = "failed to insert jwt into db:"
+	MsgErrGetExistingToken   string = "error retrieving existing token:"
 )
 
 var (

@@ -21,6 +21,13 @@ import (
 	"syscall"
 )
 
+type tokenRow struct {
+	uuid       string
+	permission string
+	token      string
+	secret     *pblib.Secret
+}
+
 const (
 	dbDriverName = "postgres"
 )
@@ -192,7 +199,7 @@ CREATE TABLE user_security.tokens
   algorithm         user_security.algorithm_type NOT NULL,
   permission        permission_level NOT NULL,
   expiration_date   TIMESTAMPTZ NOT NULL,
-  uuid              ulid NOT NULL UNIQUE
+  uuid              ulid NOT NULL
 );
 
 
@@ -201,11 +208,6 @@ VALUES
     ('1000xsnjg0mqjhbf4qx1efd6y7', 'Integrate Test', 'DeleteUser', 'integrate@delete.com', '$2a$04$k0Ee2g8dwRV.xTrBBxKWQupAZUyVYAP5AiwEBQm1DP3nz9uJhs/WG', 'delete', current_timestamp, TRUE, 'NO_PERM'),
 	('0000xsnjg0mqjhbf4qx1efd6y5', 'Integrate Test', 'GetUser', 'integrate@get.com', '$2a$04$k0Ee2g8dwRV.xTrBBxKWQupAZUyVYAP5AiwEBQm1DP3nz9uJhs/WG', 'abc', current_timestamp, TRUE, 'NO_PERM'),
     ('0000xsnjg0mqjhbf4qx1efd6y3', 'Integrate Test', 'UpdateUser', 'integrate@update.com', '$2a$04$k0Ee2g8dwRV.xTrBBxKWQupAZUyVYAP5AiwEBQm1DP3nz9uJhs/WG', 'uwb', current_timestamp, TRUE, 'NO_PERM');
-
-INSERT INTO user_security.secret (secret_key, created_timestamp, expiration_timestamp, is_active)
-VALUES
-  ('Integrate-Test-Active-Secret', current_timestamp, current_timestamp, true),
-  ('Integrate-Wrong-Secret', current_timestamp, current_timestamp, false);
 `
 	_, err := postgresDB.Exec(userSchema)
 	devCheckError(err)
@@ -633,4 +635,54 @@ func insertJWToken(token string, header *auth.Header, body *auth.Body, secret *p
 	}
 
 	return nil
+}
+
+// getExistingToken looks up existing user and grabs row where token is not expired
+// Returns tokenRow object if existing token is found and unexpired, nil if not found, else errors
+func getExistingToken(uuid string) (*tokenRow, error) {
+	if err := validation.ValidateUserUUID(uuid); err != nil {
+		return nil, authconst.ErrInvalidUUID
+	}
+
+	command := `SELECT uuid, permission, token_string, user_security.tokens.secret_key, 
+       				user_security.secret.created_timestamp, user_security.secret.expiration_timestamp
+				FROM user_security.tokens
+				INNER JOIN user_security.secret
+				ON user_security.secret.secret_key = user_security.tokens.secret_key
+				WHERE uuid = $1 AND NOW() AT TIME ZONE 'UTC' < expiration_date
+				`
+
+	row, err := postgresDB.Query(command, uuid)
+	if err != nil {
+		return nil, err
+	}
+
+	defer row.Close()
+	for row.Next() {
+		var retrievedUUID, permission, token, secret string
+		var secretCreatedTimestamp, secretExpirationTimestamp time.Time
+
+		err := row.Scan(&retrievedUUID, &permission, &token, &secret,
+			&secretCreatedTimestamp, &secretExpirationTimestamp)
+		if err != nil {
+			return nil, err
+		}
+
+		if uuid != retrievedUUID {
+			return nil, authconst.ErrInvalidUUID
+		}
+
+		return &tokenRow{
+			uuid:       retrievedUUID,
+			permission: permission,
+			token:      token,
+			secret: &pblib.Secret{
+				Key:                 secret,
+				CreatedTimestamp:    secretCreatedTimestamp.Unix(),
+				ExpirationTimestamp: secretExpirationTimestamp.Unix(),
+			},
+		}, nil
+	}
+
+	return nil, nil
 }

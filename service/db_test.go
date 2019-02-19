@@ -11,23 +11,6 @@ import (
 	"time"
 )
 
-func deleteSecretTable() error {
-	_, err := postgresDB.Exec("DELETE FROM user_security.secret")
-	return err
-}
-
-func deleteInsertGetSecret() (*pblib.Secret, error) {
-	if err := deleteSecretTable(); err != nil {
-		return nil, err
-	}
-
-	if err := insertNewSecret(); err != nil {
-		return nil, err
-	}
-
-	return getActiveSecretRow()
-}
-
 func TestRefreshDBConnection(t *testing.T) {
 	assert.NotNil(t, postgresDB)
 
@@ -363,18 +346,9 @@ func TestInsertJWToken(t *testing.T) {
 	// the above happens so fast that validating secret creation time fails b/c time == now()
 	time.Sleep(2 * time.Second)
 
-	validHeader := &auth.Header{
-		Alg:      auth.Hs256,
-		TokenTyp: auth.Jwt,
-	}
-
 	uuid, err := generateUUID()
 	assert.Nil(t, err)
-	validBody := &auth.Body{
-		UUID:                uuid,
-		Permission:          auth.User,
-		ExpirationTimestamp: time.Now().UTC().Add(time.Hour * time.Duration(jwtExpirationTime)).Unix(),
-	}
+	validTokenBody.UUID = uuid
 
 	cases := []struct {
 		body     *auth.Body
@@ -385,57 +359,57 @@ func TestInsertJWToken(t *testing.T) {
 		expMsg   string
 	}{
 		// valid
-		{validBody, currSecret, validHeader, token, false, ""},
+		{validTokenBody, currSecret, validTokenHeader, token, false, ""},
 		// empty token
-		{validBody, currSecret, validHeader, "", true, authconst.ErrEmptyToken.Error()},
+		{validTokenBody, currSecret, validTokenHeader, "", true, authconst.ErrEmptyToken.Error()},
 		// nil header
-		{validBody, currSecret, nil, token, true, authconst.ErrNilHeader.Error()},
+		{validTokenBody, currSecret, nil, token, true, authconst.ErrNilHeader.Error()},
 		// nil body
-		{nil, currSecret, validHeader, token, true, authconst.ErrNilBody.Error()},
+		{nil, currSecret, validTokenHeader, token, true, authconst.ErrNilBody.Error()},
 		// nil secret
-		{validBody, nil, validHeader, token, true, authconst.ErrNilSecret.Error()},
+		{validTokenBody, nil, validTokenHeader, token, true, authconst.ErrNilSecret.Error()},
 		// body contains invalid UUID
 		{
 			&auth.Body{
 				UUID:                "invalid",
-				Permission:          validBody.Permission,
-				ExpirationTimestamp: validBody.ExpirationTimestamp,
-			}, currSecret, validHeader, token, true, authconst.ErrInvalidUUID.Error(),
+				Permission:          validTokenBody.Permission,
+				ExpirationTimestamp: validTokenBody.ExpirationTimestamp,
+			}, currSecret, validTokenHeader, token, true, authconst.ErrInvalidUUID.Error(),
 		},
 		// body contains invalid timestamp
 		{
 			&auth.Body{
-				UUID:                validBody.UUID,
-				Permission:          validBody.Permission,
+				UUID:                validTokenBody.UUID,
+				Permission:          validTokenBody.Permission,
 				ExpirationTimestamp: 12,
-			}, currSecret, validHeader, token, true, authconst.ErrExpiredBody.Error(),
+			}, currSecret, validTokenHeader, token, true, authconst.ErrExpiredBody.Error(),
 		},
 		// secret contains empty secret Key
 		{
-			validBody,
+			validTokenBody,
 			&pblib.Secret{
 				Key:                 "",
 				CreatedTimestamp:    currSecret.CreatedTimestamp,
 				ExpirationTimestamp: currSecret.ExpirationTimestamp,
-			}, validHeader, token, true, authconst.ErrEmptySecret.Error(),
+			}, validTokenHeader, token, true, authconst.ErrEmptySecret.Error(),
 		},
 		// secret contains createTimestamp greater than now
 		{
-			validBody,
+			validTokenBody,
 			&pblib.Secret{
 				Key:                 currSecret.Key,
 				CreatedTimestamp:    currSecret.ExpirationTimestamp,
 				ExpirationTimestamp: currSecret.ExpirationTimestamp,
-			}, validHeader, token, true, authconst.ErrInvalidSecretCreateTimestamp.Error(),
+			}, validTokenHeader, token, true, authconst.ErrInvalidSecretCreateTimestamp.Error(),
 		},
 		// secret contains invalid expirationTimestamp
 		{
-			validBody,
+			validTokenBody,
 			&pblib.Secret{
 				Key:                 currSecret.Key,
 				CreatedTimestamp:    currSecret.CreatedTimestamp,
 				ExpirationTimestamp: 12,
-			}, validHeader, token, true, authconst.ErrExpiredSecret.Error(),
+			}, validTokenHeader, token, true, authconst.ErrExpiredSecret.Error(),
 		},
 	}
 
@@ -448,4 +422,53 @@ func TestInsertJWToken(t *testing.T) {
 			assert.Nil(t, err)
 		}
 	}
+}
+
+func TestRetrieveExistingToken(t *testing.T) {
+	retrievedSecret, err := deleteInsertGetSecret()
+	assert.Nil(t, err)
+	assert.NotNil(t, retrievedSecret)
+
+	validUUID, err := generateUUID()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, validUUID)
+
+	cases := []struct {
+		desc     string
+		uuid     string
+		isExpErr bool
+		expMsg   string
+	}{
+		{"test valid, non existing user", validUUID, false, ""},
+		{"test empty uuid", "", true, authconst.ErrInvalidUUID.Error()},
+		{"test invalid uuid form", "invalid", true, authconst.ErrInvalidUUID.Error()},
+	}
+
+	for _, c := range cases {
+		retrievedToken, err := getExistingToken(c.uuid)
+
+		if c.isExpErr {
+			assert.EqualError(t, err, c.expMsg, c.desc)
+			assert.Nil(t, retrievedToken, c.desc)
+		} else {
+			assert.Nil(t, err, c.desc)
+			assert.Nil(t, retrievedToken, c.desc)
+		}
+	}
+
+	// test valid with existing user
+	validTokenBody.UUID = validUUID
+	// the above happens so fast that validating secret creation time fails b/c time == now()
+	time.Sleep(2 * time.Second)
+	err = insertJWToken("someTokenString", validTokenHeader, validTokenBody, retrievedSecret)
+	assert.Nil(t, err)
+
+	retrievedToken, err := getExistingToken(validUUID)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, retrievedToken.uuid)
+	assert.NotEmpty(t, retrievedToken.token)
+	assert.NotEmpty(t, retrievedToken.permission)
+	assert.NotEmpty(t, retrievedToken.secret.Key)
+	assert.NotEmpty(t, retrievedToken.secret.ExpirationTimestamp)
+	assert.NotEmpty(t, retrievedToken.secret.CreatedTimestamp)
 }

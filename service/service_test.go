@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	pbsvc "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/stretchr/testify/assert"
@@ -9,51 +8,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"testing"
 )
-
-var (
-	unitTestEmailCounter = 1
-	unitTestDefaultUser  = &pblib.User{
-		FirstName:    "Unit Test",
-		Organization: "Unit Testing",
-	}
-	unitTestFailValue = "shouldFail"
-	unitTestFailEmail = "should@fail.com"
-)
-
-func init() {
-	templateDirectory = "../tmpl/"
-}
-
-func unitTestEmailGenerator() string {
-	email := "hwsc.test+user" + fmt.Sprint(unitTestEmailCounter) + "@gmail.com"
-	unitTestEmailCounter++
-
-	return email
-}
-
-func unitTestUserGenerator(lastName string) *pblib.User {
-	return &pblib.User{
-		FirstName:    unitTestDefaultUser.GetFirstName(),
-		LastName:     lastName,
-		Email:        unitTestEmailGenerator(),
-		Password:     lastName,
-		Organization: unitTestDefaultUser.Organization,
-	}
-}
-
-func unitTestInsertUser(lastName string) (*pbsvc.UserResponse, error) {
-	insertUser := unitTestUserGenerator(lastName)
-	s := Service{}
-
-	return s.CreateUser(context.TODO(), &pbsvc.UserRequest{User: insertUser})
-}
-
-// TODO temporary, remove after removing pending token is implemented
-func unitTestRemovePendingToken(uuid string) error {
-	command := `DELETE FROM user_svc.pending_tokens WHERE uuid = $1`
-	_, err := postgresDB.Exec(command, uuid)
-	return err
-}
 
 func TestGetStatus(t *testing.T) {
 	// test service state locker
@@ -587,10 +541,10 @@ func TestGetToken(t *testing.T) {
 	currSecret = retrievedSecret
 
 	// insert a user
-	response, err := unitTestInsertUser(lastName)
+	responseUser, err := unitTestInsertUser(lastName)
 	assert.Nil(t, err)
-	assert.NotEmpty(t, response)
-	response.GetUser().Password = lastName
+	assert.NotEmpty(t, responseUser)
+	responseUser.GetUser().Password = lastName
 
 	cases := []struct {
 		request  *pbsvc.UserRequest
@@ -598,7 +552,7 @@ func TestGetToken(t *testing.T) {
 		expMsg   string
 	}{
 		// valid
-		{&pbsvc.UserRequest{User: response.GetUser()}, false, ""},
+		{&pbsvc.UserRequest{User: responseUser.GetUser()}, false, ""},
 		// nil request object
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
 		// nil user object
@@ -607,31 +561,32 @@ func TestGetToken(t *testing.T) {
 		{&pbsvc.UserRequest{
 			User: &pblib.User{
 				Uuid:     "invalid",
-				Email:    response.GetUser().GetEmail(),
-				Password: response.GetUser().GetPassword(),
+				Email:    responseUser.GetUser().GetEmail(),
+				Password: responseUser.GetUser().GetPassword(),
 			}},
 			true, "rpc error: code = InvalidArgument desc = invalid uuid",
 		},
 		// user contains invalid email
 		{&pbsvc.UserRequest{
 			User: &pblib.User{
-				Uuid:     response.GetUser().GetUuid(),
+				Uuid:     responseUser.GetUser().GetUuid(),
 				Email:    "@",
-				Password: response.GetUser().GetPassword(),
+				Password: responseUser.GetUser().GetPassword(),
 			}},
 			true, "rpc error: code = InvalidArgument desc = invalid User email",
 		},
 		// user contains invalid password
 		{&pbsvc.UserRequest{
 			User: &pblib.User{
-				Uuid:     response.GetUser().GetUuid(),
-				Email:    response.GetUser().GetEmail(),
+				Uuid:     responseUser.GetUser().GetUuid(),
+				Email:    responseUser.GetUser().GetEmail(),
 				Password: "",
 			}},
 			true, "rpc error: code = InvalidArgument desc = invalid User password",
 		},
 	}
 
+	var existingIdentification *pblib.Identification
 	for _, c := range cases {
 		s := Service{}
 		response, err := s.GetToken(context.TODO(), c.request)
@@ -640,6 +595,7 @@ func TestGetToken(t *testing.T) {
 			assert.EqualError(t, err, c.expMsg)
 			assert.Nil(t, response)
 		} else {
+			existingIdentification = response.GetIdentification()
 			assert.Nil(t, err)
 			assert.Equal(t, codes.OK.String(), response.GetMessage())
 			assert.NotEmpty(t, response.GetIdentification())
@@ -647,4 +603,16 @@ func TestGetToken(t *testing.T) {
 			assert.NotEmpty(t, response.GetIdentification().GetToken())
 		}
 	}
+
+	// check for retrieval of same token already in db
+	s := Service{}
+	response, err := s.GetToken(context.TODO(), &pbsvc.UserRequest{User: responseUser.GetUser()})
+	assert.Nil(t, err)
+	assert.Exactly(t, existingIdentification, response.GetIdentification())
+	assert.Equal(t, existingIdentification.GetToken(), response.GetIdentification().GetToken())
+
+	secret := response.GetIdentification().GetSecret()
+	assert.Equal(t, existingIdentification.GetSecret().GetKey(), secret.GetKey())
+	assert.Equal(t, existingIdentification.GetSecret().GetCreatedTimestamp(), secret.GetCreatedTimestamp())
+	assert.Equal(t, existingIdentification.GetSecret().GetExpirationTimestamp(), secret.GetExpirationTimestamp())
 }

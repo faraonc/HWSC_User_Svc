@@ -513,6 +513,22 @@ func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
+	// lookup user in token table for existing user
+	existingToken, err := getExistingToken(retrievedUser.GetUuid())
+	if err != nil {
+		logger.Error(consts.GetAuthTokenTag, consts.MsgErrGetExistingToken, err.Error())
+	}
+	if existingToken != nil && existingToken.permission == retrievedUser.GetPermissionLevel() {
+		return &pbsvc.UserResponse{
+			Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
+			Message: codes.OK.String(),
+			Identification: &pblib.Identification{
+				Token:  existingToken.token,
+				Secret: existingToken.secret,
+			},
+		}, nil
+	}
+
 	// TODO include mapping table in db
 	permissionLevel := auth.PermissionEnumMap[retrievedUser.GetPermissionLevel()]
 
