@@ -198,8 +198,8 @@ CREATE TABLE user_security.tokens
 
 INSERT INTO user_svc.accounts (uuid, first_name, last_name, email, password, organization, created_date, is_verified, permission_level)
 VALUES
-    ('1000xsnjg0mqjhbf4qx1efd6y7', 'Integrate Test', 'DeleteUser', 'integrate@delete.com', '12345678', 'delete', current_timestamp, TRUE, 'NO_PERM'),
-	('0000xsnjg0mqjhbf4qx1efd6y5', 'Integrate Test', 'GetUser', 'integrate@get.com', '12345678', 'abc', current_timestamp, TRUE, 'NO_PERM'),
+    ('1000xsnjg0mqjhbf4qx1efd6y7', 'Integrate Test', 'DeleteUser', 'integrate@delete.com', '$2a$04$k0Ee2g8dwRV.xTrBBxKWQupAZUyVYAP5AiwEBQm1DP3nz9uJhs/WG', 'delete', current_timestamp, TRUE, 'NO_PERM'),
+	('0000xsnjg0mqjhbf4qx1efd6y5', 'Integrate Test', 'GetUser', 'integrate@get.com', '$2a$04$k0Ee2g8dwRV.xTrBBxKWQupAZUyVYAP5AiwEBQm1DP3nz9uJhs/WG', 'abc', current_timestamp, TRUE, 'NO_PERM'),
     ('0000xsnjg0mqjhbf4qx1efd6y3', 'Integrate Test', 'UpdateUser', 'integrate@update.com', '$2a$04$k0Ee2g8dwRV.xTrBBxKWQupAZUyVYAP5AiwEBQm1DP3nz9uJhs/WG', 'uwb', current_timestamp, TRUE, 'NO_PERM');
 
 INSERT INTO user_security.secret (secret_key, created_timestamp, expiration_timestamp, is_active)
