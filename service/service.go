@@ -513,52 +513,51 @@ func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	// lookup user in token table for existing user
+	var identity *pblib.Identification
+
 	existingToken, err := getExistingToken(retrievedUser.GetUuid())
-	if err == nil && existingToken != nil && existingToken.permission == retrievedUser.GetPermissionLevel() {
-		return &pbsvc.UserResponse{
-			Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
-			Message: codes.OK.String(),
-			Identification: &pblib.Identification{
-				Token:  existingToken.token,
-				Secret: existingToken.secret,
-			},
-		}, nil
-	}
+	if err != nil || (existingToken != nil && existingToken.permission != retrievedUser.GetPermissionLevel()) {
+		// TODO include mapping table in db
+		permissionLevel := auth.PermissionEnumMap[retrievedUser.GetPermissionLevel()]
 
-	// TODO include mapping table in db
-	permissionLevel := auth.PermissionEnumMap[retrievedUser.GetPermissionLevel()]
+		// build token header, body, secret
+		header := &auth.Header{
+			Alg:      auth.AlgorithmMap[permissionLevel],
+			TokenTyp: auth.Jwt,
+		}
+		body := &auth.Body{
+			UUID:                retrievedUser.GetUuid(),
+			Permission:          permissionLevel,
+			ExpirationTimestamp: time.Now().UTC().Add(time.Hour * time.Duration(jwtExpirationTime)).Unix(),
+		}
 
-	// build token header, body, secret
-	header := &auth.Header{
-		Alg:      auth.AlgorithmMap[permissionLevel],
-		TokenTyp: auth.Jwt,
-	}
-	body := &auth.Body{
-		UUID:                retrievedUser.GetUuid(),
-		Permission:          permissionLevel,
-		ExpirationTimestamp: time.Now().UTC().Add(time.Hour * time.Duration(jwtExpirationTime)).Unix(),
-	}
+		newToken, err := auth.NewToken(header, body, currSecret)
+		if err != nil {
+			logger.Error(consts.GetAuthTokenTag, consts.MsgErrGeneratingToken, err.Error())
+			return nil, status.Error(codes.Unauthenticated, err.Error())
+		}
 
-	newToken, err := auth.NewToken(header, body, currSecret)
-	if err != nil {
-		logger.Error(consts.GetAuthTokenTag, consts.MsgErrGeneratingToken, err.Error())
-		return nil, status.Error(codes.Unauthenticated, err.Error())
-	}
+		// insert token into db for auditing
+		if err := insertJWToken(newToken, header, body, currSecret); err != nil {
+			logger.Error(consts.GetAuthTokenTag, consts.MsgErrInsertingJWToken, err.Error())
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 
-	// insert token into db for auditing
-	if err := insertJWToken(newToken, header, body, currSecret); err != nil {
-		logger.Error(consts.GetAuthTokenTag, consts.MsgErrInsertingJWToken, err.Error())
-		return nil, status.Error(codes.Internal, err.Error())
+		identity = &pblib.Identification{
+			Token: newToken,
+			Secret: currSecret,
+		}
+	} else {
+		identity = &pblib.Identification{
+			Token: existingToken.token,
+			Secret: existingToken.secret,
+		}
 	}
 
 	return &pbsvc.UserResponse{
 		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
-		Identification: &pblib.Identification{
-			Token:  newToken,
-			Secret: currSecret,
-		},
+		Identification: identity,
 	}, nil
 }
 
