@@ -123,7 +123,7 @@ func generateUUID() (string, error) {
 }
 
 // hashPassword hashes and salts provided password
-// returns stringified hashed password
+// returns string hashed password
 func hashPassword(password string) (string, error) {
 	if password == "" || strings.TrimSpace(password) != password {
 		return "", consts.ErrInvalidPassword

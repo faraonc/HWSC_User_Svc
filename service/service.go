@@ -77,6 +77,7 @@ func (s *Service) GetStatus(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 }
 
 // CreateUser creates a new user document and inserts it to user DB
+// TODO This is an exposed API, what are the return values?
 func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("CreateUser")
 
@@ -155,6 +156,7 @@ func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 }
 
 // DeleteUser deletes a user document in user DB
+// TODO This is an exposed API, what are the return values?
 func (s *Service) DeleteUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("DeleteUser")
 
@@ -206,6 +208,7 @@ func (s *Service) DeleteUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 }
 
 // UpdateUser updates a user document in user DB
+// TODO This is an exposed API, what are the return values?
 func (s *Service) UpdateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("UpdateUser")
 
@@ -270,6 +273,7 @@ func (s *Service) UpdateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 }
 
 // AuthenticateUser goes through user DB collection and tries to find matching email/password
+// TODO This is an exposed API, what are the return values?
 func (s *Service) AuthenticateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("AuthenticateUser")
 
@@ -339,6 +343,7 @@ func (s *Service) AuthenticateUser(ctx context.Context, req *pbsvc.UserRequest) 
 }
 
 // ListUsers returns the user DB collection
+// TODO This is an exposed API, what are the return values?
 func (s *Service) ListUsers(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	//TODO
 	logger.RequestService("ListUsers")
@@ -346,6 +351,7 @@ func (s *Service) ListUsers(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 }
 
 // GetUser returns a user document in user DB
+// TODO This is an exposed API, what are the return values?
 func (s *Service) GetUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetUser")
 
@@ -409,6 +415,7 @@ func (s *Service) ShareDocument(ctx context.Context, req *pbsvc.UserRequest) (*p
 }
 
 // GetSecret retrieves and returns the recent/active secret from the DB
+// TODO This is an exposed API, what are the return values?
 func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetSecret")
 
@@ -420,6 +427,7 @@ func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// the chance of creating a new secret is very slim thus the usage of read lock
 	secretLocker.RLock()
 	defer secretLocker.RUnlock()
 
@@ -455,6 +463,7 @@ func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 
 // GetToken generates a token after verifying user's email and password,
 // stores generated token related info in DB, returns said token
+// TODO This is an exposed API, what are the return values?
 // TODO rename to GetAuthToken
 func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetAuthToken")
@@ -566,6 +575,7 @@ func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.
 }
 
 // VerifyToken checks if received token from Chrome is valid
+// TODO This is an exposed API, what are the return values?
 func (s *Service) VerifyToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	// TODO
 	logger.RequestService("Verify Token")
@@ -573,6 +583,7 @@ func (s *Service) VerifyToken(ctx context.Context, req *pbsvc.UserRequest) (*pbs
 }
 
 // NewSecret generates and inserts a new secret into DB
+// TODO This is an exposed API, what are the return values?
 // TODO rename NewSecret to MakeNewSecret
 func (s *Service) NewSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("MakeNewSecret")
