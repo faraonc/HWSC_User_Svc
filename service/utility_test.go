@@ -13,7 +13,7 @@ import (
 func TestIsStateAvailable(t *testing.T) {
 	// NOTE: force a race condition by commenting out the locks inside isStateAvailable()
 
-	// test for unavailbility
+	// test for unavailability
 	serviceStateLocker.currentServiceState = unavailable
 	assert.Equal(t, unavailable, serviceStateLocker.currentServiceState)
 

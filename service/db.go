@@ -46,11 +46,11 @@ func init() {
 		"host=%s user=%s password=%s dbname=%s sslmode=verify-full",
 		conf.UserDB.Host, conf.UserDB.User, conf.UserDB.Password, conf.UserDB.Name)
 
-	// intialize connection object
+	// initialize connection object
 	var err error
 	postgresDB, err = sql.Open(dbDriverName, connectionString)
 	if err != nil {
-		logger.Fatal(consts.PSQL, "Failed to intialize connection object:", err.Error())
+		logger.Fatal(consts.PSQL, "Failed to initialize connection object:", err.Error())
 	}
 
 	// verify connection is alive, establishing connection if necessary
@@ -67,7 +67,13 @@ func init() {
 	// retrieve secretKey
 	activeSecret, err := getActiveSecretRow()
 	if err != nil {
-		logger.Fatal(consts.IntializeSecret, consts.MsgErrGetActiveSecret)
+		logger.Error(consts.IntializeSecret, consts.MsgErrGetActiveSecret)
+		// set to zero values
+		currSecret = &pblib.Secret{
+			Key:                 "",
+			CreatedTimestamp:    time.Time{}.Unix(),
+			ExpirationTimestamp: time.Time{}.Unix(),
+		}
 	}
 	if activeSecret != nil {
 		currSecret = activeSecret
@@ -492,9 +498,9 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 func getActiveSecretRow() (*pblib.Secret, error) {
 	command := `SELECT secret_key, created_timestamp, expiration_timestamp 
 				FROM user_security.secret 
-				WHERE is_active = $1`
+				WHERE is_active = TRUE`
 
-	row, err := postgresDB.Query(command, true)
+	row, err := postgresDB.Query(command)
 	if err != nil {
 		return nil, err
 	}
@@ -582,11 +588,11 @@ func queryLatestSecret(minute int) (bool, error) {
 
 	command := `
 				SELECT COUNT(*) FROM user_security.secret 
-				WHERE created_timestamp > $1 AND is_active = $2
+				WHERE created_timestamp > $1 AND is_active = TRUE
 				`
 
 	var count int
-	err := postgresDB.QueryRow(command, interval, true).Scan(&count)
+	err := postgresDB.QueryRow(command, interval).Scan(&count)
 	if err != nil {
 		return false, err
 	}

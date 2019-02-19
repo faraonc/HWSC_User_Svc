@@ -16,11 +16,10 @@ func main() {
 	// make TCP listener, listen for incoming client requests
 	lis, err := net.Listen(conf.GRPCHost.Network, conf.GRPCHost.String())
 	if err != nil {
-		logger.Fatal(consts.UserServiceTag, "Failed to intialize TCP listener:", err.Error())
+		logger.Fatal(consts.UserServiceTag, "Failed to initialize TCP listener:", err.Error())
 	}
 
 	// implement all our methods/services in service/service.go THEN,
-
 	// build: create an instance of gRPC server
 	grpcServer := grpc.NewServer()
 
