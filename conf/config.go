@@ -63,7 +63,7 @@ func init() {
 
 	// config.Load(): Load config from a file source
 	if err := conf.Load(src); err != nil {
-		logger.Fatal(consts.UserServiceTag, "Failed to intialize configuration", err.Error())
+		logger.Fatal(consts.UserServiceTag, "Failed to intiialize configuration", err.Error())
 	}
 
 	// get gets the path target from loaded file
