@@ -57,8 +57,8 @@ func init() {
 	}
 }
 
-// GetStatus gets the current status of the service
-// Returns status code int and status code text, and any connection errors
+// GetStatus checks the current status of the service
+// On success, returns OK status and message
 func (s *Service) GetStatus(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetStatus")
 
@@ -76,8 +76,8 @@ func (s *Service) GetStatus(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 	}, nil
 }
 
-// CreateUser creates a new user document and inserts it to user DB
-// TODO This is an exposed API, what are the return values?
+// CreateUser creates a new User row and inserts it to accounts table
+// On success, returns user object with password set to empty for security reasons
 func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("CreateUser")
 
@@ -155,8 +155,9 @@ func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 	}, nil
 }
 
-// DeleteUser deletes a user document in user DB
-// TODO This is an exposed API, what are the return values?
+// DeleteUser deletes a user row in accounts table
+// Releases mutex resource stored in uuidMapLocker by deleting the uuid
+// Method is idempotent, returns OK regardless of user not existing in accounts table and uuidMapLocker
 func (s *Service) DeleteUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("DeleteUser")
 
@@ -195,8 +196,6 @@ func (s *Service) DeleteUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	logger.Info("Deleted user:", user.GetUuid(), user.GetFirstName(), user.GetLastName())
-
 	// release mutex resource
 	uuidMapLocker.Delete(user.GetUuid())
 
@@ -207,8 +206,10 @@ func (s *Service) DeleteUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 	}, nil
 }
 
-// UpdateUser updates a user document in user DB
-// TODO This is an exposed API, what are the return values?
+// UpdateUser performs a partial update to a user row in accounts table
+// Method is idempotent, will perform a partial update regardless of any changes or not
+// If no changes are present, it will rewrite the selected columns with existing values
+// On success, returns user object regardless of change or not
 func (s *Service) UpdateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("UpdateUser")
 
@@ -272,8 +273,8 @@ func (s *Service) UpdateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 	}, nil
 }
 
-// AuthenticateUser goes through user DB collection and tries to find matching email/password
-// TODO This is an exposed API, what are the return values?
+// AuthenticateUser goes through accounts table and find matching email and password
+// On success, returns the matched row as user object, setting password to empty
 func (s *Service) AuthenticateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("AuthenticateUser")
 
@@ -343,15 +344,15 @@ func (s *Service) AuthenticateUser(ctx context.Context, req *pbsvc.UserRequest) 
 }
 
 // ListUsers returns the user DB collection
-// TODO This is an exposed API, what are the return values?
+// TODO write return values after implementing
 func (s *Service) ListUsers(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	//TODO
 	logger.RequestService("ListUsers")
 	return &pbsvc.UserResponse{}, nil
 }
 
-// GetUser returns a user document in user DB
-// TODO This is an exposed API, what are the return values?
+// GetUser looks up a user by their uuid in accounts table
+// On success, returns the matched row as user object, setting password to empty
 func (s *Service) GetUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetUser")
 
@@ -408,14 +409,16 @@ func (s *Service) GetUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.U
 }
 
 // ShareDocument updates user/s documents shared_to_me field in user DB
+// TODO write return values after implementation
 func (s *Service) ShareDocument(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	//TODO
 	logger.RequestService("ShareDocument")
 	return &pbsvc.UserResponse{}, nil
 }
 
-// GetSecret retrieves and returns the recent/active secret from the DB
-// TODO This is an exposed API, what are the return values?
+// GetSecret looks up active secret (marked with true boolean) from secrets table
+// If no active secrets were found, this method will generate and insert a new secret to secrets table
+// On success, returns retrieved secret if active secret was found or new secret
 func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetSecret")
 
@@ -461,9 +464,10 @@ func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 	}, nil
 }
 
-// GetToken generates a token after verifying user's email and password,
-// stores generated token related info in DB, returns said token
-// TODO This is an exposed API, what are the return values?
+// GetToken returns a token and secret based on the following criterias:
+// If a user exists, token isn't expired, and permission matches, returns existing token and matching secret
+// If a user exists and permission does not match, returns error
+// Else a new token is generated and returned with current secret
 // TODO rename to GetAuthToken
 func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetAuthToken")
@@ -575,8 +579,9 @@ func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.
 }
 
 // VerifyToken checks if received token from Chrome is valid
-// TODO This is an exposed API, what are the return values?
+// TODO write return values after implementing
 func (s *Service) VerifyToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
+	// TODO
 	logger.RequestService("Verify Token")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
@@ -599,12 +604,12 @@ func (s *Service) VerifyToken(ctx context.Context, req *pbsvc.UserRequest) (*pbs
 
 	// verify token with database
 
-
 	return &pbsvc.UserResponse{}, nil
 }
 
 // NewSecret generates and inserts a new secret into DB
-// TODO This is an exposed API, what are the return values?
+// Before insertion of new secret, active secrets in secrets table is deactivated (mark it false)
+// On success, returns message and status marked with OK
 // TODO rename NewSecret to MakeNewSecret
 func (s *Service) NewSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("MakeNewSecret")

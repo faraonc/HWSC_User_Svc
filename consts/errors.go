@@ -22,7 +22,7 @@ const (
 	MsgErrMatchPassword      string = "failed to match password:"
 	MsgErrMatchEmail         string = "email does not match"
 	MsgErrSecret             string = "failed to insert new secret into db:"
-	MsgErrGetActiveSecret    string = "failed to get active secret row from db:"
+	MsgErrGetActiveSecret    string = "failed to get active secret row from db, setting currSecret to zero values"
 	MsgErrDeactivatingSecret string = "failed to deactivate secret from db:"
 	MsgErrInsertingJWToken   string = "failed to insert jwt into db:"
 	MsgErrGetExistingToken   string = "error retrieving existing token:"
@@ -32,7 +32,7 @@ const (
 var (
 	ErrServiceUnavailable           = errors.New("service unavailable")
 	ErrNilRequestUser               = errors.New("nil request User")
-	ErrNilRequestIdentification		= errors.New("nil request identification")
+	ErrNilRequestIdentification     = errors.New("nil request identification")
 	ErrEmptyRequestUser             = errors.New("empty fields in request User")
 	ErrInvalidTimeStamp             = errors.New("zero timestamp")
 	ErrInvalidTokenSize             = errors.New("invalid token size")
