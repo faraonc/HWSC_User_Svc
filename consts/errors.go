@@ -26,6 +26,7 @@ const (
 	MsgErrDeactivatingSecret string = "failed to deactivate secret from db:"
 	MsgErrInsertingJWToken   string = "failed to insert jwt into db:"
 	MsgErrGetExistingToken   string = "error retrieving existing token:"
+	MsgErrPermissionMismatch string = "permission level does not match"
 )
 
 var (
@@ -44,7 +45,7 @@ var (
 	ErrEmailRequestFieldsEmpty      = errors.New("empty or nil fields in emailRequest struct")
 	ErrUUIDNotFound                 = errors.New("uuid does not exist in database")
 	ErrNoRowsFound                  = errors.New("no query row found in database")
-	ErrNoExistingTokenFound					= errors.New("no existing token were found for user")
+	ErrNoExistingTokenFound         = errors.New("no existing token were found for user")
 	ErrInvalidRowCount              = errors.New("query resulted more than one count")
 	ErrInvalidAddTime               = errors.New("add time is zero")
 	ResponseServiceUnavailable      = &pbsvc.UserResponse{

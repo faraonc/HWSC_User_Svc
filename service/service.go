@@ -516,7 +516,16 @@ func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.
 	var identity *pblib.Identification
 
 	existingToken, err := getExistingToken(retrievedUser.GetUuid())
-	if err != nil || (existingToken != nil && existingToken.permission != retrievedUser.GetPermissionLevel()) {
+	if err == nil {
+		if existingToken.permission != retrievedUser.PermissionLevel {
+			logger.Error(consts.GetAuthTokenTag, consts.MsgErrPermissionMismatch)
+			return nil, status.Error(codes.Unauthenticated, consts.MsgErrPermissionMismatch)
+		}
+		identity = &pblib.Identification{
+			Token:  existingToken.token,
+			Secret: existingToken.secret,
+		}
+	} else {
 		// TODO include mapping table in db
 		permissionLevel := auth.PermissionEnumMap[retrievedUser.GetPermissionLevel()]
 
@@ -544,19 +553,14 @@ func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.
 		}
 
 		identity = &pblib.Identification{
-			Token: newToken,
+			Token:  newToken,
 			Secret: currSecret,
-		}
-	} else {
-		identity = &pblib.Identification{
-			Token: existingToken.token,
-			Secret: existingToken.secret,
 		}
 	}
 
 	return &pbsvc.UserResponse{
-		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
-		Message: codes.OK.String(),
+		Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
+		Message:        codes.OK.String(),
 		Identification: identity,
 	}, nil
 }

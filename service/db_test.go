@@ -439,7 +439,7 @@ func TestRetrieveExistingToken(t *testing.T) {
 		isExpErr bool
 		expMsg   string
 	}{
-		{"test valid, non existing user", validUUID, false, ""},
+		{"test valid, non existing user", validUUID, true, consts.ErrNoExistingTokenFound.Error()},
 		{"test empty uuid", "", true, authconst.ErrInvalidUUID.Error()},
 		{"test invalid uuid form", "invalid", true, authconst.ErrInvalidUUID.Error()},
 	}
