@@ -695,7 +695,7 @@ func getExistingToken(uuid string) (*tokenRow, error) {
 
 // getMatchingToken will look up matching token in the tokens database.
 // Returns secret object for the found token.
-func getMatchingToken(token string) (*pblib.Secret, error) {
+func pairTokenWithSecret(token string) (*pblib.Identification, error) {
 	if token == "" {
 		return nil, authconst.ErrEmptyToken
 	}
@@ -726,10 +726,13 @@ func getMatchingToken(token string) (*pblib.Secret, error) {
 			return nil, consts.ErrMismatchingToken
 		}
 
-		return &pblib.Secret{
-			Key:                 secretKey,
-			CreatedTimestamp:    secretCreatedTimeStamp.Unix(),
-			ExpirationTimestamp: secretExpirationTimestamp.Unix(),
+		return &pblib.Identification{
+			Token: retrievedToken,
+			Secret: &pblib.Secret{
+				Key:                 secretKey,
+				CreatedTimestamp:    secretCreatedTimeStamp.Unix(),
+				ExpirationTimestamp: secretExpirationTimestamp.Unix(),
+			},
 		}, nil
 	}
 

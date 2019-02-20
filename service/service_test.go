@@ -468,7 +468,7 @@ func TestNewSecret(t *testing.T) {
 	// no need to perform a check in the db here using a DAO,
 	// b/c this func is meant to be called by a client
 
-	err := deleteSecretTable()
+	err := unitTestDeleteSecretTable()
 	assert.Nil(t, err)
 
 	// test for no active secret
@@ -503,7 +503,7 @@ func TestNewSecret(t *testing.T) {
 }
 
 func TestGetSecret(t *testing.T) {
-	err := deleteSecretTable()
+	err := unitTestDeleteSecretTable()
 	assert.Nil(t, err)
 
 	s := Service{}
@@ -535,7 +535,7 @@ func TestGetToken(t *testing.T) {
 	lastName := "GetToken-One"
 
 	// refresh secret table
-	retrievedSecret, err := deleteInsertGetSecret()
+	retrievedSecret, err := unitTestDeleteInsertGetSecret()
 	assert.Nil(t, err)
 	assert.NotNil(t, retrievedSecret)
 	currSecret = retrievedSecret
@@ -646,7 +646,7 @@ func TestVerifyToken(t *testing.T) {
 		assert.Nil(t, response, c.desc)
 	}
 
-	newSecret, newToken, err := insertNewToken()
+	newSecret, newToken, err := unitTestInsertNewToken()
 	assert.Nil(t, err)
 	assert.NotNil(t, newSecret)
 	assert.NotEmpty(t, newToken)

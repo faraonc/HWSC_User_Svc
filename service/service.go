@@ -580,8 +580,8 @@ func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.
 }
 
 // VerifyToken checks if received token and retrieved secret is valid.
-// Token is first verified against tokens table, and if token is found, secret object is retrieved.
-// On success, returns token.
+// Token is first verified against tokens table, and if token is found, secret is retrieved.
+// On success, returns identity object with token and paired secret.
 func (s *Service) VerifyToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("Verify Token")
 
@@ -605,16 +605,15 @@ func (s *Service) VerifyToken(ctx context.Context, req *pbsvc.UserRequest) (*pbs
 	}
 
 	// verify token against database
-	retrievedSecret, err := getMatchingToken(identity.GetToken())
+	retrievedIdentity, err := pairTokenWithSecret(identity.GetToken())
 	if err != nil {
 		logger.Error(consts.VerifyToken, consts.MsgErrValidatingToken, err.Error())
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
-	identity.Secret = retrievedSecret
 
 	// create authority to validate Identity containing token and retrieved secret
 	authority := auth.NewAuthority(auth.Jwt, auth.User)
-	if err := authority.Authorize(identity); err != nil {
+	if err := authority.Authorize(retrievedIdentity); err != nil {
 		logger.Error(consts.VerifyToken, consts.MsgErrValidatingIdentity, err.Error())
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -625,7 +624,7 @@ func (s *Service) VerifyToken(ctx context.Context, req *pbsvc.UserRequest) (*pbs
 	return &pbsvc.UserResponse{
 		Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
 		Message:        codes.OK.String(),
-		Identification: identity,
+		Identification: retrievedIdentity,
 	}, nil
 }
 
