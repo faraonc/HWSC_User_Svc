@@ -460,7 +460,7 @@ func TestRetrieveExistingToken(t *testing.T) {
 	validTokenBody.UUID = validUUID
 	// the above happens so fast that validating secret creation time fails b/c time == now()
 	time.Sleep(2 * time.Second)
-	err = insertJWToken("someTokenString", validTokenHeader, validTokenBody, retrievedSecret)
+	err = insertJWToken("TestRetrieveExistingToken", validTokenHeader, validTokenBody, retrievedSecret)
 	assert.Nil(t, err)
 
 	retrievedToken, err := getExistingToken(validUUID)
@@ -471,4 +471,29 @@ func TestRetrieveExistingToken(t *testing.T) {
 	assert.NotEmpty(t, retrievedToken.secret.Key)
 	assert.NotEmpty(t, retrievedToken.secret.ExpirationTimestamp)
 	assert.NotEmpty(t, retrievedToken.secret.CreatedTimestamp)
+}
+
+func TestGetMatchingToken(t *testing.T) {
+	desc := "test empty token"
+	retrievedSecret, err := getMatchingToken("")
+	assert.EqualError(t, err, authconst.ErrEmptyToken.Error(), desc)
+	assert.Nil(t, retrievedSecret, desc)
+
+	desc = "test non-existing token"
+	retrievedSecret, err = getMatchingToken("non-existing-token")
+	assert.EqualError(t, err, consts.ErrNoExistingTokenFound.Error(), desc)
+	assert.Nil(t, retrievedSecret, desc)
+
+	newSecret, newToken, err := insertNewToken()
+	assert.Nil(t, err)
+	assert.NotNil(t, newSecret)
+	assert.NotEmpty(t, newToken)
+
+	desc = "test against existing token"
+	retrievedSecret, err = getMatchingToken(newToken)
+	assert.Nil(t, err, desc)
+	assert.NotEmpty(t, retrievedSecret)
+	assert.Equal(t, newSecret.Key, retrievedSecret.Key)
+	assert.Equal(t, newSecret.CreatedTimestamp, retrievedSecret.CreatedTimestamp)
+	assert.Equal(t, newSecret.ExpirationTimestamp, retrievedSecret.ExpirationTimestamp)
 }

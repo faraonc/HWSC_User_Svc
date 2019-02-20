@@ -80,3 +80,37 @@ func deleteInsertGetSecret() (*pblib.Secret, error) {
 
 	return getActiveSecretRow()
 }
+
+func insertNewToken() (*pblib.Secret, string, error) {
+	// delete tokens table
+	_, err := postgresDB.Exec("DELETE FROM user_security.tokens")
+	if err != nil {
+		return nil, "", err
+	}
+
+	// delete secrets table and generate a new secret
+	newSecret, err := deleteInsertGetSecret()
+	if err != nil {
+		return nil, "", err
+	}
+	time.Sleep(2 * time.Second)
+
+	validUUID, err := generateUUID()
+	if err != nil {
+		return nil, "", err
+	}
+	validTokenBody.UUID = validUUID
+
+	// generate new token
+	newToken, err := auth.NewToken(validTokenHeader, validTokenBody, newSecret)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// insert a token
+	if err := insertJWToken(newToken, validTokenHeader, validTokenBody, newSecret); err != nil {
+		return nil, "", err
+	}
+
+	return newSecret, newToken, nil
+}
