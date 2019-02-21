@@ -27,6 +27,8 @@ const (
 	MsgErrInsertingJWToken   string = "failed to insert jwt into db:"
 	MsgErrGetExistingToken   string = "error retrieving existing token:"
 	MsgErrPermissionMismatch string = "permission level does not match"
+	MsgErrValidatingIdentity string = "failed to validate identity:"
+	MsgErrValidatingToken    string = "failed to match token with db:"
 )
 
 var (
@@ -47,6 +49,7 @@ var (
 	ErrUUIDNotFound                 = errors.New("uuid does not exist in database")
 	ErrNoRowsFound                  = errors.New("no query row found in database")
 	ErrNoExistingTokenFound         = errors.New("no existing token were found for user")
+	ErrMismatchingToken             = errors.New("tokens do not match")
 	ErrInvalidRowCount              = errors.New("query resulted more than one count")
 	ErrInvalidAddTime               = errors.New("add time is zero")
 	ResponseServiceUnavailable      = &pbsvc.UserResponse{

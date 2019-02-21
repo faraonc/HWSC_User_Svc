@@ -468,7 +468,7 @@ func TestNewSecret(t *testing.T) {
 	// no need to perform a check in the db here using a DAO,
 	// b/c this func is meant to be called by a client
 
-	err := deleteSecretTable()
+	err := unitTestDeleteSecretTable()
 	assert.Nil(t, err)
 
 	// test for no active secret
@@ -503,7 +503,7 @@ func TestNewSecret(t *testing.T) {
 }
 
 func TestGetSecret(t *testing.T) {
-	err := deleteSecretTable()
+	err := unitTestDeleteSecretTable()
 	assert.Nil(t, err)
 
 	s := Service{}
@@ -535,7 +535,7 @@ func TestGetToken(t *testing.T) {
 	lastName := "GetToken-One"
 
 	// refresh secret table
-	retrievedSecret, err := deleteInsertGetSecret()
+	retrievedSecret, err := unitTestDeleteInsertGetSecret()
 	assert.Nil(t, err)
 	assert.NotNil(t, retrievedSecret)
 	currSecret = retrievedSecret
@@ -615,4 +615,53 @@ func TestGetToken(t *testing.T) {
 	assert.Equal(t, existingIdentification.GetSecret().GetKey(), secret.GetKey())
 	assert.Equal(t, existingIdentification.GetSecret().GetCreatedTimestamp(), secret.GetCreatedTimestamp())
 	assert.Equal(t, existingIdentification.GetSecret().GetExpirationTimestamp(), secret.GetExpirationTimestamp())
+}
+
+func TestVerifyToken(t *testing.T) {
+	nonExistingToken := &pblib.Identification{
+		Token: "TestVerifyToken-DoesNotExist",
+	}
+
+	cases := []struct {
+		desc   string
+		req    *pbsvc.UserRequest
+		expMsg string
+	}{
+		{"test nil request object", nil,
+			"rpc error: code = InvalidArgument desc = nil request User",
+		},
+		{"test nil identity object", &pbsvc.UserRequest{Identification: nil},
+			"rpc error: code = InvalidArgument desc = nil request identification",
+		},
+		{"test non-existent token", &pbsvc.UserRequest{Identification: nonExistingToken},
+			"rpc error: code = Unauthenticated desc = no existing token were found for user",
+		},
+	}
+
+	for _, c := range cases {
+		s := Service{}
+
+		response, err := s.VerifyToken(context.TODO(), c.req)
+		assert.EqualError(t, err, c.expMsg, c.desc)
+		assert.Nil(t, response, c.desc)
+	}
+
+	newSecret, newToken, err := unitTestInsertNewToken()
+	assert.Nil(t, err)
+	assert.NotNil(t, newSecret)
+	assert.NotEmpty(t, newToken)
+
+	desc := "Test existing token"
+	s := Service{}
+	identity := &pblib.Identification{
+		Token: newToken,
+	}
+	response, err := s.VerifyToken(context.TODO(), &pbsvc.UserRequest{Identification: identity})
+	assert.Nil(t, err, desc)
+	assert.Equal(t, newToken, response.GetIdentification().GetToken(), desc)
+
+	responseSecret := response.GetIdentification().GetSecret()
+	assert.Equal(t, newSecret.GetKey(), responseSecret.GetKey(), desc)
+	assert.Equal(t, newSecret.GetCreatedTimestamp(), responseSecret.GetCreatedTimestamp(), desc)
+	assert.Equal(t, newSecret.GetExpirationTimestamp(), responseSecret.GetExpirationTimestamp(), desc)
 }

@@ -252,7 +252,7 @@ func TestUpdateUserRow(t *testing.T) {
 }
 
 func TestGetActiveSecretRow(t *testing.T) {
-	err := deleteSecretTable()
+	err := unitTestDeleteSecretTable()
 	assert.Nil(t, err)
 
 	// test empty row
@@ -273,7 +273,7 @@ func TestGetActiveSecretRow(t *testing.T) {
 }
 
 func TestDeactivateSecret(t *testing.T) {
-	err := deleteSecretTable()
+	err := unitTestDeleteSecretTable()
 	assert.Nil(t, err)
 
 	// test empty string
@@ -306,7 +306,7 @@ func TestDeactivateSecret(t *testing.T) {
 }
 
 func TestInsertNewSecret(t *testing.T) {
-	err := deleteSecretTable()
+	err := unitTestDeleteSecretTable()
 	assert.Nil(t, err)
 
 	err = insertNewSecret()
@@ -319,7 +319,7 @@ func TestInsertNewSecret(t *testing.T) {
 }
 
 func TestQueryLatestSecret(t *testing.T) {
-	err := deleteSecretTable()
+	err := unitTestDeleteSecretTable()
 	assert.Nil(t, err)
 
 	err = insertNewSecret()
@@ -338,7 +338,7 @@ func TestInsertJWToken(t *testing.T) {
 	token := "someToken"
 
 	// retrieve freshly active secret
-	retrievedSecret, err := deleteInsertGetSecret()
+	retrievedSecret, err := unitTestDeleteInsertGetSecret()
 	assert.Nil(t, err)
 	assert.NotNil(t, retrievedSecret)
 	currSecret = retrievedSecret
@@ -425,7 +425,7 @@ func TestInsertJWToken(t *testing.T) {
 }
 
 func TestRetrieveExistingToken(t *testing.T) {
-	retrievedSecret, err := deleteInsertGetSecret()
+	retrievedSecret, err := unitTestDeleteInsertGetSecret()
 	assert.Nil(t, err)
 	assert.NotNil(t, retrievedSecret)
 
@@ -460,7 +460,7 @@ func TestRetrieveExistingToken(t *testing.T) {
 	validTokenBody.UUID = validUUID
 	// the above happens so fast that validating secret creation time fails b/c time == now()
 	time.Sleep(2 * time.Second)
-	err = insertJWToken("someTokenString", validTokenHeader, validTokenBody, retrievedSecret)
+	err = insertJWToken("TestRetrieveExistingToken", validTokenHeader, validTokenBody, retrievedSecret)
 	assert.Nil(t, err)
 
 	retrievedToken, err := getExistingToken(validUUID)
@@ -471,4 +471,29 @@ func TestRetrieveExistingToken(t *testing.T) {
 	assert.NotEmpty(t, retrievedToken.secret.Key)
 	assert.NotEmpty(t, retrievedToken.secret.ExpirationTimestamp)
 	assert.NotEmpty(t, retrievedToken.secret.CreatedTimestamp)
+}
+
+func TestPairTokenWithSecret(t *testing.T) {
+	desc := "test empty token"
+	retrievedSecret, err := pairTokenWithSecret("")
+	assert.EqualError(t, err, authconst.ErrEmptyToken.Error(), desc)
+	assert.Nil(t, retrievedSecret, desc)
+
+	desc = "test non-existing token"
+	retrievedSecret, err = pairTokenWithSecret("non-existing-token")
+	assert.EqualError(t, err, consts.ErrNoExistingTokenFound.Error(), desc)
+	assert.Nil(t, retrievedSecret, desc)
+
+	newSecret, newToken, err := unitTestInsertNewToken()
+	assert.Nil(t, err)
+	assert.NotNil(t, newSecret)
+	assert.NotEmpty(t, newToken)
+
+	desc = "test against existing token"
+	retrievedSecret, err = pairTokenWithSecret(newToken)
+	assert.Nil(t, err, desc)
+	assert.NotEmpty(t, retrievedSecret, desc)
+	assert.Equal(t, newSecret.Key, retrievedSecret.GetSecret().GetKey(), desc)
+	assert.Equal(t, newSecret.CreatedTimestamp, retrievedSecret.GetSecret().GetCreatedTimestamp(), desc)
+	assert.Equal(t, newSecret.ExpirationTimestamp, retrievedSecret.GetSecret().GetExpirationTimestamp(), desc)
 }

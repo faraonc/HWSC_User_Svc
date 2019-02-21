@@ -10,6 +10,7 @@ const (
 	GetAuthTokenTag     string = "GetAuthToken -"
 	MakeNewSecret       string = "MakeNewSecret -"
 	GetSecret           string = "GetSecret -"
+	VerifyToken         string = "VerifyToken -"
 	PSQL                string = "PSQL -"
 	IntializeSecret     string = "Intializing Secret - "
 )

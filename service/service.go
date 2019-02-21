@@ -57,8 +57,8 @@ func init() {
 	}
 }
 
-// GetStatus checks the current status of the service
-// On success, returns OK status and message
+// GetStatus checks the current status of the service.
+// On success, returns OK status and message.
 func (s *Service) GetStatus(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetStatus")
 
@@ -76,8 +76,8 @@ func (s *Service) GetStatus(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 	}, nil
 }
 
-// CreateUser creates a new User row and inserts it to accounts table
-// On success, returns user object with password set to empty for security reasons
+// CreateUser creates a new User row and inserts it to accounts table.
+// On success, returns user object with password set to empty for security reasons.
 func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("CreateUser")
 
@@ -155,9 +155,9 @@ func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 	}, nil
 }
 
-// DeleteUser deletes a user row in accounts table
-// Releases mutex resource stored in uuidMapLocker by deleting the uuid
-// Method is idempotent, returns OK regardless of user not existing in accounts table and uuidMapLocker
+// DeleteUser deletes a user row in accounts table.
+// Releases mutex resource stored in uuidMapLocker by deleting the uuid.
+// Method is idempotent, returns OK regardless of user not existing in accounts table and uuidMapLocker.
 func (s *Service) DeleteUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("DeleteUser")
 
@@ -206,10 +206,10 @@ func (s *Service) DeleteUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 	}, nil
 }
 
-// UpdateUser performs a partial update to a user row in accounts table
-// Method is idempotent, will perform a partial update regardless of any changes or not
-// If no changes are present, it will rewrite the selected columns with existing values
-// On success, returns user object regardless of change or not
+// UpdateUser performs a partial update to a user row in accounts table.
+// Method is idempotent, will perform a partial update regardless of any changes or not.
+// If no changes are present, it will rewrite the selected columns with existing values.
+// On success, returns user object regardless of change or not.
 func (s *Service) UpdateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("UpdateUser")
 
@@ -273,8 +273,8 @@ func (s *Service) UpdateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 	}, nil
 }
 
-// AuthenticateUser goes through accounts table and find matching email and password
-// On success, returns the matched row as user object, setting password to empty
+// AuthenticateUser goes through accounts table and find matching email and password.
+// On success, returns the matched row as user object, setting password to empty.
 func (s *Service) AuthenticateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("AuthenticateUser")
 
@@ -351,8 +351,8 @@ func (s *Service) ListUsers(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 	return &pbsvc.UserResponse{}, nil
 }
 
-// GetUser looks up a user by their uuid in accounts table
-// On success, returns the matched row as user object, setting password to empty
+// GetUser looks up a user by their uuid in accounts table.
+// On success, returns the matched row as user object, setting password to empty.
 func (s *Service) GetUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetUser")
 
@@ -416,14 +416,15 @@ func (s *Service) ShareDocument(ctx context.Context, req *pbsvc.UserRequest) (*p
 	return &pbsvc.UserResponse{}, nil
 }
 
-// GetSecret looks up active secret (marked with true boolean) from secrets table
-// If no active secrets were found, this method will generate and insert a new secret to secrets table
-// On success, returns retrieved secret if active secret was found or new secret
+// GetSecret looks up active secret (marked with true boolean) from secrets table.
+// If no active secrets were found, this method will generate and insert a new secret to secrets table.
+// On success, returns retrieved secret if active secret was found or new secret.
 func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetSecret")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		return nil, consts.ErrServiceUnavailable
+		logger.Error(consts.GetSecret, consts.ErrServiceUnavailable.Error())
+		return nil, consts.ErrStatusServiceUnavailable
 	}
 
 	if err := refreshDBConnection(); err != nil {
@@ -465,9 +466,9 @@ func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 }
 
 // GetToken returns a token and secret based on the following criterias:
-// If a user exists, token isn't expired, and permission matches, returns existing token and matching secret
-// If a user exists and permission does not match, returns error
-// Else a new token is generated and returned with current secret
+// If a user exists, token isn't expired, and permission matches, returns existing token and matching secret.
+// If a user exists and permission does not match, returns error.
+// Else a new token is generated and returned with current secret.
 // TODO rename to GetAuthToken
 func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetAuthToken")
@@ -578,18 +579,19 @@ func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.
 	}, nil
 }
 
-// VerifyToken checks if received token from Chrome is valid
-// TODO write return values after implementing
+// VerifyToken checks if received token and retrieved secret is valid.
+// Token is first verified against tokens table, and if token is found, secret is retrieved.
+// On success, returns identity object with token and paired secret.
 func (s *Service) VerifyToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
-	// TODO
 	logger.RequestService("Verify Token")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
+		logger.Error(consts.VerifyToken, consts.ErrServiceUnavailable.Error())
 		return nil, consts.ErrStatusServiceUnavailable
 	}
 
 	if req == nil {
-		return nil, consts.ErrNilRequestUser
+		return nil, consts.ErrStatusNilRequestUser
 	}
 
 	if err := refreshDBConnection(); err != nil {
@@ -602,14 +604,33 @@ func (s *Service) VerifyToken(ctx context.Context, req *pbsvc.UserRequest) (*pbs
 		return nil, status.Error(codes.InvalidArgument, consts.ErrNilRequestIdentification.Error())
 	}
 
-	// verify token with database
+	// verify token against database
+	retrievedIdentity, err := pairTokenWithSecret(identity.GetToken())
+	if err != nil {
+		logger.Error(consts.VerifyToken, consts.MsgErrValidatingToken, err.Error())
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
 
-	return &pbsvc.UserResponse{}, nil
+	// create authority to validate Identity containing token and retrieved secret
+	authority := auth.NewAuthority(auth.Jwt, auth.User)
+	if err := authority.Authorize(retrievedIdentity); err != nil {
+		logger.Error(consts.VerifyToken, consts.MsgErrValidatingIdentity, err.Error())
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
+	// invalidate authority and identity's secret for security reasons
+	authority.Invalidate()
+
+	return &pbsvc.UserResponse{
+		Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
+		Message:        codes.OK.String(),
+		Identification: retrievedIdentity,
+	}, nil
 }
 
-// NewSecret generates and inserts a new secret into DB
-// Before insertion of new secret, active secrets in secrets table is deactivated (mark it false)
-// On success, returns message and status marked with OK
+// NewSecret generates and inserts a new secret into DB.
+// Before insertion of new secret, active secrets in secrets table is deactivated (mark it false).
+// On success, returns message and status marked with OK.
 // TODO rename NewSecret to MakeNewSecret
 func (s *Service) NewSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("MakeNewSecret")

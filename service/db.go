@@ -207,20 +207,13 @@ CREATE TABLE user_security.tokens
   expiration_date   TIMESTAMPTZ NOT NULL,
   uuid              ulid NOT NULL
 );
-
-
-INSERT INTO user_svc.accounts (uuid, first_name, last_name, email, password, organization, created_date, is_verified, permission_level)
-VALUES
-    ('1000xsnjg0mqjhbf4qx1efd6y7', 'Integrate Test', 'DeleteUser', 'integrate@delete.com', '$2a$04$k0Ee2g8dwRV.xTrBBxKWQupAZUyVYAP5AiwEBQm1DP3nz9uJhs/WG', 'delete', current_timestamp, TRUE, 'NO_PERM'),
-	('0000xsnjg0mqjhbf4qx1efd6y5', 'Integrate Test', 'GetUser', 'integrate@get.com', '$2a$04$k0Ee2g8dwRV.xTrBBxKWQupAZUyVYAP5AiwEBQm1DP3nz9uJhs/WG', 'abc', current_timestamp, TRUE, 'NO_PERM'),
-    ('0000xsnjg0mqjhbf4qx1efd6y3', 'Integrate Test', 'UpdateUser', 'integrate@update.com', '$2a$04$k0Ee2g8dwRV.xTrBBxKWQupAZUyVYAP5AiwEBQm1DP3nz9uJhs/WG', 'uwb', current_timestamp, TRUE, 'NO_PERM');
 `
 	_, err := postgresDB.Exec(userSchema)
 	devCheckError(err)
 }
 
-// refreshDBConnection verifies if connection is alive, ping will establish c/n if necessary
-// Returns response object if ping failed to reconnect
+// refreshDBConnection verifies if connection is alive, ping will establish c/n if necessary.
+// Returns response object if ping failed to reconnect.
 func refreshDBConnection() error {
 	if postgresDB == nil {
 		var err error
@@ -240,9 +233,9 @@ func refreshDBConnection() error {
 	return nil
 }
 
-// insertNewUser checks user field validity, hashes password and
-// inserts new users to user_svc.accounts table
-// Returns error if User is nil or if error with inserting to database
+// insertNewUser checks user field validity, hashes password and.
+// Inserts new users to user_svc.accounts table.
+// Returns error if User is nil or if error with inserting to database.
 func insertNewUser(user *pblib.User) error {
 	if user == nil {
 		return consts.ErrNilRequestUser
@@ -282,8 +275,8 @@ func insertNewUser(user *pblib.User) error {
 	return nil
 }
 
-// insertToken creates a unique token and inserts to user_svc.pending_tokens
-// Returns error if strings are empty or error with inserting to database
+// insertToken creates a unique token and inserts to user_svc.pending_tokens.
+// Returns error if strings are empty or error with inserting to database.
 func insertEmailToken(uuid string) error {
 	// check if uuid is valid form
 	if err := validation.ValidateUserUUID(uuid); err != nil {
@@ -310,9 +303,9 @@ func insertEmailToken(uuid string) error {
 	return nil
 }
 
-// deleteUser deletes user from user_svc.accounts
-// deleting non-existent uuid does not throw an error, db simply returns nothing which is okay
-// Returns error if string is empty or error with deleting from database
+// deleteUser deletes user from user_svc.accounts.
+// Deleting non-existent uuid does not throw an error, db simply returns nothing which is okay.
+// Returns error if string is empty or error with deleting from database.
 func deleteUserRow(uuid string) error {
 	// check if uuid is valid form
 	if err := validation.ValidateUserUUID(uuid); err != nil {
@@ -329,10 +322,10 @@ func deleteUserRow(uuid string) error {
 	return nil
 }
 
-// getUserRow looks up a user by its uuid and stores the result in a pb.User struct
-// retrieving non-existent uuid does not throw an error, db simply returns nothing
-// so we put in a check to see if uuid exists to return error if not found
-// Returns pb.User struct if found, nil otherwise, error if uuid does not exist or err with db
+// getUserRow looks up a user by its uuid and stores the result in a pb.User struct.
+// Retrieving non-existent uuid does not throw an error, db simply returns nothing.
+// So we put in a check to see if uuid exists to return error if not found.
+// Returns pb.User struct if found, nil otherwise, error if uuid does not exist or err with db.
 func getUserRow(uuid string) (*pblib.User, error) {
 	// check if uuid is valid form
 	if err := validation.ValidateUserUUID(uuid); err != nil {
@@ -384,9 +377,9 @@ func getUserRow(uuid string) (*pblib.User, error) {
 	return userObject, nil
 }
 
-// updateUser does a partial update by going through each User fields and replacing values
-// that are different from original values. It's partial b/c some fields like created_date & uuid are not touched
-// Return error if params are zero values or querying problem
+// updateUser does a partial update by going through each User fields and replacing values.
+// that are different from original values. It's partial b/c some fields like created_date & uuid are not touched.
+// Return error if params are zero values or querying problem.
 func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (*pblib.User, error) {
 	if svcDerived == nil || dbDerived == nil {
 		return nil, consts.ErrNilRequestUser
@@ -493,8 +486,8 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 	return updatedUser, nil
 }
 
-// getActiveSecret retrieves the secretKey from the row where is_active is marked true
-// Returns secret object if found, nil if not found, else any db error
+// getActiveSecret retrieves the secretKey from the row where is_active is marked true.
+// Returns secret object if found, nil if not found, else any db error.
 func getActiveSecretRow() (*pblib.Secret, error) {
 	command := `SELECT secret_key, created_timestamp, expiration_timestamp 
 				FROM user_security.secret 
@@ -526,9 +519,9 @@ func getActiveSecretRow() (*pblib.Secret, error) {
 	return nil, nil
 }
 
-// deactivateSecret looks up the row by secretkey and sets the row's is_active to false
-// If a row wasn't match, it will still return nil safely
-// Returns nil if updated or if not matched, else errors
+// deactivateSecret looks up the row by secretkey and sets the row's is_active to false.
+// If a row wasn't match, it will still return nil safely.
+// Returns nil if updated or if not matched, else errors.
 func deactivateSecret(secretKey string) error {
 	if secretKey == "" {
 		return nil
@@ -546,9 +539,9 @@ func deactivateSecret(secretKey string) error {
 	return nil
 }
 
-// insertNewSecret inserts a newly generated secret key to database
-// secret key is used to sign JWT's
-// Returns err if secret is empty or error with database
+// insertNewSecret inserts a newly generated secret key to database.
+// Secret key is used to sign JWT's.
+// Returns err if secret is empty or error with database.
 func insertNewSecret() error {
 	// generate a new secret
 	secretKey, err := generateSecretKey(auth.SecretByteSize)
@@ -576,9 +569,9 @@ func insertNewSecret() error {
 	return nil
 }
 
-// queryLatestSecret looks for the secret that is less 2 minutes
-// Used to validate that a new secret has been inserted into database
-// Returns true if found, else false
+// queryLatestSecret looks for the secret that is less 2 minutes.
+// Used to validate that a new secret has been inserted into database.
+// Returns true if found, else false.
 func queryLatestSecret(minute int) (bool, error) {
 	if minute == 0 {
 		return false, consts.ErrInvalidAddTime
@@ -608,8 +601,8 @@ func queryLatestSecret(minute int) (bool, error) {
 	return true, nil
 }
 
-// insertJWToken inserts new token information for auditing in the database
-// Returns error if parameters are zero values, expired secret, db error
+// insertJWToken inserts new token information for auditing in the database.
+// Returns error if parameters are zero values, expired secret, db error.
 func insertJWToken(token string, header *auth.Header, body *auth.Body, secret *pblib.Secret) error {
 	if token == "" {
 		return authconst.ErrEmptyToken
@@ -643,8 +636,8 @@ func insertJWToken(token string, header *auth.Header, body *auth.Body, secret *p
 	return nil
 }
 
-// getExistingToken looks up existing user and grabs row where token is not expired
-// Returns tokenRow object if existing token is found and unexpired, nil if not found, else errors
+// getExistingToken looks up existing user and grabs row where token is not expired.
+// Returns tokenRow object if existing token is found and unexpired, nil if not found, else errors.
 func getExistingToken(uuid string) (*tokenRow, error) {
 	if err := validation.ValidateUserUUID(uuid); err != nil {
 		return nil, authconst.ErrInvalidUUID
@@ -685,6 +678,52 @@ func getExistingToken(uuid string) (*tokenRow, error) {
 			secret: &pblib.Secret{
 				Key:                 secret,
 				CreatedTimestamp:    secretCreatedTimestamp.Unix(),
+				ExpirationTimestamp: secretExpirationTimestamp.Unix(),
+			},
+		}, nil
+	}
+
+	return nil, consts.ErrNoExistingTokenFound
+}
+
+// getMatchingToken will look up matching token in the tokens database.
+// Returns secret object for the found token.
+func pairTokenWithSecret(token string) (*pblib.Identification, error) {
+	if token == "" {
+		return nil, authconst.ErrEmptyToken
+	}
+
+	command := `SELECT token_string, user_security.tokens.secret_key, 
+					user_security.secret.created_timestamp, user_security.secret.expiration_timestamp
+				FROM user_security.tokens
+				INNER JOIN user_security.secret
+				ON user_security.tokens.secret_key = user_security.secret.secret_key
+				WHERE token_string = $1
+				`
+	row, err := postgresDB.Query(command, token)
+	if err != nil {
+		return nil, err
+	}
+
+	defer row.Close()
+	for row.Next() {
+		var retrievedToken, secretKey string
+		var secretCreatedTimeStamp, secretExpirationTimestamp time.Time
+
+		err := row.Scan(&retrievedToken, &secretKey, &secretCreatedTimeStamp, &secretExpirationTimestamp)
+		if err != nil {
+			return nil, err
+		}
+
+		if token != retrievedToken {
+			return nil, consts.ErrMismatchingToken
+		}
+
+		return &pblib.Identification{
+			Token: retrievedToken,
+			Secret: &pblib.Secret{
+				Key:                 secretKey,
+				CreatedTimestamp:    secretCreatedTimeStamp.Unix(),
 				ExpirationTimestamp: secretExpirationTimestamp.Unix(),
 			},
 		}, nil

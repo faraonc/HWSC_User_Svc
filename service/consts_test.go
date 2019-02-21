@@ -64,13 +64,13 @@ func unitTestRemovePendingToken(uuid string) error {
 	return err
 }
 
-func deleteSecretTable() error {
+func unitTestDeleteSecretTable() error {
 	_, err := postgresDB.Exec("DELETE FROM user_security.secret")
 	return err
 }
 
-func deleteInsertGetSecret() (*pblib.Secret, error) {
-	if err := deleteSecretTable(); err != nil {
+func unitTestDeleteInsertGetSecret() (*pblib.Secret, error) {
+	if err := unitTestDeleteSecretTable(); err != nil {
 		return nil, err
 	}
 
@@ -79,4 +79,38 @@ func deleteInsertGetSecret() (*pblib.Secret, error) {
 	}
 
 	return getActiveSecretRow()
+}
+
+func unitTestInsertNewToken() (*pblib.Secret, string, error) {
+	// delete tokens table
+	_, err := postgresDB.Exec("DELETE FROM user_security.tokens")
+	if err != nil {
+		return nil, "", err
+	}
+
+	// delete secrets table and generate a new secret
+	newSecret, err := unitTestDeleteInsertGetSecret()
+	if err != nil {
+		return nil, "", err
+	}
+	time.Sleep(2 * time.Second)
+
+	validUUID, err := generateUUID()
+	if err != nil {
+		return nil, "", err
+	}
+	validTokenBody.UUID = validUUID
+
+	// generate new token
+	newToken, err := auth.NewToken(validTokenHeader, validTokenBody, newSecret)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// insert a token
+	if err := insertJWToken(newToken, validTokenHeader, validTokenBody, newSecret); err != nil {
+		return nil, "", err
+	}
+
+	return newSecret, newToken, nil
 }
