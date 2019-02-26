@@ -1,13 +1,98 @@
 package service
 
 import (
+	"database/sql"
+	"fmt"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	pbsvc "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
+	"github.com/hwsc-org/hwsc-lib/logger"
+	"github.com/ory/dockertest"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
+	"os"
 	"testing"
 )
+
+const (
+	psqlVersion = "alpine"
+	psqlDBName  = "unit_test_user"
+	unitTestTag = "Unit Test -"
+)
+
+// spin up docker containers for psql
+// run schema migrations
+// seed test data in db if necessary
+// destroy db container at end of unit test
+func TestMain(m *testing.M) {
+	logger.Info(unitTestTag, "Initializing Unit Test Setup")
+
+	templateDirectory = "../tmpl/"
+
+	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
+	pool, err := dockertest.NewPool("")
+	if err != nil {
+		logger.Fatal(unitTestTag, "Could not connect to docker:", err.Error())
+	}
+
+	// pulls an image, creates a container based on it, and runs it
+	resource, err := pool.Run(dbDriverName, psqlVersion,
+		[]string{
+			"POSTGRES_PASSWORD=secret",
+			"POSTGRES_DB=" + psqlDBName,
+		})
+	if err != nil {
+		logger.Fatal(unitTestTag, "Could not start resource:", err.Error())
+	}
+
+	// exponential backoff-retry, b/c the app in the container might not be ready to accept connections yet
+	if err = pool.Retry(func() error {
+		var err error
+		connectionString = fmt.Sprintf("postgres://postgres:secret@localhost:%s/%s?sslmode=disable", resource.GetPort("5432/tcp"), psqlDBName)
+		postgresDB, err = sql.Open(dbDriverName, connectionString)
+		if err != nil {
+			return err
+		}
+		return postgresDB.Ping()
+	}); err != nil {
+		logger.Fatal(unitTestTag, "Could not connect to docker:", err.Error())
+	}
+
+	// create a postgres driver for migration
+	driver, err := postgres.WithInstance(postgresDB, &postgres.Config{})
+	if err != nil {
+		logger.Fatal(unitTestTag, "Failed to start postgres Instance:", err.Error())
+	}
+
+	// create a migration instance
+	migration, err := migrate.NewWithDatabaseInstance(
+		"file://test_fixtures/psql",
+		"postgres", driver,
+	)
+	if err != nil {
+		logger.Fatal(unitTestTag, "Failed to create a migration instance:", err.Error())
+	}
+
+	// run all migration up to the most active
+	if err := migration.Up(); err != nil {
+		logger.Fatal(unitTestTag, "Failed to load active migration files: %s", err.Error())
+	}
+	// seed data if necessary
+
+	// start the tests
+	code := m.Run()
+
+	// When unit test is done running, kill and remove the container
+	// Cannot defer this b/c os.Exit doesn't care for defer
+	if err := pool.Purge(resource); err != nil {
+		logger.Fatal(unitTestTag, "Could not purge docker resources:", err.Error())
+	}
+
+	os.Exit(code)
+}
 
 func TestGetStatus(t *testing.T) {
 	// test service state locker

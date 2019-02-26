@@ -1,0 +1,2 @@
+DROP INDEX user_svc_accounts_email_index;
+DROP INDEX user_security_secret_active_index;

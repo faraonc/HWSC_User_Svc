@@ -29,10 +29,6 @@ var (
 	}
 )
 
-func init() {
-	templateDirectory = "../tmpl/"
-}
-
 func unitTestEmailGenerator() string {
 	email := "hwsc.test+user" + fmt.Sprint(unitTestEmailCounter) + "@gmail.com"
 	unitTestEmailCounter++
