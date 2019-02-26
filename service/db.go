@@ -42,7 +42,7 @@ func init() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		logger.Info(consts.PSQL, "Disconnecting psql DB")
+		logger.Info(consts.PSQL, "Disconnecting postgres DB")
 		if postgresDB != nil {
 			_ = postgresDB.Close()
 		}
@@ -64,7 +64,7 @@ func refreshDBConnection() error {
 	if err := postgresDB.Ping(); err != nil {
 		_ = postgresDB.Close()
 		postgresDB = nil
-		logger.Error(consts.PSQL, "Failed to ping and reconnect to psql db:", err.Error())
+		logger.Error(consts.PSQL, "Failed to ping and reconnect to postgres db:", err.Error())
 		return err
 	}
 
