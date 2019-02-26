@@ -3,13 +3,11 @@ package service
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-lib/auth"
 	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-lib/logger"
 	"github.com/hwsc-org/hwsc-lib/validation"
-	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"log"
 	"time"
@@ -39,177 +37,17 @@ var (
 )
 
 func init() {
-	logger.Info(consts.PSQL, "Connecting to postgres DB")
-
-	// initialize connection string
-	connectionString = fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s sslmode=verify-full",
-		conf.UserDB.Host, conf.UserDB.User, conf.UserDB.Password, conf.UserDB.Name)
-
-	// initialize connection object
-	var err error
-	postgresDB, err = sql.Open(dbDriverName, connectionString)
-	if err != nil {
-		logger.Fatal(consts.PSQL, "Failed to initialize connection object:", err.Error())
-	}
-
-	// verify connection is alive, establishing connection if necessary
-	err = postgresDB.Ping()
-	if err != nil {
-		logger.Fatal(consts.PSQL, "Ping failed, cannot establish connection:", err.Error())
-	}
-
-	// TODO delete after dev-ops working
-	devCreateTables()
-	// TODO delete for production
-	_ = insertNewSecret()
-
-	// retrieve secretKey
-	activeSecret, err := getActiveSecretRow()
-	if err != nil {
-		logger.Error(consts.IntializeSecret, consts.MsgErrGetActiveSecret)
-		// set to zero values
-		currSecret = &pblib.Secret{
-			Key:                 "",
-			CreatedTimestamp:    time.Time{}.Unix(),
-			ExpirationTimestamp: time.Time{}.Unix(),
-		}
-	}
-	if activeSecret != nil {
-		currSecret = activeSecret
-	}
-
 	// Handle Terminate Signal(Ctrl + C) gracefully
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		logger.Info(consts.PSQL, "Disconnecting postgres DB")
+		logger.Info(consts.PSQL, "Disconnecting psql DB")
 		if postgresDB != nil {
 			_ = postgresDB.Close()
 		}
 		log.Fatal(consts.PSQL, "hwsc-user-svc terminated")
 	}()
-}
-
-// TODO delete after dev-ops working
-func devCheckError(err error) {
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-}
-
-// TODO delete after dev-ops working
-func devCreateTables() {
-	if postgresDB == nil {
-		log.Fatal("postgres connection is null for some reason")
-	}
-
-	//hashed password for integrate@update.com = testingPassword
-
-	const userSchema = `
-DROP SCHEMA IF EXISTS user_svc CASCADE;
-DROP SCHEMA IF EXISTS user_security CASCADE;
-DROP TYPE IF EXISTS permission_level;
-DROP DOMAIN IF EXISTS ulid;
-
-CREATE TYPE permission_level AS ENUM
-(
-  'NO_PERM',
-  'USER_REGISTRATION',
-  'USER',
-  'ADMIN'
-);
-
--- https://github.com/oklog/ulid
-CREATE DOMAIN ulid AS
-  VARCHAR(26) NOT NULL CHECK (LENGTH(VALUE) = 26);
-
-CREATE SCHEMA user_svc;
-
-CREATE DOMAIN user_svc.user_name AS
-  VARCHAR(32) NOT NULL CHECK (VALUE ~ '^[[:alpha:]]+(([''.\s-][[:alpha:]\s])?[[:alpha:]]*)*$');
-
--- https://github.com/segmentio/ksuid
-CREATE DOMAIN user_svc.ksuid AS
-  VARCHAR(27) NOT NULL CHECK (LENGTH(VALUE) = 27);
-
-CREATE TABLE user_svc.accounts
-(
-  uuid              ulid PRIMARY KEY,
-  first_name        user_svc.user_name,
-  last_name         user_svc.user_name,
-  email             VARCHAR(320) NOT NULL UNIQUE,
-  prospective_email	VARCHAR(320) UNIQUE DEFAULT NULL,
-  password          VARCHAR(60) NOT NULL,
-  organization      TEXT,
-  created_date      TIMESTAMPTZ NOT NULL,
-  modified_date     TIMESTAMPTZ DEFAULT NULL,
-  is_verified       BOOLEAN NOT NULL,
-  permission_level  permission_level NOT NULL
-);
-
-CREATE TABLE user_svc.pending_tokens
-(
-  token             TEXT PRIMARY KEY,
-  created_date      TIMESTAMPTZ NOT NULL,
-  uuid              ulid UNIQUE REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE
-);
-
-CREATE TABLE user_svc.documents
-(
-  duid      user_svc.ksuid PRIMARY KEY,
-  uuid      ulid REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE,
-  is_public BOOLEAN NOT NULL
-);
-
--- uuid and duid act as unique identifier b/c docs can be shared to any user
-CREATE TABLE user_svc.shared_documents
-(
-  PRIMARY KEY (duid, uuid),
-  duid user_svc.ksuid  REFERENCES user_svc.documents(duid) ON DELETE CASCADE,
-  uuid ulid   REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE
-);
-
-
-
-
-CREATE SCHEMA user_security;
-
-CREATE TYPE user_security.algorithm_type AS ENUM
-(
-  'NO_ALG',
-  'HS256',
-  'HS512'
-);
-
-CREATE TYPE user_security.token_type AS ENUM
-(
-  'NO_TYPE',
-  'JWT'
-);
-
-CREATE TABLE user_security.secret
-(
-  secret_key        	TEXT PRIMARY KEY,
-  created_timestamp 	TIMESTAMPTZ NOT NULL,
-  expiration_timestamp  TIMESTAMPTZ NOT NULL,
-  is_active             BOOLEAN NOT NULL
-);
-
-CREATE TABLE user_security.tokens
-(
-  token_string      TEXT PRIMARY KEY,
-  secret_key        TEXT REFERENCES user_security.secret(secret_key) ON DELETE CASCADE,
-  token_type        user_security.token_type NOT NULL,
-  algorithm         user_security.algorithm_type NOT NULL,
-  permission        permission_level NOT NULL,
-  expiration_date   TIMESTAMPTZ NOT NULL,
-  uuid              ulid NOT NULL
-);
-`
-	_, err := postgresDB.Exec(userSchema)
-	devCheckError(err)
 }
 
 // refreshDBConnection verifies if connection is alive, ping will establish c/n if necessary.
@@ -226,7 +64,7 @@ func refreshDBConnection() error {
 	if err := postgresDB.Ping(); err != nil {
 		_ = postgresDB.Close()
 		postgresDB = nil
-		logger.Error(consts.PSQL, "Failed to ping and reconnect to postgres db:", err.Error())
+		logger.Error(consts.PSQL, "Failed to ping and reconnect to psql db:", err.Error())
 		return err
 	}
 

@@ -73,9 +73,9 @@ func init() {
 		logger.Fatal(consts.UserServiceTag, "Failed to get grpc configuration", err.Error())
 	}
 
-	// scan "hosts" prop "postgres" from environmental variables & copy values to UserDB struct
-	if err := conf.Get("hosts", "postgres").Scan(&UserDB); err != nil {
-		logger.Fatal(consts.UserServiceTag, "Failed to get postgres configuration", err.Error())
+	// scan "hosts" prop "psql" from environmental variables & copy values to UserDB struct
+	if err := conf.Get("hosts", "psql").Scan(&UserDB); err != nil {
+		logger.Fatal(consts.UserServiceTag, "Failed to get psql configuration", err.Error())
 	}
 
 	if err := conf.Get("hosts", "smtp").Scan(&EmailHost); err != nil {
