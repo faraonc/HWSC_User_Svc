@@ -392,3 +392,26 @@ func TestGenerateSecretExpirationTimestamp(t *testing.T) {
 		assert.Equal(t, expirationHour, expirationDate.Hour())
 	}
 }
+
+func TestSetCurrentSecretOnce(t *testing.T) {
+	err := unitTestDeleteSecretTable()
+	assert.Nil(t, err)
+
+	err = setCurrentSecretOnce()
+	assert.EqualError(t, err, consts.ErrNoActiveSecretKeyFound.Error(), "test no active key in db error")
+
+	currSecret = &pblib.Secret{
+		Key:                 "alksjdklasdjf",
+		CreatedTimestamp:    time.Now().Unix(),
+		ExpirationTimestamp: time.Now().Unix(),
+	}
+	err = setCurrentSecretOnce()
+	assert.Nil(t, err, "test nil return when currSecret is already set")
+
+	currSecret = nil
+	err = insertNewSecret()
+	assert.Nil(t, err)
+
+	err = setCurrentSecretOnce()
+	assert.Nil(t, err, "test retrieval of existing active key in db")
+}

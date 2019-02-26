@@ -3,11 +3,13 @@ package service
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-lib/auth"
 	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-lib/logger"
 	"github.com/hwsc-org/hwsc-lib/validation"
+	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"log"
 	"time"
@@ -37,6 +39,10 @@ var (
 )
 
 func init() {
+	connectionString = fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s sslmode=verify-full",
+		conf.UserDB.Host, conf.UserDB.User, conf.UserDB.Password, conf.UserDB.Name)
+
 	// Handle Terminate Signal(Ctrl + C) gracefully
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -325,7 +331,7 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 }
 
 // getActiveSecret retrieves the secretKey from the row where is_active is marked true.
-// Returns secret object if found, nil if not found, else any db error.
+// Returns secret object if found, else returns nil for all other cases (secret not found)
 func getActiveSecretRow() (*pblib.Secret, error) {
 	command := `SELECT secret_key, created_timestamp, expiration_timestamp 
 				FROM user_security.secret 
@@ -354,7 +360,7 @@ func getActiveSecretRow() (*pblib.Secret, error) {
 		}
 	}
 
-	return nil, nil
+	return nil, consts.ErrNoActiveSecretKeyFound
 }
 
 // deactivateSecret looks up the row by secretkey and sets the row's is_active to false.
@@ -568,4 +574,26 @@ func pairTokenWithSecret(token string) (*pblib.Identification, error) {
 	}
 
 	return nil, consts.ErrNoExistingTokenFound
+}
+
+// hasActiveSecret checks the database for is_active set to true in secrets table
+// Returns true if found, false otherwise, or any error encountered with the db itself
+func hasActiveSecret() (bool, error) {
+	command := `SELECT EXISTS( 
+  					SELECT 1 
+  					FROM user_security.secret 
+  					WHERE is_active = TRUE
+  				)`
+
+	row := postgresDB.QueryRow(command)
+	var exists bool
+	if err := row.Scan(&exists); err != nil {
+		return false, err
+	}
+
+	if exists {
+		return true, nil
+	}
+
+	return false, nil
 }

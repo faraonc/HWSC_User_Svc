@@ -62,6 +62,7 @@ func unitTestRemovePendingToken(uuid string) error {
 
 func unitTestDeleteSecretTable() error {
 	_, err := postgresDB.Exec("DELETE FROM user_security.secret")
+	currSecret = nil
 	return err
 }
 

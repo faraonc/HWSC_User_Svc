@@ -435,25 +435,25 @@ func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 	secretLocker.RLock()
 	defer secretLocker.RUnlock()
 
-	retrievedSecret, err := getActiveSecretRow()
+	// check for any active secret
+	exists, err := hasActiveSecret()
 	if err != nil {
-		logger.Error(consts.GetSecret, consts.MsgErrGetActiveSecret, err.Error())
+		logger.Error(consts.GetSecret, consts.MsgErrLookUpActiveSecret, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// if no active key in DB, create a new secret
-	if retrievedSecret == nil {
-		// insert new secret
+	// no active key was found in DB, create and insert new secret
+	if !exists {
 		if err := insertNewSecret(); err != nil {
 			logger.Error(consts.GetSecret, consts.MsgErrSecret, err.Error())
 			return nil, status.Error(codes.Internal, err.Error())
 		}
-		// retrieve inserted secret
-		retrievedSecret, err = getActiveSecretRow()
-		if err != nil {
-			logger.Error(consts.GetSecret, consts.MsgErrGetActiveSecret, err.Error())
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+	}
+
+	retrievedSecret, err := getActiveSecretRow()
+	if err != nil {
+		logger.Error(consts.GetSecret, consts.MsgErrGetActiveSecret, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &pbsvc.UserResponse{
@@ -554,6 +554,10 @@ func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.
 			ExpirationTimestamp: time.Now().UTC().Add(time.Hour * time.Duration(jwtExpirationTime)).Unix(),
 		}
 
+		if err := setCurrentSecretOnce(); err != nil {
+			logger.Error(consts.GetAuthTokenTag, consts.MsgErrGetActiveSecret, err.Error())
+			return nil, status.Error(codes.Unauthenticated, err.Error())
+		}
 		newToken, err := auth.NewToken(header, body, currSecret)
 		if err != nil {
 			logger.Error(consts.GetAuthTokenTag, consts.MsgErrGeneratingToken, err.Error())
@@ -647,17 +651,19 @@ func (s *Service) NewSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 	secretLocker.Lock()
 	defer secretLocker.Unlock()
 
-	// retrieve secretKey that is active
-	retrievedSecret, err := getActiveSecretRow()
+	// check for any active secret
+	exists, err := hasActiveSecret()
 	if err != nil {
-		logger.Error(consts.MakeNewSecret, consts.MsgErrGetActiveSecret, err.Error())
+		logger.Error(consts.MakeNewSecret, consts.MsgErrLookUpActiveSecret, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// deactivate activeSecret
-	if err := deactivateSecret(retrievedSecret.GetKey()); err != nil {
-		logger.Error(consts.MakeNewSecret, consts.MsgErrDeactivatingSecret, err.Error())
-		return nil, status.Error(codes.Internal, err.Error())
+	// if secret exists, deactivate it in the db
+	if exists {
+		if err := deactivateSecret(currSecret.GetKey()); err != nil {
+			logger.Error(consts.MakeNewSecret, consts.MsgErrDeactivatingSecret, err.Error())
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	// insert new secret
@@ -665,6 +671,14 @@ func (s *Service) NewSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 		logger.Error(consts.MakeNewSecret, consts.MsgErrSecret, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	// retrieve the newly inserted active secret and set it as the currSecret
+	retrievedSecret, err := getActiveSecretRow()
+	if err != nil {
+		logger.Error(consts.MakeNewSecret, consts.MsgErrGetActiveSecret, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	currSecret = retrievedSecret
 
 	return &pbsvc.UserResponse{
 		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},

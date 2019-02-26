@@ -97,26 +97,27 @@ func TestInsertNewUser(t *testing.T) {
 		user     *pblib.User
 		isExpErr bool
 		expMsg   string
+		desc     string
 	}{
-		{insertUser, false, ""},
-		{insertUser1, true, "pq: duplicate key value violates unique constraint \"accounts_pkey\""},
-		{insertUser2, true, "pq: duplicate key value violates unique constraint \"accounts_email_key\""},
-		{insertUser3, true, consts.ErrInvalidUserFirstName.Error()},
-		{insertUser4, true, consts.ErrInvalidUserLastName.Error()},
-		{insertUser5, true, consts.ErrInvalidUserEmail.Error()},
-		{insertUser6, true, consts.ErrInvalidPassword.Error()},
-		{insertUser7, true, consts.ErrInvalidUserOrganization.Error()},
-		{nil, true, consts.ErrNilRequestUser.Error()},
-		{&pblib.User{}, true, authconst.ErrInvalidUUID.Error()},
-		{&pblib.User{Uuid: "1234"}, true, authconst.ErrInvalidUUID.Error()},
+		{insertUser, false, "", "test valid user insert"},
+		{insertUser1, true, "pq: duplicate key value violates unique constraint \"accounts_pkey\"", "test duplicate uuid"},
+		{insertUser2, true, "pq: duplicate key value violates unique constraint \"accounts_email_key\"", "test duplicate email"},
+		{insertUser3, true, consts.ErrInvalidUserFirstName.Error(), "test invalid first name"},
+		{insertUser4, true, consts.ErrInvalidUserLastName.Error(), "test invalid last name"},
+		{insertUser5, true, consts.ErrInvalidUserEmail.Error(), "test invalid email"},
+		{insertUser6, true, consts.ErrInvalidPassword.Error(), "test invalid password"},
+		{insertUser7, true, consts.ErrInvalidUserOrganization.Error(), "test invalid organization"},
+		{nil, true, consts.ErrNilRequestUser.Error(), "test nil request user"},
+		{&pblib.User{}, true, authconst.ErrInvalidUUID.Error(), "test nil user object"},
+		{&pblib.User{Uuid: "1234"}, true, authconst.ErrInvalidUUID.Error(), "test invalid uuid form"},
 	}
 
 	for _, c := range cases {
 		err := insertNewUser(c.user)
 		if c.isExpErr {
-			assert.EqualError(t, err, c.expMsg)
+			assert.EqualError(t, err, c.expMsg, c.desc)
 		} else {
-			assert.Nil(t, err)
+			assert.Nil(t, err, c.desc)
 		}
 	}
 }
@@ -257,7 +258,7 @@ func TestGetActiveSecretRow(t *testing.T) {
 
 	// test empty row
 	retrievedSecret, err := getActiveSecretRow()
-	assert.Nil(t, err)
+	assert.EqualError(t, err, consts.ErrNoActiveSecretKeyFound.Error())
 	assert.Nil(t, retrievedSecret)
 
 	// insert a key to test for active key retrieval
@@ -301,7 +302,7 @@ func TestDeactivateSecret(t *testing.T) {
 
 	// test there are no active keys
 	retrievedSecret, err = getActiveSecretRow()
-	assert.Nil(t, err)
+	assert.EqualError(t, err, consts.ErrNoActiveSecretKeyFound.Error())
 	assert.Nil(t, retrievedSecret)
 }
 
@@ -496,4 +497,38 @@ func TestPairTokenWithSecret(t *testing.T) {
 	assert.Equal(t, newSecret.Key, retrievedSecret.GetSecret().GetKey(), desc)
 	assert.Equal(t, newSecret.CreatedTimestamp, retrievedSecret.GetSecret().GetCreatedTimestamp(), desc)
 	assert.Equal(t, newSecret.ExpirationTimestamp, retrievedSecret.GetSecret().GetExpirationTimestamp(), desc)
+}
+
+func TestHasActiveSecret(t *testing.T) {
+	err := unitTestDeleteSecretTable()
+	assert.Nil(t, err)
+
+	desc := "test with no active secret in table"
+	exists, err := hasActiveSecret()
+	assert.Nil(t, err, desc)
+	assert.Equal(t, false, exists, desc)
+
+	desc = "test with an active secret in table"
+	err = insertNewSecret()
+	assert.Nil(t, err)
+	exists, err = hasActiveSecret()
+	assert.Nil(t, err, desc)
+	assert.Equal(t, true, exists, desc)
+
+	desc = "test with a deactivated secret and no active secret"
+	retrievedSecret, err := getActiveSecretRow()
+	assert.Nil(t, err)
+	assert.NotNil(t, retrievedSecret)
+	err = deactivateSecret(retrievedSecret.GetKey())
+	assert.Nil(t, err)
+	exists, err = hasActiveSecret()
+	assert.Nil(t, err, desc)
+	assert.Equal(t, false, exists, desc)
+
+	desc = "test with a deactivated secret and an active secret"
+	err = insertNewSecret()
+	assert.Nil(t, err)
+	exists, err = hasActiveSecret()
+	assert.Nil(t, err, desc)
+	assert.Equal(t, true, exists, desc)
 }

@@ -22,7 +22,8 @@ const (
 	MsgErrMatchPassword      string = "failed to match password:"
 	MsgErrMatchEmail         string = "email does not match"
 	MsgErrSecret             string = "failed to insert new secret into db:"
-	MsgErrGetActiveSecret    string = "failed to get active secret row from db, setting currSecret to zero values"
+	MsgErrGetActiveSecret    string = "failed to get active secret row from db:"
+	MsgErrLookUpActiveSecret string = "failed to look up active secret from db"
 	MsgErrDeactivatingSecret string = "failed to deactivate secret from db:"
 	MsgErrInsertingJWToken   string = "failed to insert jwt into db:"
 	MsgErrGetExistingToken   string = "error retrieving existing token:"
@@ -49,6 +50,7 @@ var (
 	ErrUUIDNotFound                 = errors.New("uuid does not exist in database")
 	ErrNoRowsFound                  = errors.New("no query row found in database")
 	ErrNoExistingTokenFound         = errors.New("no existing token were found for user")
+	ErrNoActiveSecretKeyFound       = errors.New("no active secret key found in database")
 	ErrMismatchingToken             = errors.New("tokens do not match")
 	ErrInvalidRowCount              = errors.New("query resulted more than one count")
 	ErrInvalidAddTime               = errors.New("add time is zero")
