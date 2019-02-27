@@ -469,8 +469,7 @@ func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 // If a user exists, token isn't expired, and permission matches, returns existing token and matching secret.
 // If a user exists and permission does not match, returns error.
 // Else a new token is generated and returned with current secret.
-// TODO rename to GetAuthToken
-func (s *Service) GetToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
+func (s *Service) GetAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetAuthToken")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
@@ -635,8 +634,7 @@ func (s *Service) VerifyToken(ctx context.Context, req *pbsvc.UserRequest) (*pbs
 // NewSecret generates and inserts a new secret into DB and
 // thereby update the currSecret with the newly generated secret.
 // On success, returns message and status marked with OK.
-// TODO rename NewSecret to MakeNewSecret
-func (s *Service) NewSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
+func (s *Service) MakeNewSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("MakeNewSecret")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {

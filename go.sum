@@ -156,6 +156,8 @@ github.com/hashicorp/serf v0.8.2/go.mod h1:6hOLApaqBFA1NXqRQAsxw9QxuDEvNxSQRwA/J
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190217232836-1729749fa868 h1:Z5JJD2QZ0NB4s90VWK2819jEMy9VRoF6mT2HJ7k+d5Y=
 github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190217232836-1729749fa868/go.mod h1:/iVVgMsaXIOevC15fCsGWI0Dx2p6POFJQxeYbyjGst0=
+github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190227190210-b4b3df168cb1 h1:SovM+m5oH58493p15sHD0MAtBdHTkK9RuL6GXG0RH9M=
+github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190227190210-b4b3df168cb1/go.mod h1:/iVVgMsaXIOevC15fCsGWI0Dx2p6POFJQxeYbyjGst0=
 github.com/hwsc-org/hwsc-lib v0.0.0-20190218163148-bd43cc893860 h1:nDbsqC5mo6Tl/BxATKBLK6Ug/kJF5C6ncfZ48ntJM98=
 github.com/hwsc-org/hwsc-lib v0.0.0-20190218163148-bd43cc893860/go.mod h1:fQ/Zng9ELAgK94HjMbfUU5+A4TOSHOHni3i2GV7IIN4=
 github.com/imdario/mergo v0.3.7 h1:Y+UAYTZ7gDEuOfhxKWy+dvb5dRQ6rJjFSdX2HZY1/gI=
