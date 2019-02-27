@@ -9,6 +9,7 @@ import (
 	pbsvc "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-lib/logger"
+	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/ory/dockertest"
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,6 @@ import (
 
 const (
 	psqlVersion = "alpine"
-	psqlDBName  = "unit_test_user"
 	unitTestTag = "Unit Test -"
 )
 
@@ -42,8 +42,8 @@ func TestMain(m *testing.M) {
 	// pulls an image, creates a container based on it, and runs it
 	resource, err := pool.Run(dbDriverName, psqlVersion,
 		[]string{
-			"POSTGRES_PASSWORD=secret",
-			"POSTGRES_DB=" + psqlDBName,
+			fmt.Sprintf("POSTGRES_PASSWORD=%s", conf.UserDB.Password),
+			fmt.Sprintf("POSTGRES_DB=%s", conf.UserDB.Name),
 		})
 	if err != nil {
 		logger.Fatal(unitTestTag, "Could not start resource:", err.Error())
@@ -52,8 +52,12 @@ func TestMain(m *testing.M) {
 	// exponential backoff-retry, b/c the app in the container might not be ready to accept connections yet
 	if err = pool.Retry(func() error {
 		var err error
-		connectionString = fmt.Sprintf("postgres://postgres:secret@localhost:%s/%s?sslmode=disable",
-			resource.GetPort("5432/tcp"), psqlDBName)
+
+		// recreate connectionString because dockertest port uses special port
+		connectionString = fmt.Sprintf(
+			"host=%s user=%s password=%s dbname=%s sslmode=%s port=%s ",
+			conf.UserDB.Host, conf.UserDB.User, conf.UserDB.Password,
+			conf.UserDB.Name, conf.UserDB.SSLMode, resource.GetPort("5432/tcp"))
 
 		postgresDB, err = sql.Open(dbDriverName, connectionString)
 		if err != nil {

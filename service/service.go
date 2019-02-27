@@ -465,7 +465,7 @@ func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 	}, nil
 }
 
-// GetToken returns a token and secret based on the following criterias:
+// GetAuthToken returns a token and secret based on the following criterias:
 // If a user exists, token isn't expired, and permission matches, returns existing token and matching secret.
 // If a user exists and permission does not match, returns error.
 // Else a new token is generated and returned with current secret.
@@ -631,7 +631,7 @@ func (s *Service) VerifyToken(ctx context.Context, req *pbsvc.UserRequest) (*pbs
 	}, nil
 }
 
-// NewSecret generates and inserts a new secret into DB and
+// MakeNewSecret generates and inserts a new secret into DB and
 // thereby update the currSecret with the newly generated secret.
 // On success, returns message and status marked with OK.
 func (s *Service) MakeNewSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
