@@ -24,7 +24,6 @@ const (
 	MsgErrSecret             string = "failed to insert new secret into db:"
 	MsgErrGetActiveSecret    string = "failed to get active secret row from db:"
 	MsgErrLookUpActiveSecret string = "failed to look up active secret from db"
-	MsgErrDeactivatingSecret string = "failed to deactivate secret from db:"
 	MsgErrInsertingJWToken   string = "failed to insert jwt into db:"
 	MsgErrGetExistingToken   string = "error retrieving existing token:"
 	MsgErrPermissionMismatch string = "permission level does not match"

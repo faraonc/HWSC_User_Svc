@@ -90,9 +90,9 @@ func TestMain(m *testing.M) {
 
 	// When unit test is done running, kill and remove the container
 	// Cannot defer this b/c os.Exit doesn't care for defer
-	if err := pool.Purge(resource); err != nil {
-		logger.Fatal(unitTestTag, "Could not purge docker resources:", err.Error())
-	}
+	//if err := pool.Purge(resource); err != nil {
+	//	logger.Fatal(unitTestTag, "Could not purge docker resources:", err.Error())
+	//}
 
 	os.Exit(code)
 }
@@ -587,7 +587,7 @@ func TestNewSecret(t *testing.T) {
 	assert.NotNil(t, retrievedNewestSecret)
 
 	// test that two retrieved secrets are not equal
-	assert.NotEqual(t, retrievedSecret, retrievedNewestSecret)
+	assert.NotEqual(t, retrievedSecret.GetKey(), retrievedNewestSecret.GetKey())
 }
 
 func TestGetSecret(t *testing.T) {
@@ -602,15 +602,15 @@ func TestGetSecret(t *testing.T) {
 	assert.Equal(t, codes.OK.String(), response.GetMessage())
 	assert.NotEmpty(t, response.GetIdentification().GetSecret())
 
-	// test it exists (might be redundant with getActiveSecretRow)
-	found, err := queryLatestSecret(2)
+	// test it got inserted by retrieving the secret key
+	secretKey, err := getLatestSecret(2)
 	assert.Nil(t, err)
-	assert.Equal(t, true, found)
+	assert.NotEmpty(t, secretKey)
 
-	// test get secret row
+	// retrieve the secret from active_secret table
 	retrievedSecret, err := getActiveSecretRow()
 	assert.Nil(t, err)
-	assert.NotNil(t, retrievedSecret)
+	assert.Equal(t, secretKey, retrievedSecret.GetKey())
 
 	// get secret by service
 	response, err = s.GetSecret(context.TODO(), nil)

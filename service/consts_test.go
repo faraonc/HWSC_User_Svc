@@ -61,7 +61,15 @@ func unitTestRemovePendingToken(uuid string) error {
 }
 
 func unitTestDeleteSecretTable() error {
-	_, err := postgresDB.Exec("DELETE FROM user_security.secret")
+	_, err := postgresDB.Exec("DELETE FROM user_security.secrets")
+	if err != nil {
+		return err
+	}
+
+	// active_secret is set to ON CASCADE DELETE, if foregin key (secret_key)
+	// it references from secrets table is deleted, but just in case
+	_, err = postgresDB.Exec("DELETE FROM user_security.active_secret")
+
 	currSecret = nil
 	return err
 }

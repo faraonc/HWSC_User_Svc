@@ -632,8 +632,8 @@ func (s *Service) VerifyToken(ctx context.Context, req *pbsvc.UserRequest) (*pbs
 	}, nil
 }
 
-// NewSecret generates and inserts a new secret into DB.
-// Before insertion of new secret, active secrets in secrets table is deactivated (mark it false).
+// NewSecret generates and inserts a new secret into DB and
+// thereby update the currSecret with the newly generated secret.
 // On success, returns message and status marked with OK.
 // TODO rename NewSecret to MakeNewSecret
 func (s *Service) NewSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
@@ -651,28 +651,13 @@ func (s *Service) NewSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 	secretLocker.Lock()
 	defer secretLocker.Unlock()
 
-	// check for any active secret
-	exists, err := hasActiveSecret()
-	if err != nil {
-		logger.Error(consts.MakeNewSecret, consts.MsgErrLookUpActiveSecret, err.Error())
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	// if secret exists, deactivate it in the db
-	if exists {
-		if err := deactivateSecret(currSecret.GetKey()); err != nil {
-			logger.Error(consts.MakeNewSecret, consts.MsgErrDeactivatingSecret, err.Error())
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-	}
-
 	// insert new secret
 	if err := insertNewSecret(); err != nil {
 		logger.Error(consts.MakeNewSecret, consts.MsgErrSecret, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// retrieve the newly inserted active secret and set it as the currSecret
+	// retrieve the newly updated active secret and set it as the currSecret
 	retrievedSecret, err := getActiveSecretRow()
 	if err != nil {
 		logger.Error(consts.MakeNewSecret, consts.MsgErrGetActiveSecret, err.Error())

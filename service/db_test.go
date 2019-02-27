@@ -273,39 +273,6 @@ func TestGetActiveSecretRow(t *testing.T) {
 	assert.NotEmpty(t, retrievedSecret.ExpirationTimestamp)
 }
 
-func TestDeactivateSecret(t *testing.T) {
-	err := unitTestDeleteSecretTable()
-	assert.Nil(t, err)
-
-	// test empty string
-	err = deactivateSecret("")
-	assert.Nil(t, err)
-
-	// test non existing key
-	nonExistingSecret, err := generateSecretKey(auth.SecretByteSize)
-	assert.Nil(t, err)
-	assert.NotEmpty(t, nonExistingSecret)
-
-	err = deactivateSecret(nonExistingSecret)
-	assert.Nil(t, err)
-
-	// test existing key
-	err = insertNewSecret()
-	assert.Nil(t, err)
-
-	retrievedSecret, err := getActiveSecretRow()
-	assert.Nil(t, err)
-	assert.NotNil(t, retrievedSecret)
-
-	err = deactivateSecret(retrievedSecret.GetKey())
-	assert.Nil(t, err)
-
-	// test there are no active keys
-	retrievedSecret, err = getActiveSecretRow()
-	assert.EqualError(t, err, consts.ErrNoActiveSecretKeyFound.Error())
-	assert.Nil(t, retrievedSecret)
-}
-
 func TestInsertNewSecret(t *testing.T) {
 	err := unitTestDeleteSecretTable()
 	assert.Nil(t, err)
@@ -313,26 +280,34 @@ func TestInsertNewSecret(t *testing.T) {
 	err = insertNewSecret()
 	assert.Nil(t, err)
 
-	// test that key was inserted
-	found, err := queryLatestSecret(2)
+	retrievedSecret, err := getActiveSecretRow()
 	assert.Nil(t, err)
-	assert.Equal(t, true, found)
+	assert.NotNil(t, retrievedSecret)
+
+	// test that key was inserted
+	secretKey, err := getLatestSecret(2)
+	assert.Nil(t, err)
+	assert.Equal(t, retrievedSecret.GetKey(), secretKey)
 }
 
-func TestQueryLatestSecret(t *testing.T) {
+func TestGetLatestSecret(t *testing.T) {
 	err := unitTestDeleteSecretTable()
 	assert.Nil(t, err)
 
 	err = insertNewSecret()
 	assert.Nil(t, err)
 
-	found, err := queryLatestSecret(0)
-	assert.EqualError(t, err, consts.ErrInvalidAddTime.Error())
-	assert.Equal(t, false, found)
-
-	found, err = queryLatestSecret(2)
+	retrievedSecret, err := getActiveSecretRow()
 	assert.Nil(t, err)
-	assert.Equal(t, true, found)
+
+	secretKey, err := getLatestSecret(2)
+	assert.Nil(t, err)
+	assert.Equal(t, retrievedSecret.GetKey(), secretKey)
+
+	secretKey, err = getLatestSecret(0)
+	assert.EqualError(t, err, consts.ErrInvalidAddTime.Error())
+	assert.Empty(t, secretKey)
+
 }
 
 func TestInsertJWToken(t *testing.T) {
@@ -514,21 +489,31 @@ func TestHasActiveSecret(t *testing.T) {
 	exists, err = hasActiveSecret()
 	assert.Nil(t, err, desc)
 	assert.Equal(t, true, exists, desc)
+}
 
-	desc = "test with a deactivated secret and no active secret"
-	retrievedSecret, err := getActiveSecretRow()
+func TestActiveSecretTrigger(t *testing.T) {
+	err := unitTestDeleteSecretTable()
 	assert.Nil(t, err)
-	assert.NotNil(t, retrievedSecret)
-	err = deactivateSecret(retrievedSecret.GetKey())
-	assert.Nil(t, err)
-	exists, err = hasActiveSecret()
-	assert.Nil(t, err, desc)
-	assert.Equal(t, false, exists, desc)
 
-	desc = "test with a deactivated secret and an active secret"
+	time.Sleep(10 * time.Second)
 	err = insertNewSecret()
 	assert.Nil(t, err)
-	exists, err = hasActiveSecret()
-	assert.Nil(t, err, desc)
-	assert.Equal(t, true, exists, desc)
+	time.Sleep(10 * time.Second)
+	err = insertNewSecret()
+	assert.Nil(t, err)
+	time.Sleep(10 * time.Second)
+	err = insertNewSecret()
+	assert.Nil(t, err)
+
+	exists, err := hasActiveSecret()
+	assert.Nil(t, err)
+	assert.Equal(t, true, exists)
+
+	secretKey, err := getLatestSecret(5)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, secretKey)
+
+	retrievedSecret, err := getActiveSecretRow()
+	assert.Nil(t, err)
+	assert.Equal(t, retrievedSecret.GetKey(), secretKey)
 }
