@@ -78,18 +78,17 @@ CREATE TYPE user_security.token_type AS ENUM
   'JWT'
 );
 
-CREATE TABLE user_security.secret
+CREATE TABLE user_security.secrets
 (
   secret_key            TEXT PRIMARY KEY,
   created_timestamp     TIMESTAMPTZ NOT NULL,
-  expiration_timestamp  TIMESTAMPTZ NOT NULL,
-  is_active             BOOLEAN NOT NULL
+  expiration_timestamp  TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE user_security.tokens
 (
   token_string      TEXT PRIMARY KEY,
-  secret_key        TEXT REFERENCES user_security.secret(secret_key) ON DELETE CASCADE,
+  secret_key        TEXT REFERENCES user_security.secrets(secret_key) ON DELETE CASCADE,
   token_type        user_security.token_type NOT NULL,
   algorithm         user_security.algorithm_type NOT NULL,
   permission        permission_level NOT NULL,

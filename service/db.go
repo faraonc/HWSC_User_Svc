@@ -3,11 +3,13 @@ package service
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-lib/auth"
 	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-lib/logger"
 	"github.com/hwsc-org/hwsc-lib/validation"
+	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"log"
 	"time"
@@ -37,6 +39,10 @@ var (
 )
 
 func init() {
+	connectionString = fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s sslmode=verify-full",
+		conf.UserDB.Host, conf.UserDB.User, conf.UserDB.Password, conf.UserDB.Name)
+
 	// Handle Terminate Signal(Ctrl + C) gracefully
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -324,12 +330,12 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 	return updatedUser, nil
 }
 
-// getActiveSecret retrieves the secretKey from the row where is_active is marked true.
-// Returns secret object if found, nil if not found, else any db error.
+// getActiveSecretRow retrieves active key information from active_secret table (constraint to one row).
+// Returns secret object if a row exists, else returns nil for all other cases (secret not found).
 func getActiveSecretRow() (*pblib.Secret, error) {
 	command := `SELECT secret_key, created_timestamp, expiration_timestamp 
-				FROM user_security.secret 
-				WHERE is_active = TRUE`
+				FROM user_security.active_secret
+				`
 
 	row, err := postgresDB.Query(command)
 	if err != nil {
@@ -354,31 +360,13 @@ func getActiveSecretRow() (*pblib.Secret, error) {
 		}
 	}
 
-	return nil, nil
-}
-
-// deactivateSecret looks up the row by secretkey and sets the row's is_active to false.
-// If a row wasn't match, it will still return nil safely.
-// Returns nil if updated or if not matched, else errors.
-func deactivateSecret(secretKey string) error {
-	if secretKey == "" {
-		return nil
-	}
-
-	command := `UPDATE user_security.secret 
-				SET	is_active = $1 
-				WHERE secret_key = $2
-				`
-	_, err := postgresDB.Exec(command, false, secretKey)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return nil, consts.ErrNoActiveSecretKeyFound
 }
 
 // insertNewSecret inserts a newly generated secret key to database.
 // Secret key is used to sign JWT's.
+// There is a trigger set up with secrets table in that with every insert,
+// the active_secret table is updated with the newly inserted secret.
 // Returns err if secret is empty or error with database.
 func insertNewSecret() error {
 	// generate a new secret
@@ -387,9 +375,9 @@ func insertNewSecret() error {
 		return err
 	}
 
-	command := `INSERT INTO user_security.secret(
-					secret_key, created_timestamp, expiration_timestamp, is_active
-				) VALUES($1, $2, $3, $4)
+	command := `INSERT INTO user_security.secrets(
+					secret_key, created_timestamp, expiration_timestamp
+				) VALUES($1, $2, $3)
 				`
 
 	createdTimestamp := time.Now().UTC()
@@ -398,7 +386,7 @@ func insertNewSecret() error {
 		return err
 	}
 
-	_, err = postgresDB.Exec(command, secretKey, createdTimestamp, expirationTimestamp, true)
+	_, err = postgresDB.Exec(command, secretKey, createdTimestamp, expirationTimestamp)
 
 	if err != nil {
 		return err
@@ -407,36 +395,33 @@ func insertNewSecret() error {
 	return nil
 }
 
-// queryLatestSecret looks for the secret that is less 2 minutes.
-// Used to validate that a new secret has been inserted into database.
-// Returns true if found, else false.
-func queryLatestSecret(minute int) (bool, error) {
-	if minute == 0 {
-		return false, consts.ErrInvalidAddTime
+// getLatestSecret looks at the secrets table and selects row that is less than parameter seconds.
+// Used to validate that the latest secret has been inserted into database.
+// Returns the secret key string if row passes timestamp test, else empty value.
+func getLatestSecret(seconds int) (string, error) {
+	if seconds == 0 {
+		return "", consts.ErrInvalidAddTime
 	}
 
-	interval := time.Now().UTC().Add(time.Minute * time.Duration(-minute))
+	interval := time.Now().UTC().Add(time.Second * time.Duration(-seconds))
 
 	command := `
-				SELECT COUNT(*) FROM user_security.secret 
-				WHERE created_timestamp > $1 AND is_active = TRUE
+				SELECT secret_key 
+				FROM user_security.secrets
+				WHERE created_timestamp > $1
 				`
 
-	var count int
-	err := postgresDB.QueryRow(command, interval).Scan(&count)
+	var secretKey string
+	err := postgresDB.QueryRow(command, interval).Scan(&secretKey)
 	if err != nil {
-		return false, err
+		return "", err
 	}
 
-	if count == 0 {
-		return false, consts.ErrNoRowsFound
+	if secretKey == "" {
+		return "", consts.ErrNoRowsFound
 	}
 
-	if count > 1 {
-		return false, consts.ErrInvalidRowCount
-	}
-
-	return true, nil
+	return secretKey, nil
 }
 
 // insertJWToken inserts new token information for auditing in the database.
@@ -474,7 +459,9 @@ func insertJWToken(token string, header *auth.Header, body *auth.Body, secret *p
 	return nil
 }
 
-// getExistingToken looks up existing user and grabs row where token is not expired.
+// getExistingToken looks up existing user and grabs row where token is not expired from the tokens table.
+// Once matched, inner join will join a row from secrets table that matches its secrets_key with
+// the matched token's row secret_key.
 // Returns tokenRow object if existing token is found and unexpired, nil if not found, else errors.
 func getExistingToken(uuid string) (*tokenRow, error) {
 	if err := validation.ValidateUserUUID(uuid); err != nil {
@@ -482,10 +469,10 @@ func getExistingToken(uuid string) (*tokenRow, error) {
 	}
 
 	command := `SELECT uuid, permission, token_string, user_security.tokens.secret_key, 
-       				user_security.secret.created_timestamp, user_security.secret.expiration_timestamp
+       				user_security.secrets.created_timestamp, user_security.secrets.expiration_timestamp
 				FROM user_security.tokens
-				INNER JOIN user_security.secret
-				ON user_security.secret.secret_key = user_security.tokens.secret_key
+				INNER JOIN user_security.secrets
+				ON user_security.secrets.secret_key = user_security.tokens.secret_key
 				WHERE uuid = $1 AND NOW() AT TIME ZONE 'UTC' < expiration_date
 				`
 
@@ -524,7 +511,8 @@ func getExistingToken(uuid string) (*tokenRow, error) {
 	return nil, consts.ErrNoExistingTokenFound
 }
 
-// getMatchingToken will look up matching token in the tokens database.
+// pairTokenWithSecret will look up matching token in the tokens table.
+// Once matched, inner join will join the matching secret_key row in secrets table with matched tokens row secret_key.
 // Returns secret object for the found token.
 func pairTokenWithSecret(token string) (*pblib.Identification, error) {
 	if token == "" {
@@ -532,10 +520,10 @@ func pairTokenWithSecret(token string) (*pblib.Identification, error) {
 	}
 
 	command := `SELECT token_string, user_security.tokens.secret_key, 
-					user_security.secret.created_timestamp, user_security.secret.expiration_timestamp
+					user_security.secrets.created_timestamp, user_security.secrets.expiration_timestamp
 				FROM user_security.tokens
-				INNER JOIN user_security.secret
-				ON user_security.tokens.secret_key = user_security.secret.secret_key
+				INNER JOIN user_security.secrets
+				ON user_security.tokens.secret_key = user_security.secrets.secret_key
 				WHERE token_string = $1
 				`
 	row, err := postgresDB.Query(command, token)
@@ -568,4 +556,26 @@ func pairTokenWithSecret(token string) (*pblib.Identification, error) {
 	}
 
 	return nil, consts.ErrNoExistingTokenFound
+}
+
+// hasActiveSecret checks active_secret table for a row.
+// active_secret table has a constraint to only one row.
+// Returns true if a row was found, false otherwise, or any error encountered with the db itself.
+func hasActiveSecret() (bool, error) {
+	command := `SELECT EXISTS( 
+  					SELECT *
+  					FROM user_security.active_secret
+  				)`
+
+	var exists bool
+	err := postgresDB.QueryRow(command).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	if exists {
+		return true, nil
+	}
+
+	return false, nil
 }

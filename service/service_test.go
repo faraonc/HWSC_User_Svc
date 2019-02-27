@@ -9,6 +9,7 @@ import (
 	pbsvc "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-lib/logger"
+	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/ory/dockertest"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -51,7 +52,9 @@ func TestMain(m *testing.M) {
 	// exponential backoff-retry, b/c the app in the container might not be ready to accept connections yet
 	if err = pool.Retry(func() error {
 		var err error
-		connectionString = fmt.Sprintf("postgres://postgres:secret@localhost:%s/%s?sslmode=disable", resource.GetPort("5432/tcp"), psqlDBName)
+		connectionString = fmt.Sprintf("postgres://postgres:secret@localhost:%s/%s?sslmode=disable",
+			resource.GetPort("5432/tcp"), psqlDBName)
+
 		postgresDB, err = sql.Open(dbDriverName, connectionString)
 		if err != nil {
 			return err
@@ -558,7 +561,7 @@ func TestNewSecret(t *testing.T) {
 
 	// test for no active secret
 	retrievedSecret, err := getActiveSecretRow()
-	assert.Nil(t, err)
+	assert.EqualError(t, err, consts.ErrNoActiveSecretKeyFound.Error())
 	assert.Nil(t, retrievedSecret)
 
 	s := Service{}
@@ -584,7 +587,7 @@ func TestNewSecret(t *testing.T) {
 	assert.NotNil(t, retrievedNewestSecret)
 
 	// test that two retrieved secrets are not equal
-	assert.NotEqual(t, retrievedSecret, retrievedNewestSecret)
+	assert.NotEqual(t, retrievedSecret.GetKey(), retrievedNewestSecret.GetKey())
 }
 
 func TestGetSecret(t *testing.T) {
@@ -599,15 +602,15 @@ func TestGetSecret(t *testing.T) {
 	assert.Equal(t, codes.OK.String(), response.GetMessage())
 	assert.NotEmpty(t, response.GetIdentification().GetSecret())
 
-	// test it exists (might be redundant with getActiveSecretRow)
-	found, err := queryLatestSecret(2)
+	// test it got inserted by retrieving the secret key
+	secretKey, err := getLatestSecret(2)
 	assert.Nil(t, err)
-	assert.Equal(t, true, found)
+	assert.NotEmpty(t, secretKey)
 
-	// test get secret row
+	// retrieve the secret from active_secret table
 	retrievedSecret, err := getActiveSecretRow()
 	assert.Nil(t, err)
-	assert.NotNil(t, retrievedSecret)
+	assert.Equal(t, secretKey, retrievedSecret.GetKey())
 
 	// get secret by service
 	response, err = s.GetSecret(context.TODO(), nil)
@@ -617,7 +620,8 @@ func TestGetSecret(t *testing.T) {
 }
 
 func TestGetToken(t *testing.T) {
-	lastName := "GetToken-One"
+	lastName1 := "GetToken-One"
+	lastName2 := "GetToken-Two"
 
 	// refresh secret table
 	retrievedSecret, err := unitTestDeleteInsertGetSecret()
@@ -626,10 +630,16 @@ func TestGetToken(t *testing.T) {
 	currSecret = retrievedSecret
 
 	// insert a user
-	responseUser, err := unitTestInsertUser(lastName)
+	responseUser1, err := unitTestInsertUser(lastName1)
 	assert.Nil(t, err)
-	assert.NotEmpty(t, responseUser)
-	responseUser.GetUser().Password = lastName
+	assert.NotEmpty(t, responseUser1)
+	responseUser1.GetUser().Password = lastName1
+
+	// insert another user to test setting of nil currSecret
+	responseUser2, err := unitTestInsertUser(lastName2)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, responseUser2)
+	responseUser2.GetUser().Password = lastName2
 
 	cases := []struct {
 		request  *pbsvc.UserRequest
@@ -637,7 +647,9 @@ func TestGetToken(t *testing.T) {
 		expMsg   string
 	}{
 		// valid
-		{&pbsvc.UserRequest{User: responseUser.GetUser()}, false, ""},
+		{&pbsvc.UserRequest{User: responseUser1.GetUser()}, false, ""},
+		// valid - test setting of nil currSecret to active secret retrieved from db
+		{&pbsvc.UserRequest{User: responseUser2.GetUser()}, false, ""},
 		// nil request object
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
 		// nil user object
@@ -646,25 +658,25 @@ func TestGetToken(t *testing.T) {
 		{&pbsvc.UserRequest{
 			User: &pblib.User{
 				Uuid:     "invalid",
-				Email:    responseUser.GetUser().GetEmail(),
-				Password: responseUser.GetUser().GetPassword(),
+				Email:    responseUser1.GetUser().GetEmail(),
+				Password: responseUser1.GetUser().GetPassword(),
 			}},
 			true, "rpc error: code = InvalidArgument desc = invalid uuid",
 		},
 		// user contains invalid email
 		{&pbsvc.UserRequest{
 			User: &pblib.User{
-				Uuid:     responseUser.GetUser().GetUuid(),
+				Uuid:     responseUser1.GetUser().GetUuid(),
 				Email:    "@",
-				Password: responseUser.GetUser().GetPassword(),
+				Password: responseUser1.GetUser().GetPassword(),
 			}},
 			true, "rpc error: code = InvalidArgument desc = invalid User email",
 		},
 		// user contains invalid password
 		{&pbsvc.UserRequest{
 			User: &pblib.User{
-				Uuid:     responseUser.GetUser().GetUuid(),
-				Email:    responseUser.GetUser().GetEmail(),
+				Uuid:     responseUser1.GetUser().GetUuid(),
+				Email:    responseUser1.GetUser().GetEmail(),
 				Password: "",
 			}},
 			true, "rpc error: code = InvalidArgument desc = invalid User password",
@@ -672,13 +684,22 @@ func TestGetToken(t *testing.T) {
 	}
 
 	var existingIdentification *pblib.Identification
-	for _, c := range cases {
+	for index, c := range cases {
 		s := Service{}
+		if index == 1 {
+			// test setting of nil currSecret to active secret retrieved from db
+			currSecret = nil
+		}
 		response, err := s.GetToken(context.TODO(), c.request)
 
 		if c.isExpErr {
 			assert.EqualError(t, err, c.expMsg)
 			assert.Nil(t, response)
+		} else if index == 1 {
+			desc := "test setting of nil currSecret to active secret retrieved from db"
+			assert.Nil(t, err, desc)
+			assert.Equal(t, codes.OK.String(), response.GetMessage(), desc)
+			assert.Equal(t, response.GetIdentification().GetSecret().GetKey(), retrievedSecret.GetKey(), desc)
 		} else {
 			existingIdentification = response.GetIdentification()
 			assert.Nil(t, err)
@@ -691,7 +712,7 @@ func TestGetToken(t *testing.T) {
 
 	// check for retrieval of same token already in db
 	s := Service{}
-	response, err := s.GetToken(context.TODO(), &pbsvc.UserRequest{User: responseUser.GetUser()})
+	response, err := s.GetToken(context.TODO(), &pbsvc.UserRequest{User: responseUser1.GetUser()})
 	assert.Nil(t, err)
 	assert.Exactly(t, existingIdentification, response.GetIdentification())
 	assert.Equal(t, existingIdentification.GetToken(), response.GetIdentification().GetToken())

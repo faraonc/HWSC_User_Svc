@@ -105,8 +105,8 @@ func validateOrganization(name string) error {
 	return nil
 }
 
-// generateUUID generates a unique user ID using ulid package based on currentTime
-// returns a lower cased string type of generated ulid.ULID
+// generateUUID generates a unique user ID using ulid package based on currentTime.
+// Returns a lower cased string type of generated ulid.ULID.
 func generateUUID() (string, error) {
 	uuidLocker.Lock()
 	defer uuidLocker.Unlock()
@@ -122,8 +122,8 @@ func generateUUID() (string, error) {
 	return strings.ToLower(id.String()), nil
 }
 
-// hashPassword hashes and salts provided password
-// returns string hashed password
+// hashPassword hashes and salts provided password.
+// Returns string hashed password.
 func hashPassword(password string) (string, error) {
 	if password == "" || strings.TrimSpace(password) != password {
 		return "", consts.ErrInvalidPassword
@@ -137,8 +137,8 @@ func hashPassword(password string) (string, error) {
 	return string(hashedPassword), nil
 }
 
-// comparePassword compares hashedPassword retrieved from DB and the password from User request
-// Returns nil if match, error if not match or error from bcrypt
+// comparePassword compares hashedPassword retrieved from DB and the password from User request.
+// Returns nil if match, error if not match or error from bcrypt.
 func comparePassword(hashedPassword string, password string) error {
 	if hashedPassword == "" || password == "" {
 		return consts.ErrInvalidPassword
@@ -153,9 +153,9 @@ func comparePassword(hashedPassword string, password string) error {
 }
 
 // generateRandomToken generates a base64 URL-safe string
-// built from securely generated random bytes
-// number of bytes is determined by tokenSize
-// Return error if system's secure random number generator fails
+// built from securely generated random bytes.
+// Number of bytes is determined by tokenSize.
+// Return error if system's secure random number generator fails.
 func generateSecretKey(tokenSize int) (string, error) {
 	if tokenSize <= 0 {
 		return "", consts.ErrInvalidTokenSize
@@ -173,9 +173,9 @@ func generateSecretKey(tokenSize int) (string, error) {
 	return base64.URLEncoding.EncodeToString(randomBytes), nil
 }
 
-// generateSecretExpirationDate returns the expiration date for secret keys used for signing JWT
-// currently sets expiration date to one week later at 3AM UTC
-// Returns error if date object is nil or error with loading location
+// generateSecretExpirationDate returns the expiration date for secret keys used for signing JWT.
+// Currently sets expiration date to one week later at 3AM UTC.
+// Returns error if date object is nil or error with loading location.
 func generateSecretExpirationTimestamp(currentTimestamp time.Time) (*time.Time, error) {
 	if currentTimestamp.IsZero() {
 		return nil, consts.ErrInvalidTimeStamp
@@ -194,4 +194,21 @@ func generateSecretExpirationTimestamp(currentTimestamp time.Time) (*time.Time, 
 		3, 0, 0, 0, timeZonedTimestamp.Location())
 
 	return &expirationTimestamp, nil
+}
+
+// setCurrentSecretOnce checks if currSecret is set, if not,
+// retrieves the active secret key found in secrets table.
+// Returns any db encountered error, or nil if secret is already set or no error.
+func setCurrentSecretOnce() error {
+	if currSecret != nil {
+		return nil
+	}
+
+	var err error
+	currSecret, err = getActiveSecretRow()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
