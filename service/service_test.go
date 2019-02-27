@@ -90,9 +90,9 @@ func TestMain(m *testing.M) {
 
 	// When unit test is done running, kill and remove the container
 	// Cannot defer this b/c os.Exit doesn't care for defer
-	//if err := pool.Purge(resource); err != nil {
-	//	logger.Fatal(unitTestTag, "Could not purge docker resources:", err.Error())
-	//}
+	if err := pool.Purge(resource); err != nil {
+		logger.Fatal(unitTestTag, "Could not purge docker resources:", err.Error())
+	}
 
 	os.Exit(code)
 }
