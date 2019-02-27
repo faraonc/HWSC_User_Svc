@@ -40,8 +40,8 @@ var (
 
 func init() {
 	connectionString = fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s sslmode=verify-full",
-		conf.UserDB.Host, conf.UserDB.User, conf.UserDB.Password, conf.UserDB.Name)
+		"host=%s user=%s password=%s dbname=%s sslmode=%s port=%s",
+		conf.UserDB.Host, conf.UserDB.User, conf.UserDB.Password, conf.UserDB.Name, conf.UserDB.SSLMode, conf.UserDB.Port)
 
 	// Handle Terminate Signal(Ctrl + C) gracefully
 	c := make(chan os.Signal)

@@ -29,6 +29,8 @@ type UserDBHost struct {
 	Name     string `json:"db"`
 	User     string `json:"user"`
 	Password string `json:"password"`
+	Port     string `json:"port"`
+	SSLMode  string `json:"sslmode"`
 }
 
 // SMTPHost contains SMTP email configurations
