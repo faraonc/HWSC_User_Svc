@@ -552,7 +552,7 @@ func TestAuthenticateUser(t *testing.T) {
 	}
 }
 
-func TestNewSecret(t *testing.T) {
+func TestMakeNewSecret(t *testing.T) {
 	// no need to perform a check in the db here using a DAO,
 	// b/c this func is meant to be called by a client
 
@@ -567,7 +567,7 @@ func TestNewSecret(t *testing.T) {
 	s := Service{}
 
 	// test with no secret in table
-	response, err := s.NewSecret(context.TODO(), nil)
+	response, err := s.MakeNewSecret(context.TODO(), nil)
 	assert.Nil(t, err)
 	assert.Equal(t, codes.OK.String(), response.Message)
 
@@ -577,7 +577,7 @@ func TestNewSecret(t *testing.T) {
 	assert.NotNil(t, retrievedSecret)
 
 	// test with a secret already in table
-	response, err = s.NewSecret(context.TODO(), nil)
+	response, err = s.MakeNewSecret(context.TODO(), nil)
 	assert.Nil(t, err)
 	assert.Equal(t, codes.OK.String(), response.Message)
 
@@ -619,7 +619,7 @@ func TestGetSecret(t *testing.T) {
 	assert.Equal(t, response.Identification.Secret.CreatedTimestamp, retrievedSecret.CreatedTimestamp)
 }
 
-func TestGetToken(t *testing.T) {
+func TestGetAuthToken(t *testing.T) {
 	lastName1 := "GetToken-One"
 	lastName2 := "GetToken-Two"
 
@@ -690,7 +690,7 @@ func TestGetToken(t *testing.T) {
 			// test setting of nil currSecret to active secret retrieved from db
 			currSecret = nil
 		}
-		response, err := s.GetToken(context.TODO(), c.request)
+		response, err := s.GetAuthToken(context.TODO(), c.request)
 
 		if c.isExpErr {
 			assert.EqualError(t, err, c.expMsg)
@@ -712,7 +712,7 @@ func TestGetToken(t *testing.T) {
 
 	// check for retrieval of same token already in db
 	s := Service{}
-	response, err := s.GetToken(context.TODO(), &pbsvc.UserRequest{User: responseUser1.GetUser()})
+	response, err := s.GetAuthToken(context.TODO(), &pbsvc.UserRequest{User: responseUser1.GetUser()})
 	assert.Nil(t, err)
 	assert.Exactly(t, existingIdentification, response.GetIdentification())
 	assert.Equal(t, existingIdentification.GetToken(), response.GetIdentification().GetToken())

@@ -6,7 +6,7 @@ require (
 	github.com/containerd/continuity v0.0.0-20181203112020-004b46473808 // indirect
 	github.com/golang-migrate/migrate/v4 v4.2.4
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
-	github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190217232836-1729749fa868
+	github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190227190210-b4b3df168cb1
 	github.com/hwsc-org/hwsc-lib v0.0.0-20190218163148-bd43cc893860
 	github.com/lib/pq v1.0.0
 	github.com/micro/go-config v0.14.0
