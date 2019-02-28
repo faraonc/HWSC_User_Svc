@@ -7,7 +7,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.2.4
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190227190210-b4b3df168cb1
-	github.com/hwsc-org/hwsc-lib v0.0.0-20190218163148-bd43cc893860
+	github.com/hwsc-org/hwsc-lib v0.0.0-20190228052504-2853593736f5
 	github.com/lib/pq v1.0.0
 	github.com/micro/go-config v0.14.0
 	github.com/oklog/ulid v1.3.1

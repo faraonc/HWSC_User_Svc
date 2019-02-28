@@ -539,7 +539,6 @@ func (s *Service) GetAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pb
 			Secret: existingToken.secret,
 		}
 	} else {
-		// TODO include mapping table in db
 		permissionLevel := auth.PermissionEnumMap[retrievedUser.GetPermissionLevel()]
 
 		// build token header, body, secret
