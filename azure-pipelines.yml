@@ -52,6 +52,18 @@ steps:
     workingDirectory: '$(modulePath)'
     displayName: 'Go Get Dependencies'
 
+  - script: |
+      export hosts_postgres_host="localhost"
+      export hosts_postgres_db="test_user_svc"
+      export hosts_postgres_user="postgres"
+      export hosts_postgres_password="secret"
+      export hosts_postgres_sslmode="disable"
+      export hosts_postgres_port="5432"
+      ls ./...
+      go test -v -cover -failfast -race ./...
+    workingDirectory: '$(modulePath)'
+    displayName: 'Run Unit Tests'
+
   - task: DownloadSecureFile@1
     inputs:
       secureFile: hwscdevcontainer_pw.txt # contains password for hwsc docker hub
