@@ -447,10 +447,9 @@ func insertJWToken(token string, header *auth.Header, body *auth.Body, secret *p
 				) VALUES($1, $2, $3, $4, $5, $6, $7)
 				`
 
-	// TODO need header.TokenTyp map to string value
-	// TODO remove harded coded values JWT and HS256
-	_, err := postgresDB.Exec(command, token, secret.Key, "JWT", "HS256",
-		auth.PermissionStringMap[body.Permission], time.Unix(body.ExpirationTimestamp, 0), body.UUID)
+	_, err := postgresDB.Exec(command, token, secret.Key, auth.TokenTypeStringMap[header.TokenTyp],
+		auth.AlgorithmStringMap[header.Alg], auth.PermissionStringMap[body.Permission],
+		time.Unix(body.ExpirationTimestamp, 0), body.UUID)
 
 	if err != nil {
 		return err
