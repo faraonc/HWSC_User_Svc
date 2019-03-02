@@ -48,6 +48,10 @@ steps:
       echo '##vso[task.prependpath]$(GOROOT)/bin'
     displayName: 'Set up the Go workspace'
 
+  - script: go get -v -t -d ./...
+    workingDirectory: '$(modulePath)'
+    displayName: 'Go Get Dependencies'
+
   - task: DownloadSecureFile@1
     inputs:
       secureFile: hwscdevcontainer_pw.txt # contains password for hwsc docker hub
