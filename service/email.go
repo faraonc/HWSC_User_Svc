@@ -52,7 +52,6 @@ func init() {
 //
 // param "data" can be nil because email templates may contain only static data
 func newEmailRequest(data map[string]string, to []string, from string, subject string) (*emailRequest, error) {
-	fmt.Println("------ inside newEmailRequest: ", to, from, subject)
 	// note, data can be nil
 	if to == nil || from == "" || subject == "" {
 		return nil, consts.ErrEmailRequestFieldsEmpty
