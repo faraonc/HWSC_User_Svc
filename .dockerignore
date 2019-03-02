@@ -1,0 +1,13 @@
+# exclude from docker image
+*.md
+.github
+.dockerignore
+.gitignore
+.editorconfig
+azure-pipelines.yml
+Dockerfile
+service/test_fixtures
+service/*_test.go
+service/*.out
+service/*.sh
+
