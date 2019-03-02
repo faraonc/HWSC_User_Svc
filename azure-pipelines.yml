@@ -59,7 +59,6 @@ steps:
       export hosts_postgres_password="secret"
       export hosts_postgres_sslmode="disable"
       export hosts_postgres_port="5432"
-      ls ./...
       go test -v -cover -failfast -race ./...
     workingDirectory: '$(modulePath)'
     displayName: 'Run Unit Tests'
