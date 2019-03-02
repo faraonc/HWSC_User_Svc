@@ -23,6 +23,14 @@ pool:
 # these group variables can be accessed as $(variable_name)
 variables:
   - group: hwsc-dev-container-vars # name of variable group file that contains docker hub user/email/image-names
+  - name: GOBIN # Go binaries path
+    value: '$(GOPATH)/bin'
+  - name: GOROOT  # Go installation path
+    value: '/usr/local/go1.11'
+  - name: GOPATH # Go workspace path
+    value: '$(system.defaultWorkingDirectory)/gopath'
+  - name: modulePath # Path to the module's code
+    value: '$(GOPATH)/src/github.com/$(build.repository.name)'
 
 # task: DownloadSecureFile@1
 # download a Secure File to a temporary location on build or release agent
@@ -30,17 +38,27 @@ variables:
 # once downloaded, the Secure File is located in $(Agent.TempDirectory) directory of Azure Pipelines Agent
 # selected secure files are deleted after the build or release is finished
 steps:
+  - script: |
+      mkdir -p '$(GOBIN)'
+      mkdir -p '$(GOPATH)/pkg'
+      mkdir -p '$(modulePath)'
+      shopt -s extglob
+      mv !(gopath) '$(modulePath)'
+      echo '##vso[task.prependpath]$(GOBIN)'
+      echo '##vso[task.prependpath]$(GOROOT)/bin'
+    displayName: 'Set up the Go workspace'
+
   - task: DownloadSecureFile@1
     inputs:
-      secureFile: hwscdevcontainer_pw.txt # selecting the secure file to download to a temp location on agent machine
+      secureFile: hwscdevcontainer_pw.txt # contains password for hwsc docker hub
   - script: |
       cat $(Agent.TempDirectory)/hwscdevcontainer_pw.txt | docker login -u "$(hwscDevContainerUser)" --password-stdin
       docker build --no-cache -f Dockerfile -t hwsc/$(hwscDevImageNameUserSvc):$(build.buildId) .
-
+    workingDirectory: '$(modulePath)'
     displayName: 'Build Docker Image'
 
   - script: |
       docker tag $(hwscDevImageNameUserSvc) hwsc/$(hwscDevImageNameUserSvc):$(build.buildId)
       docker push hwsc/$(hwscDevImageNameUserSvc):$(build.buildId)
-
+    workingDirectory: '$(modulePath)'
     displayName: 'Push Docker Image'
