@@ -48,7 +48,7 @@ steps:
 
   - task: DownloadSecureFile@1
     inputs:
-      secureFile: hwsctestgmail_pw.txt # contains password for test gmail
+      secureFile: hwsctestgmail_pw.txt # contains info for test gmail
   - script: |
       PASSWORD=$(cat $(Agent.TempDirectory)/hwsctestgmail_pw.txt)
       export hosts_postgres_host="localhost"
@@ -61,7 +61,7 @@ steps:
       export hosts_smtp_port=$(testGmailPort)
       export hosts_smtp_username=$(testGmailUser)
       export hosts_smtp_password=$PASSWORD
-      go test -v -cover -failfast -race ./...
+      go test -v -cover -race ./...
       go get github.com/jstemmer/go-junit-report
       go get github.com/axw/gocov/gocov
       go get github.com/AlekSi/gocov-xml
@@ -79,12 +79,16 @@ steps:
     inputs:
       testRunner: JUnit
       testResultsFiles: $(System.DefaultWorkingDirectory)/**/report.xml
+      failTaskOnFailedTests: 'true'
+      failOnStandardError: 'true'
 
   - task: PublishCodeCoverageResults@1
     inputs:
       codeCoverageTool: Cobertura
       summaryFileLocation: $(System.DefaultWorkingDirectory)/**/coverage.xml
       reportDirectory: $(System.DefaultWorkingDirectory)/**/coverage
+      failIfCoverageEmpty: 'true'
+      failOnStandardError: 'true'
 
   - script: go build -v .
     workingDirectory: '$(modulePath)'
@@ -95,6 +99,6 @@ steps:
       secureFile: hwscdevcontainer_pw.txt # contains password for hwsc docker hub
   - script: |
       cat $(Agent.TempDirectory)/hwscdevcontainer_pw.txt | docker login -u "$(hwscDevContainerUser)" --password-stdin
-      docker build --no-cache -f Dockerfile -t hwsc/$(hwscDevImageNameUserSvc):$(build.buildId) .
+      docker build --no-cache -f Dockerfile -t hwsc/$(hwscDevImageNameUserSvc):test .
     workingDirectory: '$(modulePath)'
     displayName: 'Build Docker Image Test'
