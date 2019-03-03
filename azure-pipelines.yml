@@ -61,7 +61,7 @@ steps:
 
   - task: DownloadSecureFile@1
     inputs:
-      secureFile: hwsctestgmail_pw.txt # contains password for test gmail
+      secureFile: hwsctestgmail_pw.txt # contains info for test gmail
   - script: |
       PASSWORD=$(cat $(Agent.TempDirectory)/hwsctestgmail_pw.txt)
       export hosts_postgres_host="localhost"
