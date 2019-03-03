@@ -18,6 +18,7 @@ pool:
 
 variables:
   - group: hwsc-dev-container-vars # name of variable group file that contains docker hub user/email/image-names
+  - group: hwsc-user-svc-env-vars
   - name: GOBIN # Go binaries path
     value: '$(GOPATH)/bin'
   - name: GOROOT  # Go installation path
@@ -45,17 +46,21 @@ steps:
     workingDirectory: '$(modulePath)'
     displayName: 'Go Get Dependencies'
 
+  - task: DownloadSecureFile@1
+    inputs:
+      secureFile: hwsctestgmail_pw.txt # contains password for test gmail
   - script: |
+      PASSWORD=$(cat $(Agent.TempDirectory)/hwsctestgmail_pw.txt)
       export hosts_postgres_host="localhost"
       export hosts_postgres_db="test_user_svc"
       export hosts_postgres_user="postgres"
       export hosts_postgres_password="secret"
       export hosts_postgres_sslmode="disable"
       export hosts_postgres_port="5432"
-      export hosts_smtp_host="smtp.gmail.com"
-      export hosts_smtp_port="587"
-      export hosts_smtp_username="hwsc.test@gmail.com"
-      export hosts_smtp_password="ftbsflgbewdpzzmo"
+      export hosts_smtp_host=$(testGmailHost)
+      export hosts_smtp_port=$(testGmailPort)
+      export hosts_smtp_username=$(testGmailUser)
+      export hosts_smtp_password=$PASSWORD
       go test -v -cover -failfast -race ./...
       go get github.com/jstemmer/go-junit-report
       go get github.com/axw/gocov/gocov
