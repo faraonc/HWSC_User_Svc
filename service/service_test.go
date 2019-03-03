@@ -31,7 +31,7 @@ const (
 func TestMain(m *testing.M) {
 	logger.Info(unitTestTag, "Initializing Unit Test Setup")
 
-	templateDirectory = "../tmpl/"
+	templateDirectory = "../tmpl"
 
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
 	pool, err := dockertest.NewPool("")

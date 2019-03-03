@@ -132,8 +132,6 @@ func (r *emailRequest) processEmail() error {
 			r.from, recipient, r.subject, mime, r.body)
 		addr := fmt.Sprintf("%s:%s", conf.EmailHost.Host, conf.EmailHost.Port)
 
-		//TODO PlainAuth requires gmail enabling of "less secure apps" which isn't secure
-		// not sure if this is the same with other email vendors
 		auth := smtp.PlainAuth("", conf.EmailHost.Username, conf.EmailHost.Password, conf.EmailHost.Host)
 		err := smtp.SendMail(
 			addr,
