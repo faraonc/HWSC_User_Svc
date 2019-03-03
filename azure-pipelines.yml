@@ -77,6 +77,17 @@ steps:
     workingDirectory: '$(modulePath)'
     displayName: 'Run Unit Tests'
 
+  - task: PublishTestResults@2
+    inputs:
+      testRunner: JUnit
+      testResultsFiles: $(System.DefaultWorkingDirectory)/**/report.xml
+
+  - task: PublishCodeCoverageResults@1
+    inputs:
+      codeCoverageTool: Cobertura
+      summaryFileLocation: $(System.DefaultWorkingDirectory)/**/coverage.xml
+      reportDirectory: $(System.DefaultWorkingDirectory)/**/coverage
+
   - task: DownloadSecureFile@1
     inputs:
       secureFile: hwscdevcontainer_pw.txt # contains password for hwsc docker hub
