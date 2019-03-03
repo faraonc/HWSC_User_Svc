@@ -1,29 +1,21 @@
-# Runs for every merge request on MASTER
+# Runs for every pull request on master
 # Sets up a Go environment
 # Runs all unit tests on hwsc-user-svc
 # Displays unit test results and code coverages
 # Tests main.go executable build
 # Tests docker image build (Dockerfile)
-# Pushes built docker image to docker hub account
 # https://docs.microsoft.com/azure/devops/pipelines/languages/docker
 
 # runs tests/builds on merge to master
-trigger:
-  - master
+trigger: none
 
 # runs tests/builds on PULL REQUEST master
-pr: none
+pr:
+  - master
 
-# determine your virtual machine image
-# each time pipeline is ran, you get a fresh Linux virtual machine
-# this vm is discarded after each build
-# a Microsoft-hosted Linux agent in Azure pipelines have Docker pre-installed on them
 pool:
   vmImage: 'Ubuntu-16.04'
 
-# variables group
-# Referencing from Azure DevOps > Pipelines > Library > "Variable Groups" tab
-# these group variables can be accessed as $(variable_name)
 variables:
   - group: hwsc-dev-container-vars # name of variable group file that contains docker hub user/email/image-names
   - name: GOBIN # Go binaries path
@@ -35,11 +27,6 @@ variables:
   - name: modulePath # Path to the module's code
     value: '$(GOPATH)/src/github.com/$(build.repository.name)'
 
-# task: DownloadSecureFile@1
-# download a Secure File to a temporary location on build or release agent
-# Secure Files is referenced from Azure DevOps > Pipelines > Library > "Secure Files" tab
-# once downloaded, the Secure File is located in $(Agent.TempDirectory) directory of Azure Pipelines Agent
-# selected secure files are deleted after the build or release is finished
 steps:
   - script: printenv
     displayName: 'Print Environment Variables'
@@ -105,10 +92,4 @@ steps:
       cat $(Agent.TempDirectory)/hwscdevcontainer_pw.txt | docker login -u "$(hwscDevContainerUser)" --password-stdin
       docker build --no-cache -f Dockerfile -t hwsc/$(hwscDevImageNameUserSvc):$(build.buildId) .
     workingDirectory: '$(modulePath)'
-    displayName: 'Build Docker Image'
-
-  - script: |
-      docker tag $(hwscDevImageNameUserSvc) hwsc/$(hwscDevImageNameUserSvc):$(build.buildId)
-      docker push hwsc/$(hwscDevImageNameUserSvc):$(build.buildId)
-    workingDirectory: '$(modulePath)'
-    displayName: 'Push Docker Image'
+    displayName: 'Build Docker Image Test'
