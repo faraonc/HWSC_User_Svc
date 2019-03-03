@@ -74,7 +74,7 @@ steps:
       export hosts_smtp_port=$(testGmailPort)
       export hosts_smtp_username=$(testGmailUser)
       export hosts_smtp_password=$PASSWORD
-      go test -v -cover -failfast -race ./...
+      go test -v -cover -race ./...
       go get github.com/jstemmer/go-junit-report
       go get github.com/axw/gocov/gocov
       go get github.com/AlekSi/gocov-xml
@@ -92,12 +92,16 @@ steps:
     inputs:
       testRunner: JUnit
       testResultsFiles: $(System.DefaultWorkingDirectory)/**/report.xml
+      failTaskOnFailedTests: 'true'
+      failOnStandardError: 'true'
 
   - task: PublishCodeCoverageResults@1
     inputs:
       codeCoverageTool: Cobertura
       summaryFileLocation: $(System.DefaultWorkingDirectory)/**/coverage.xml
       reportDirectory: $(System.DefaultWorkingDirectory)/**/coverage
+      failIfCoverageEmpty: 'true'
+      failOnStandardError: 'true'
 
   - script: go build -v .
     workingDirectory: '$(modulePath)'
