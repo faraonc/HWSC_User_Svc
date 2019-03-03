@@ -64,6 +64,16 @@ steps:
       export hosts_smtp_username="hwsc.test@gmail.com"
       export hosts_smtp_password="ftbsflgbewdpzzmo"
       go test -v -cover -failfast -race ./...
+      go get github.com/jstemmer/go-junit-report
+      go get github.com/axw/gocov/gocov
+      go get github.com/AlekSi/gocov-xml
+      go test -coverprofile=coverage.out -v -race -covermode atomic ./... 2>&1 | go-junit-report > report.xml
+      gocov convert coverage.out | gocov-xml > coverage.xml
+      mkdir -p coverage/official-tool
+      go tool cover -html=coverage.out -o coverage/official-tool/coverage.html
+      go get -u github.com/matm/gocov-html
+      gocov convert coverage.out > coverage.json
+      gocov-html < coverage.json > coverage/index.html
     workingDirectory: '$(modulePath)'
     displayName: 'Run Unit Tests'
 
