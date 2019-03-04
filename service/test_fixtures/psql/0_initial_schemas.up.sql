@@ -40,7 +40,7 @@ CREATE TABLE user_svc.accounts
 CREATE TABLE user_svc.email_tokens
 (
   token             TEXT PRIMARY KEY,
-  created_date      TIMESTAMPTZ NOT NULL,
+  created_timestamp TIMESTAMPTZ NOT NULL,
   uuid              ulid UNIQUE REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE
 );
 

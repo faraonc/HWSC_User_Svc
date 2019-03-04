@@ -133,7 +133,7 @@ func insertEmailToken(uuid string) error {
 		return err
 	}
 
-	command := `INSERT INTO user_svc.email_tokens(token, created_date, uuid) VALUES($1, $2, $3)`
+	command := `INSERT INTO user_svc.email_tokens(token, created_timestamp, uuid) VALUES($1, $2, $3)`
 	_, err = postgresDB.Exec(command, token, time.Now().UTC(), uuid)
 
 	if err != nil {
@@ -222,7 +222,7 @@ func getUserRow(uuid string) (*pblib.User, error) {
 }
 
 // updateUser does a partial update by going through each User fields and replacing values.
-// that are different from original values. It's partial b/c some fields like created_date & uuid are not touched.
+// that are different from original values. It's partial b/c some fields like created_timestamp & uuid are not touched.
 // Return error if params are zero values or querying problem.
 func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (*pblib.User, error) {
 	if svcDerived == nil || dbDerived == nil {
