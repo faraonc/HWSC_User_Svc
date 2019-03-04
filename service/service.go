@@ -581,14 +581,14 @@ func (s *Service) GetAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pb
 	}, nil
 }
 
-// VerifyToken checks if received token and retrieved secret is valid.
+// VerifyAuthToken checks if received token and retrieved secret is valid.
 // Token is first verified against tokens table, and if token is found, secret is retrieved.
 // On success, returns identity object with token and paired secret.
-func (s *Service) VerifyToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
-	logger.RequestService("Verify Token")
+func (s *Service) VerifyAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
+	logger.RequestService("Verify Auth Token")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		logger.Error(consts.VerifyToken, consts.ErrServiceUnavailable.Error())
+		logger.Error(consts.VerifyAuthToken, consts.ErrServiceUnavailable.Error())
 		return nil, consts.ErrStatusServiceUnavailable
 	}
 
@@ -609,14 +609,14 @@ func (s *Service) VerifyToken(ctx context.Context, req *pbsvc.UserRequest) (*pbs
 	// verify token against database
 	retrievedIdentity, err := pairTokenWithSecret(identity.GetToken())
 	if err != nil {
-		logger.Error(consts.VerifyToken, consts.MsgErrValidatingToken, err.Error())
+		logger.Error(consts.VerifyAuthToken, consts.MsgErrValidatingToken, err.Error())
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	// create authority to validate Identity containing token and retrieved secret
 	authority := auth.NewAuthority(auth.Jwt, auth.User)
 	if err := authority.Authorize(retrievedIdentity); err != nil {
-		logger.Error(consts.VerifyToken, consts.MsgErrValidatingIdentity, err.Error())
+		logger.Error(consts.VerifyAuthToken, consts.MsgErrValidatingIdentity, err.Error())
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
@@ -666,4 +666,15 @@ func (s *Service) MakeNewSecret(ctx context.Context, req *pbsvc.UserRequest) (*p
 		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
 	}, nil
+}
+
+// VerifyEmailToken checks if received token is found in the email_tokens table.
+// If found and token is NOT expired, returns OK.
+// If found, but token IS expired, the token row with expired token will be deleted,
+// service will generate a new email token and insert into email_tokens table,
+// and return ERROR with token expired message.
+// If token is not found, return ERROR with token does not exist message.
+func (s *Service) VerifyEmailToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
+	// TODO
+	return nil, nil
 }
