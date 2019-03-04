@@ -199,15 +199,15 @@ func getUserRow(uuid string) (*pblib.User, error) {
 			return nil, err
 		}
 		userObject = &pblib.User{
-			Uuid:            uid,
-			FirstName:       firstName,
-			LastName:        lastName,
-			Email:           email,
-			Organization:    organization,
-			CreatedDate:     createdTimestamp.Unix(),
-			IsVerified:      isVerified,
-			Password:        password,
-			PermissionLevel: permissionLevel,
+			Uuid:             uid,
+			FirstName:        firstName,
+			LastName:         lastName,
+			Email:            email,
+			Organization:     organization,
+			CreatedTimestamp: createdTimestamp.Unix(),
+			IsVerified:       isVerified,
+			Password:         password,
+			PermissionLevel:  permissionLevel,
 		}
 	}
 	if err := row.Err(); err != nil {
@@ -442,8 +442,8 @@ func insertJWToken(token string, header *auth.Header, body *auth.Body, secret *p
 
 	command := `
 				INSERT INTO user_security.auth_tokens(
-					token_string, secret_key, token_type, algorithm,
-					permission, expiration_date, uuid
+					token, secret_key, token_type, algorithm,
+					permission, expiration_timestamp, uuid
 				) VALUES($1, $2, $3, $4, $5, $6, $7)
 				`
 
@@ -467,12 +467,12 @@ func getExistingToken(uuid string) (*tokenRow, error) {
 		return nil, authconst.ErrInvalidUUID
 	}
 
-	command := `SELECT uuid, permission, token_string, user_security.auth_tokens.secret_key, 
+	command := `SELECT uuid, permission, token, user_security.auth_tokens.secret_key, 
        				user_security.secrets.created_timestamp, user_security.secrets.expiration_timestamp
 				FROM user_security.auth_tokens
 				INNER JOIN user_security.secrets
 				ON user_security.secrets.secret_key = user_security.auth_tokens.secret_key
-				WHERE uuid = $1 AND NOW() AT TIME ZONE 'UTC' < expiration_date
+				WHERE uuid = $1 AND NOW() AT TIME ZONE 'UTC' < user_security.auth_tokens.expiration_timestamp
 				`
 
 	row, err := postgresDB.Query(command, uuid)
@@ -518,12 +518,12 @@ func pairTokenWithSecret(token string) (*pblib.Identification, error) {
 		return nil, authconst.ErrEmptyToken
 	}
 
-	command := `SELECT token_string, user_security.auth_tokens.secret_key, 
+	command := `SELECT token, user_security.auth_tokens.secret_key, 
 					user_security.secrets.created_timestamp, user_security.secrets.expiration_timestamp
 				FROM user_security.auth_tokens
 				INNER JOIN user_security.secrets
 				ON user_security.auth_tokens.secret_key = user_security.secrets.secret_key
-				WHERE token_string = $1
+				WHERE token = $1
 				`
 	row, err := postgresDB.Query(command, token)
 	if err != nil {

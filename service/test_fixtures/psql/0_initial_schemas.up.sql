@@ -87,11 +87,11 @@ CREATE TABLE user_security.secrets
 
 CREATE TABLE user_security.auth_tokens
 (
-  token_string      TEXT PRIMARY KEY,
-  secret_key        TEXT REFERENCES user_security.secrets(secret_key) ON DELETE CASCADE,
-  token_type        user_security.token_type NOT NULL,
-  algorithm         user_security.algorithm_type NOT NULL,
-  permission        permission_level NOT NULL,
-  expiration_date   TIMESTAMPTZ NOT NULL,
-  uuid              ulid NOT NULL
+  token                 TEXT PRIMARY KEY,
+  secret_key            TEXT REFERENCES user_security.secrets(secret_key) ON DELETE CASCADE,
+  token_type            user_security.token_type NOT NULL,
+  algorithm             user_security.algorithm_type NOT NULL,
+  permission            permission_level NOT NULL,
+  expiration_timestamp  TIMESTAMPTZ NOT NULL,
+  uuid                  ulid NOT NULL
 );

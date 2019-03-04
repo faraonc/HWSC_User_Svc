@@ -11,7 +11,7 @@ trigger: none
 
 # runs tests/builds on PULL REQUEST master
 pr:
-  - none
+  - master
 
 pool:
   vmImage: 'Ubuntu-16.04'
