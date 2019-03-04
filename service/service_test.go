@@ -727,9 +727,9 @@ func TestGetAuthToken(t *testing.T) {
 	assert.Equal(t, existingIdentification.GetSecret().GetExpirationTimestamp(), secret.GetExpirationTimestamp())
 }
 
-func TestVerifyToken(t *testing.T) {
+func TestVerifyAuthToken(t *testing.T) {
 	nonExistingToken := &pblib.Identification{
-		Token: "TestVerifyToken-DoesNotExist",
+		Token: "TestVerifyAuthToken-DoesNotExist",
 	}
 
 	cases := []struct {
@@ -751,7 +751,7 @@ func TestVerifyToken(t *testing.T) {
 	for _, c := range cases {
 		s := Service{}
 
-		response, err := s.VerifyToken(context.TODO(), c.req)
+		response, err := s.VerifyAuthToken(context.TODO(), c.req)
 		assert.EqualError(t, err, c.expMsg, c.desc)
 		assert.Nil(t, response, c.desc)
 	}
@@ -766,7 +766,7 @@ func TestVerifyToken(t *testing.T) {
 	identity := &pblib.Identification{
 		Token: newToken,
 	}
-	response, err := s.VerifyToken(context.TODO(), &pbsvc.UserRequest{Identification: identity})
+	response, err := s.VerifyAuthToken(context.TODO(), &pbsvc.UserRequest{Identification: identity})
 	assert.Nil(t, err, desc)
 	assert.Equal(t, newToken, response.GetIdentification().GetToken(), desc)
 

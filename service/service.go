@@ -588,7 +588,7 @@ func (s *Service) VerifyAuthToken(ctx context.Context, req *pbsvc.UserRequest) (
 	logger.RequestService("Verify Auth Token")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		logger.Error(consts.VerifyToken, consts.ErrServiceUnavailable.Error())
+		logger.Error(consts.VerifyAuthToken, consts.ErrServiceUnavailable.Error())
 		return nil, consts.ErrStatusServiceUnavailable
 	}
 
@@ -609,14 +609,14 @@ func (s *Service) VerifyAuthToken(ctx context.Context, req *pbsvc.UserRequest) (
 	// verify token against database
 	retrievedIdentity, err := pairTokenWithSecret(identity.GetToken())
 	if err != nil {
-		logger.Error(consts.VerifyToken, consts.MsgErrValidatingToken, err.Error())
+		logger.Error(consts.VerifyAuthToken, consts.MsgErrValidatingToken, err.Error())
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	// create authority to validate Identity containing token and retrieved secret
 	authority := auth.NewAuthority(auth.Jwt, auth.User)
 	if err := authority.Authorize(retrievedIdentity); err != nil {
-		logger.Error(consts.VerifyToken, consts.MsgErrValidatingIdentity, err.Error())
+		logger.Error(consts.VerifyAuthToken, consts.MsgErrValidatingIdentity, err.Error())
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
