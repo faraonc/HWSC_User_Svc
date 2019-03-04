@@ -8,26 +8,37 @@ import (
 )
 
 func TestNewEmailRequest(t *testing.T) {
-	req, err := newEmailRequest(nil, []string{"test"}, "test", "test")
-	assert.Nil(t, err)
-	assert.NotNil(t, req)
+	testData := map[string]string{"random": "data"}
 
-	data := map[string]string{"test": "test"}
-	req, err = newEmailRequest(data, nil, "test", "test")
-	assert.EqualError(t, err, consts.ErrEmailRequestFieldsEmpty.Error())
-	assert.Nil(t, req)
+	desc := "test valid fields"
+	req, err := newEmailRequest(testData, []string{"test"}, "test", "test")
+	assert.Nil(t, err, desc)
+	assert.NotNil(t, req, desc)
 
-	req, err = newEmailRequest(data, []string{"test"}, "", "test")
-	assert.EqualError(t, err, consts.ErrEmailRequestFieldsEmpty.Error())
-	assert.Nil(t, req)
+	desc = "test nil data"
+	req, err = newEmailRequest(nil, []string{"test"}, "test", "test")
+	assert.EqualError(t, err, consts.ErrEmailRequestFieldsEmpty.Error(), desc)
+	assert.Nil(t, req, desc)
 
-	req, err = newEmailRequest(data, []string{"test"}, "test", "")
-	assert.EqualError(t, err, consts.ErrEmailRequestFieldsEmpty.Error())
-	assert.Nil(t, req)
+	desc = "test empty to parameter"
+	req, err = newEmailRequest(testData, nil, "test", "test")
+	assert.EqualError(t, err, consts.ErrEmailRequestFieldsEmpty.Error(), desc)
+	assert.Nil(t, req, desc)
 
-	req, err = newEmailRequest(data, nil, "", "")
-	assert.EqualError(t, err, consts.ErrEmailRequestFieldsEmpty.Error())
-	assert.Nil(t, req)
+	desc = "test empty from parameter"
+	req, err = newEmailRequest(testData, []string{"test"}, "", "test")
+	assert.EqualError(t, err, consts.ErrEmailRequestFieldsEmpty.Error(), desc)
+	assert.Nil(t, req, desc)
+
+	desc = "test empty subject parameter"
+	req, err = newEmailRequest(testData, []string{"test"}, "test", "")
+	assert.EqualError(t, err, consts.ErrEmailRequestFieldsEmpty.Error(), desc)
+	assert.Nil(t, req, desc)
+
+	desc = "test multiple nil and empty values"
+	req, err = newEmailRequest(testData, nil, "", "")
+	assert.EqualError(t, err, consts.ErrEmailRequestFieldsEmpty.Error(), desc)
+	assert.Nil(t, req, desc)
 }
 
 func TestGetAllTemplatePaths(t *testing.T) {
@@ -67,13 +78,10 @@ func TestProcessEmail(t *testing.T) {
 	validEmails := []string{
 		"hwsc.test+user1@gmail.com",
 		"hwsc.test+user2@gmail.com",
-		"hwsc.test+user3@gmail.com",
-		"hwsc.test+user4@gmail.com",
 	}
 
 	mixedValidEmails := []string{
 		"hwsc.test+user5@gmail.com",
-		"hwsc.test+user6@gmail.com",
 		"@@@",
 		"hwsc.text+user7@gmail.com",
 	}
@@ -89,8 +97,9 @@ func TestProcessEmail(t *testing.T) {
 		{mixedValidEmails, true, ""},
 	}
 
+	testData := map[string]string {verificationLinkKey: "Unit Testing Process Email"}
 	for _, c := range cases {
-		r, err := newEmailRequest(nil, c.emails, conf.EmailHost.Username, "HWSC Testing")
+		r, err := newEmailRequest(testData, c.emails, conf.EmailHost.Username, "HWSC Testing")
 		assert.Nil(t, err)
 		assert.NotNil(t, r)
 		r.body = "Hello World"
@@ -109,8 +118,9 @@ func TestProcessEmail(t *testing.T) {
 }
 
 func TestSendEmail(t *testing.T) {
+	testData := map[string]string { verificationLinkKey: "Unit Testing sendEmail"}
 	email := []string{"hwsc.test+user0@gmail.com"}
-	r, err := newEmailRequest(nil, email, conf.EmailHost.Username, "HWSC Testing")
+	r, err := newEmailRequest(testData, email, conf.EmailHost.Username, "HWSC Testing")
 	assert.Nil(t, err)
 	assert.NotNil(t, r)
 

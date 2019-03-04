@@ -1,6 +1,7 @@
 package consts
 
 const (
+	UpdatingUserRowTag  string = "UpdateUserRow -"
 	AuthenticateUserTag string = "AuthenticateUser -"
 	CreateUserTag       string = "CreateUser -"
 	DeleteUserTag       string = "DeleteUser -"

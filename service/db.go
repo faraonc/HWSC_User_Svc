@@ -2,7 +2,6 @@ package service
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-lib/auth"
@@ -119,29 +118,23 @@ func insertNewUser(user *pblib.User) error {
 	return nil
 }
 
-// insertToken creates a unique token and inserts to user_svc.email_tokens.
+// insertToken inserts received token to user_svc.email_tokens.
 // Returns error if strings are empty or error with inserting to database.
-func insertEmailToken(uuid string) error {
+func insertEmailToken(uuid string, token string) error {
 	// check if uuid is valid form
 	if err := validation.ValidateUserUUID(uuid); err != nil {
 		return err
 	}
 
-	// create unique email token
-	token, err := generateSecretKey(emailTokenByteSize)
-	if err != nil {
-		return err
+	if token == "" {
+		return authconst.ErrEmptyToken
 	}
 
 	command := `INSERT INTO user_svc.email_tokens(token, created_timestamp, uuid) VALUES($1, $2, $3)`
-	_, err = postgresDB.Exec(command, token, time.Now().UTC(), uuid)
+	_, err := postgresDB.Exec(command, token, time.Now().UTC(), uuid)
 
 	if err != nil {
-		combinedErr := err.Error()
-		if deleteErr := deleteUserRow(uuid); deleteErr != nil {
-			combinedErr += deleteErr.Error()
-		}
-		return errors.New(combinedErr)
+		return err
 	}
 
 	return nil
@@ -257,6 +250,18 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 		newOrganization = svcDerived.GetOrganization()
 	}
 
+	newHashedPassword := dbDerived.GetPassword()
+	if svcDerived.GetPassword() != "" {
+		// hash password using bcrypt
+		hashedPassword, err := hashPassword(svcDerived.GetPassword())
+		if err != nil {
+			return nil, err
+		}
+		newHashedPassword = hashedPassword
+	}
+
+	newIsVerified := dbDerived.GetIsVerified()
+
 	newEmail := ""
 	var newEmailToken string
 	if svcDerived.GetEmail() != "" && svcDerived.GetEmail() != dbDerived.GetEmail() {
@@ -268,28 +273,15 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 		// create unique email token
 		token, err := generateSecretKey(emailTokenByteSize)
 		if err != nil {
-			return nil, err
+			// does not return error because we can regen a token and thus resend email
+			logger.Error(consts.UpdatingUserRowTag, consts.MsgErrGeneratingToken, err.Error())
 		}
 		newEmailToken = token
-	}
-
-	newHashedPassword := dbDerived.GetPassword()
-	if svcDerived.GetPassword() != "" {
-		// hash password using bcrypt
-		hashedPassword, err := hashPassword(svcDerived.GetPassword())
-		if err != nil {
-			return nil, err
-		}
-		newHashedPassword = hashedPassword
+		newIsVerified = false
 	}
 
 	if newFirstName == "" && newLastName == "" && newOrganization == "" && newHashedPassword == "" && newEmail == "" {
 		return nil, consts.ErrEmptyRequestUser
-	}
-
-	newIsVerified := dbDerived.GetIsVerified()
-	if newEmailToken != "" {
-		newIsVerified = false
 	}
 
 	command := `UPDATE user_svc.accounts SET 
@@ -317,14 +309,15 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 		IsVerified:   newIsVerified,
 	}
 
+	// send required emails
 	if newEmailToken != "" {
-		// insert token into db
-		if err := insertEmailToken(uuid); err != nil {
-			if err := deleteUserRow(uuid); err != nil {
-				return nil, err
-			}
-			return nil, err
+		// do not return error b/c we can resend verification emails
+		if err := insertEmailToken(uuid, newEmailToken); err != nil {
+			logger.Error(consts.UpdateUserTag, consts.MsgErrGeneratingToken, err.Error())
 		}
+
+		//TODO send an email to user asking them to verify new email
+		//TODO change email templates to new_user_email_verify and update_email_verify
 	}
 
 	return updatedUser, nil

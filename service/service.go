@@ -77,6 +77,7 @@ func (s *Service) GetStatus(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 }
 
 // CreateUser creates a new User row and inserts it to accounts table.
+// After row insertion, sends verification link to users email.
 // On success, returns user object with password set to empty for security reasons.
 func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("CreateUser")
@@ -125,22 +126,38 @@ func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// insert token into db
-	if err := insertEmailToken(user.GetUuid()); err != nil {
+	// from here on: do not return an error because we can always regenerate tokens and resend verification emails
+
+	// create unique email token
+	emailToken, err := generateSecretKey(emailTokenByteSize)
+	if err != nil {
+		logger.Error(consts.CreateUserTag, consts.MsgErrGeneratingToken, err.Error())
+	}
+
+	// insert token into db, if nondb error returns, token will simply expire, so no need to remove
+	if err := insertEmailToken(user.GetUuid(), emailToken); err != nil {
 		logger.Error(consts.CreateUserTag, consts.MsgErrInsertToken, err.Error())
-		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// generate verficiation link for emails
+	verificationLink, err := generateEmailVerifyLink(emailToken)
+	if err != nil {
+		logger.Error(consts.CreateUserTag, consts.MsgErrGeneratingEmailVerifyLink, err.Error())
 	}
 
 	// send email
-	emailReq, err := newEmailRequest(nil, []string{user.GetEmail()}, conf.EmailHost.Username, subjectVerifyEmail)
+	emailData := make(map[string]string)
+	if verificationLink != "" {
+		emailData[verificationLinkKey] = verificationLink
+	}
+
+	emailReq, err := newEmailRequest(emailData, []string{user.GetEmail()}, conf.EmailHost.Username, subjectVerifyEmail)
 	if err != nil {
 		logger.Error(consts.CreateUserTag, consts.MsgErrEmailRequest, err.Error())
-		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if err := emailReq.sendEmail(templateVerifyEmail); err != nil {
 		logger.Error(consts.CreateUserTag, consts.MsgErrSendEmail, err.Error())
-		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	logger.Info("Inserted new user:", user.GetUuid(), user.GetFirstName(), user.GetLastName())

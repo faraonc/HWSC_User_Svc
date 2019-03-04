@@ -28,6 +28,8 @@ const (
 	subjectVerifyEmail  = "Verify account for Humpback Whale Social Call"
 	templateVerifyEmail = "verify_email.html"
 	maxEmailLength      = 320
+
+	verificationLinkKey = "VERIFICATION_LINK"
 )
 
 var (
@@ -53,7 +55,7 @@ func init() {
 // param "data" can be nil because email templates may contain only static data
 func newEmailRequest(data map[string]string, to []string, from string, subject string) (*emailRequest, error) {
 	// note, data can be nil
-	if to == nil || from == "" || subject == "" {
+	if data == nil || to == nil || from == "" || subject == "" {
 		return nil, consts.ErrEmailRequestFieldsEmpty
 	}
 
