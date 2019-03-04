@@ -37,7 +37,7 @@ CREATE TABLE user_svc.accounts
   permission_level  permission_level NOT NULL
 );
 
-CREATE TABLE user_svc.pending_tokens
+CREATE TABLE user_svc.email_tokens
 (
   token             TEXT PRIMARY KEY,
   created_date      TIMESTAMPTZ NOT NULL,
@@ -85,7 +85,7 @@ CREATE TABLE user_security.secrets
   expiration_timestamp  TIMESTAMPTZ NOT NULL
 );
 
-CREATE TABLE user_security.tokens
+CREATE TABLE user_security.auth_tokens
 (
   token_string      TEXT PRIMARY KEY,
   secret_key        TEXT REFERENCES user_security.secrets(secret_key) ON DELETE CASCADE,

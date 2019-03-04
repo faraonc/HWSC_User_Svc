@@ -119,7 +119,7 @@ func insertNewUser(user *pblib.User) error {
 	return nil
 }
 
-// insertToken creates a unique token and inserts to user_svc.pending_tokens.
+// insertToken creates a unique token and inserts to user_svc.email_tokens.
 // Returns error if strings are empty or error with inserting to database.
 func insertEmailToken(uuid string) error {
 	// check if uuid is valid form
@@ -133,7 +133,7 @@ func insertEmailToken(uuid string) error {
 		return err
 	}
 
-	command := `INSERT INTO user_svc.pending_tokens(token, created_date, uuid) VALUES($1, $2, $3)`
+	command := `INSERT INTO user_svc.email_tokens(token, created_date, uuid) VALUES($1, $2, $3)`
 	_, err = postgresDB.Exec(command, token, time.Now().UTC(), uuid)
 
 	if err != nil {
@@ -441,7 +441,7 @@ func insertJWToken(token string, header *auth.Header, body *auth.Body, secret *p
 	}
 
 	command := `
-				INSERT INTO user_security.tokens(
+				INSERT INTO user_security.auth_tokens(
 					token_string, secret_key, token_type, algorithm,
 					permission, expiration_date, uuid
 				) VALUES($1, $2, $3, $4, $5, $6, $7)
@@ -467,11 +467,11 @@ func getExistingToken(uuid string) (*tokenRow, error) {
 		return nil, authconst.ErrInvalidUUID
 	}
 
-	command := `SELECT uuid, permission, token_string, user_security.tokens.secret_key, 
+	command := `SELECT uuid, permission, token_string, user_security.auth_tokens.secret_key, 
        				user_security.secrets.created_timestamp, user_security.secrets.expiration_timestamp
-				FROM user_security.tokens
+				FROM user_security.auth_tokens
 				INNER JOIN user_security.secrets
-				ON user_security.secrets.secret_key = user_security.tokens.secret_key
+				ON user_security.secrets.secret_key = user_security.auth_tokens.secret_key
 				WHERE uuid = $1 AND NOW() AT TIME ZONE 'UTC' < expiration_date
 				`
 
@@ -518,11 +518,11 @@ func pairTokenWithSecret(token string) (*pblib.Identification, error) {
 		return nil, authconst.ErrEmptyToken
 	}
 
-	command := `SELECT token_string, user_security.tokens.secret_key, 
+	command := `SELECT token_string, user_security.auth_tokens.secret_key, 
 					user_security.secrets.created_timestamp, user_security.secrets.expiration_timestamp
-				FROM user_security.tokens
+				FROM user_security.auth_tokens
 				INNER JOIN user_security.secrets
-				ON user_security.tokens.secret_key = user_security.secrets.secret_key
+				ON user_security.auth_tokens.secret_key = user_security.secrets.secret_key
 				WHERE token_string = $1
 				`
 	row, err := postgresDB.Query(command, token)

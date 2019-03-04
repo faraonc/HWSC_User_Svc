@@ -35,8 +35,8 @@ const (
 	// unavailable - service is locked
 	unavailable state = 1
 
-	// jwtExpirationTime in hours
-	jwtExpirationTime = 2
+	// authTokenExpirationTime in hours
+	authTokenExpirationTime = 2
 )
 
 var (
@@ -549,7 +549,7 @@ func (s *Service) GetAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pb
 		body := &auth.Body{
 			UUID:                retrievedUser.GetUuid(),
 			Permission:          permissionLevel,
-			ExpirationTimestamp: time.Now().UTC().Add(time.Hour * time.Duration(jwtExpirationTime)).Unix(),
+			ExpirationTimestamp: time.Now().UTC().Add(time.Hour * time.Duration(authTokenExpirationTime)).Unix(),
 		}
 
 		if err := setCurrentSecretOnce(); err != nil {

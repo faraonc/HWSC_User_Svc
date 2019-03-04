@@ -25,7 +25,7 @@ var (
 
 	validTokenBody = &auth.Body{
 		Permission:          auth.User,
-		ExpirationTimestamp: time.Now().UTC().Add(time.Hour * time.Duration(jwtExpirationTime)).Unix(),
+		ExpirationTimestamp: time.Now().UTC().Add(time.Hour * time.Duration(authTokenExpirationTime)).Unix(),
 	}
 )
 
@@ -55,7 +55,7 @@ func unitTestInsertUser(lastName string) (*pbsvc.UserResponse, error) {
 
 // TODO temporary, remove after removing pending token is implemented
 func unitTestRemovePendingToken(uuid string) error {
-	command := `DELETE FROM user_svc.pending_tokens WHERE uuid = $1`
+	command := `DELETE FROM user_svc.email_tokens WHERE uuid = $1`
 	_, err := postgresDB.Exec(command, uuid)
 	return err
 }
@@ -88,7 +88,7 @@ func unitTestDeleteInsertGetSecret() (*pblib.Secret, error) {
 
 func unitTestInsertNewToken() (*pblib.Secret, string, error) {
 	// delete tokens table
-	_, err := postgresDB.Exec("DELETE FROM user_security.tokens")
+	_, err := postgresDB.Exec("DELETE FROM user_security.auth_tokens")
 	if err != nil {
 		return nil, "", err
 	}
