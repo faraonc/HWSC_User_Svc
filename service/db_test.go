@@ -141,14 +141,14 @@ func TestInsertEmailToken(t *testing.T) {
 	err = insertEmailToken(response.GetUser().GetUuid())
 	assert.Nil(t, err)
 
-	// test duplicate uuid in user_svc.pending_tokens table
+	// test duplicate uuid in user_svc.email_tokens table
 	err = insertEmailToken(response.GetUser().GetUuid())
-	assert.EqualError(t, err, "pq: duplicate key value violates unique constraint \"pending_tokens_uuid_key\"")
+	assert.EqualError(t, err, "pq: duplicate key value violates unique constraint \"email_tokens_uuid_key\"")
 
 	// test non-existent uuid
 	nonExistentUUID, _ := generateUUID()
 	err = insertEmailToken(nonExistentUUID)
-	assert.EqualError(t, err, "pq: insert or update on table \"pending_tokens\" violates foreign key constraint \"pending_tokens_uuid_fkey\"")
+	assert.EqualError(t, err, "pq: insert or update on table \"email_tokens\" violates foreign key constraint \"email_tokens_uuid_fkey\"")
 }
 
 func TestDeleteUserRow(t *testing.T) {

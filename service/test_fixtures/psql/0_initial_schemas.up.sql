@@ -24,23 +24,23 @@ CREATE DOMAIN user_svc.ksuid AS
 
 CREATE TABLE user_svc.accounts
 (
-  uuid              ulid PRIMARY KEY,
-  first_name        user_svc.user_name,
-  last_name         user_svc.user_name,
-  email             VARCHAR(320) NOT NULL UNIQUE,
-  prospective_email	VARCHAR(320) UNIQUE DEFAULT NULL,
-  password          VARCHAR(60) NOT NULL,
-  organization      TEXT,
-  created_date      TIMESTAMPTZ NOT NULL,
-  modified_date     TIMESTAMPTZ DEFAULT NULL,
-  is_verified       BOOLEAN NOT NULL,
-  permission_level  permission_level NOT NULL
+  uuid                ulid PRIMARY KEY,
+  first_name          user_svc.user_name,
+  last_name           user_svc.user_name,
+  email               VARCHAR(320) NOT NULL UNIQUE,
+  prospective_email	  VARCHAR(320) UNIQUE DEFAULT NULL,
+  password            VARCHAR(60) NOT NULL,
+  organization        TEXT,
+  created_timestamp   TIMESTAMPTZ NOT NULL,
+  modified_timestamp  TIMESTAMPTZ DEFAULT NULL,
+  is_verified         BOOLEAN NOT NULL,
+  permission_level    permission_level NOT NULL
 );
 
-CREATE TABLE user_svc.pending_tokens
+CREATE TABLE user_svc.email_tokens
 (
   token             TEXT PRIMARY KEY,
-  created_date      TIMESTAMPTZ NOT NULL,
+  created_timestamp TIMESTAMPTZ NOT NULL,
   uuid              ulid UNIQUE REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE
 );
 
@@ -85,13 +85,13 @@ CREATE TABLE user_security.secrets
   expiration_timestamp  TIMESTAMPTZ NOT NULL
 );
 
-CREATE TABLE user_security.tokens
+CREATE TABLE user_security.auth_tokens
 (
-  token_string      TEXT PRIMARY KEY,
-  secret_key        TEXT REFERENCES user_security.secrets(secret_key) ON DELETE CASCADE,
-  token_type        user_security.token_type NOT NULL,
-  algorithm         user_security.algorithm_type NOT NULL,
-  permission        permission_level NOT NULL,
-  expiration_date   TIMESTAMPTZ NOT NULL,
-  uuid              ulid NOT NULL
+  token                 TEXT PRIMARY KEY,
+  secret_key            TEXT REFERENCES user_security.secrets(secret_key) ON DELETE CASCADE,
+  token_type            user_security.token_type NOT NULL,
+  algorithm             user_security.algorithm_type NOT NULL,
+  permission            permission_level NOT NULL,
+  expiration_timestamp  TIMESTAMPTZ NOT NULL,
+  uuid                  ulid NOT NULL
 );

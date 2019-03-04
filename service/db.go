@@ -104,7 +104,7 @@ func insertNewUser(user *pblib.User) error {
 	command := `
 				INSERT INTO user_svc.accounts(
 					uuid, first_name, last_name, email, password, 
-				    organization, created_date, is_verified, permission_level
+				    organization, created_timestamp, is_verified, permission_level
 				) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
 				`
 
@@ -119,7 +119,7 @@ func insertNewUser(user *pblib.User) error {
 	return nil
 }
 
-// insertToken creates a unique token and inserts to user_svc.pending_tokens.
+// insertToken creates a unique token and inserts to user_svc.email_tokens.
 // Returns error if strings are empty or error with inserting to database.
 func insertEmailToken(uuid string) error {
 	// check if uuid is valid form
@@ -133,7 +133,7 @@ func insertEmailToken(uuid string) error {
 		return err
 	}
 
-	command := `INSERT INTO user_svc.pending_tokens(token, created_date, uuid) VALUES($1, $2, $3)`
+	command := `INSERT INTO user_svc.email_tokens(token, created_timestamp, uuid) VALUES($1, $2, $3)`
 	_, err = postgresDB.Exec(command, token, time.Now().UTC(), uuid)
 
 	if err != nil {
@@ -177,7 +177,7 @@ func getUserRow(uuid string) (*pblib.User, error) {
 	}
 
 	command := `SELECT uuid, first_name, last_name, email, organization, 
-       				created_date, is_verified, password, permission_level
+       				created_timestamp, is_verified, password, permission_level
 				FROM user_svc.accounts WHERE user_svc.accounts.uuid = $1
 				`
 	row, err := postgresDB.Query(command, uuid)
@@ -191,23 +191,23 @@ func getUserRow(uuid string) (*pblib.User, error) {
 	for row.Next() {
 		var uid, firstName, lastName, email, organization, password, permissionLevel string
 		var isVerified bool
-		var createdDate time.Time
+		var createdTimestamp time.Time
 
 		err := row.Scan(&uid, &firstName, &lastName, &email, &organization,
-			&createdDate, &isVerified, &password, &permissionLevel)
+			&createdTimestamp, &isVerified, &password, &permissionLevel)
 		if err != nil {
 			return nil, err
 		}
 		userObject = &pblib.User{
-			Uuid:            uid,
-			FirstName:       firstName,
-			LastName:        lastName,
-			Email:           email,
-			Organization:    organization,
-			CreatedDate:     createdDate.Unix(),
-			IsVerified:      isVerified,
-			Password:        password,
-			PermissionLevel: permissionLevel,
+			Uuid:             uid,
+			FirstName:        firstName,
+			LastName:         lastName,
+			Email:            email,
+			Organization:     organization,
+			CreatedTimestamp: createdTimestamp.Unix(),
+			IsVerified:       isVerified,
+			Password:         password,
+			PermissionLevel:  permissionLevel,
 		}
 	}
 	if err := row.Err(); err != nil {
@@ -222,7 +222,7 @@ func getUserRow(uuid string) (*pblib.User, error) {
 }
 
 // updateUser does a partial update by going through each User fields and replacing values.
-// that are different from original values. It's partial b/c some fields like created_date & uuid are not touched.
+// that are different from original values. It's partial b/c some fields like created_timestamp & uuid are not touched.
 // Return error if params are zero values or querying problem.
 func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (*pblib.User, error) {
 	if svcDerived == nil || dbDerived == nil {
@@ -299,7 +299,7 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
                     password = $5, 
                     prospective_email = (CASE WHEN LENGTH($6) = 0 THEN NULL ELSE $6 END),
 					is_verified = $7,
-                    modified_date = $8
+                    modified_timestamp = $8
 				WHERE user_svc.accounts.uuid = $1
 				`
 	_, err := postgresDB.Exec(command, uuid, newFirstName, newLastName, newOrganization,
@@ -441,9 +441,9 @@ func insertJWToken(token string, header *auth.Header, body *auth.Body, secret *p
 	}
 
 	command := `
-				INSERT INTO user_security.tokens(
-					token_string, secret_key, token_type, algorithm,
-					permission, expiration_date, uuid
+				INSERT INTO user_security.auth_tokens(
+					token, secret_key, token_type, algorithm,
+					permission, expiration_timestamp, uuid
 				) VALUES($1, $2, $3, $4, $5, $6, $7)
 				`
 
@@ -467,12 +467,12 @@ func getExistingToken(uuid string) (*tokenRow, error) {
 		return nil, authconst.ErrInvalidUUID
 	}
 
-	command := `SELECT uuid, permission, token_string, user_security.tokens.secret_key, 
+	command := `SELECT uuid, permission, token, user_security.auth_tokens.secret_key, 
        				user_security.secrets.created_timestamp, user_security.secrets.expiration_timestamp
-				FROM user_security.tokens
+				FROM user_security.auth_tokens
 				INNER JOIN user_security.secrets
-				ON user_security.secrets.secret_key = user_security.tokens.secret_key
-				WHERE uuid = $1 AND NOW() AT TIME ZONE 'UTC' < expiration_date
+				ON user_security.secrets.secret_key = user_security.auth_tokens.secret_key
+				WHERE uuid = $1 AND NOW() AT TIME ZONE 'UTC' < user_security.auth_tokens.expiration_timestamp
 				`
 
 	row, err := postgresDB.Query(command, uuid)
@@ -518,12 +518,12 @@ func pairTokenWithSecret(token string) (*pblib.Identification, error) {
 		return nil, authconst.ErrEmptyToken
 	}
 
-	command := `SELECT token_string, user_security.tokens.secret_key, 
+	command := `SELECT token, user_security.auth_tokens.secret_key, 
 					user_security.secrets.created_timestamp, user_security.secrets.expiration_timestamp
-				FROM user_security.tokens
+				FROM user_security.auth_tokens
 				INNER JOIN user_security.secrets
-				ON user_security.tokens.secret_key = user_security.secrets.secret_key
-				WHERE token_string = $1
+				ON user_security.auth_tokens.secret_key = user_security.secrets.secret_key
+				WHERE token = $1
 				`
 	row, err := postgresDB.Query(command, token)
 	if err != nil {
