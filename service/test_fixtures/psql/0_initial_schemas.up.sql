@@ -24,17 +24,17 @@ CREATE DOMAIN user_svc.ksuid AS
 
 CREATE TABLE user_svc.accounts
 (
-  uuid              ulid PRIMARY KEY,
-  first_name        user_svc.user_name,
-  last_name         user_svc.user_name,
-  email             VARCHAR(320) NOT NULL UNIQUE,
-  prospective_email	VARCHAR(320) UNIQUE DEFAULT NULL,
-  password          VARCHAR(60) NOT NULL,
-  organization      TEXT,
-  created_date      TIMESTAMPTZ NOT NULL,
-  modified_date     TIMESTAMPTZ DEFAULT NULL,
-  is_verified       BOOLEAN NOT NULL,
-  permission_level  permission_level NOT NULL
+  uuid                ulid PRIMARY KEY,
+  first_name          user_svc.user_name,
+  last_name           user_svc.user_name,
+  email               VARCHAR(320) NOT NULL UNIQUE,
+  prospective_email	  VARCHAR(320) UNIQUE DEFAULT NULL,
+  password            VARCHAR(60) NOT NULL,
+  organization        TEXT,
+  created_timestamp   TIMESTAMPTZ NOT NULL,
+  modified_timestamp  TIMESTAMPTZ DEFAULT NULL,
+  is_verified         BOOLEAN NOT NULL,
+  permission_level    permission_level NOT NULL
 );
 
 CREATE TABLE user_svc.email_tokens

@@ -104,7 +104,7 @@ func insertNewUser(user *pblib.User) error {
 	command := `
 				INSERT INTO user_svc.accounts(
 					uuid, first_name, last_name, email, password, 
-				    organization, created_date, is_verified, permission_level
+				    organization, created_timestamp, is_verified, permission_level
 				) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
 				`
 
@@ -177,7 +177,7 @@ func getUserRow(uuid string) (*pblib.User, error) {
 	}
 
 	command := `SELECT uuid, first_name, last_name, email, organization, 
-       				created_date, is_verified, password, permission_level
+       				created_timestamp, is_verified, password, permission_level
 				FROM user_svc.accounts WHERE user_svc.accounts.uuid = $1
 				`
 	row, err := postgresDB.Query(command, uuid)
@@ -191,10 +191,10 @@ func getUserRow(uuid string) (*pblib.User, error) {
 	for row.Next() {
 		var uid, firstName, lastName, email, organization, password, permissionLevel string
 		var isVerified bool
-		var createdDate time.Time
+		var createdTimestamp time.Time
 
 		err := row.Scan(&uid, &firstName, &lastName, &email, &organization,
-			&createdDate, &isVerified, &password, &permissionLevel)
+			&createdTimestamp, &isVerified, &password, &permissionLevel)
 		if err != nil {
 			return nil, err
 		}
@@ -204,7 +204,7 @@ func getUserRow(uuid string) (*pblib.User, error) {
 			LastName:        lastName,
 			Email:           email,
 			Organization:    organization,
-			CreatedDate:     createdDate.Unix(),
+			CreatedDate:     createdTimestamp.Unix(),
 			IsVerified:      isVerified,
 			Password:        password,
 			PermissionLevel: permissionLevel,
@@ -299,7 +299,7 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
                     password = $5, 
                     prospective_email = (CASE WHEN LENGTH($6) = 0 THEN NULL ELSE $6 END),
 					is_verified = $7,
-                    modified_date = $8
+                    modified_timestamp = $8
 				WHERE user_svc.accounts.uuid = $1
 				`
 	_, err := postgresDB.Exec(command, uuid, newFirstName, newLastName, newOrganization,
