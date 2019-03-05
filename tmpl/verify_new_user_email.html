@@ -14,7 +14,7 @@
             <td>
                 <p>
                     We are very excited to have you on board.<br>
-                    Please verify your account by clicking below:
+                    Please verify your email by clicking below:
                 </p>
             </td>
         </tr>
@@ -23,8 +23,8 @@
                 <table class="button-wrapper" style="margin: 0 auto; background-color: #14776f;">
                     <tr>
                         <td class="button">
-                            <a href="http://www.google.com" target="_blank">
-                                VERIFY ACCOUNT
+                            <a href="{{.VERIFICATION_LINK}}" target="_blank">
+                                VERIFY EMAIL
                             </a>
                         </td>
                     </tr>
@@ -34,8 +34,8 @@
         <tr>
             <td>
                 <p>
-                    If the link doesn't work, please copy and paste the following URL in your browser:<br/>
-                    <a href="http://www.google.com" target="_blank">http://www.google.com</a>
+                    If the button doesn't work, please copy and paste the following URL in your browser:<br/>
+                    <a href="{{.VERIFICATION_LINK}}" target="_blank">http://{{.VERIFICATION_LINK}}</a>
                 </p>
             </td>
         </tr>

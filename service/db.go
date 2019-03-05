@@ -2,7 +2,6 @@ package service
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-lib/auth"
@@ -119,29 +118,23 @@ func insertNewUser(user *pblib.User) error {
 	return nil
 }
 
-// insertToken creates a unique token and inserts to user_svc.email_tokens.
+// insertEmailToken inserts received token to user_svc.email_tokens.
 // Returns error if strings are empty or error with inserting to database.
-func insertEmailToken(uuid string) error {
+func insertEmailToken(uuid string, token string) error {
 	// check if uuid is valid form
 	if err := validation.ValidateUserUUID(uuid); err != nil {
 		return err
 	}
 
-	// create unique email token
-	token, err := generateSecretKey(emailTokenByteSize)
-	if err != nil {
-		return err
+	if token == "" {
+		return authconst.ErrEmptyToken
 	}
 
 	command := `INSERT INTO user_svc.email_tokens(token, created_timestamp, uuid) VALUES($1, $2, $3)`
-	_, err = postgresDB.Exec(command, token, time.Now().UTC(), uuid)
+	_, err := postgresDB.Exec(command, token, time.Now().UTC(), uuid)
 
 	if err != nil {
-		combinedErr := err.Error()
-		if deleteErr := deleteUserRow(uuid); deleteErr != nil {
-			combinedErr += deleteErr.Error()
-		}
-		return errors.New(combinedErr)
+		return err
 	}
 
 	return nil
@@ -257,22 +250,6 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 		newOrganization = svcDerived.GetOrganization()
 	}
 
-	newEmail := ""
-	var newEmailToken string
-	if svcDerived.GetEmail() != "" && svcDerived.GetEmail() != dbDerived.GetEmail() {
-		if err := validateEmail(svcDerived.GetEmail()); err != nil {
-			return nil, err
-		}
-		newEmail = svcDerived.GetEmail()
-
-		// create unique email token
-		token, err := generateSecretKey(emailTokenByteSize)
-		if err != nil {
-			return nil, err
-		}
-		newEmailToken = token
-	}
-
 	newHashedPassword := dbDerived.GetPassword()
 	if svcDerived.GetPassword() != "" {
 		// hash password using bcrypt
@@ -283,13 +260,37 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 		newHashedPassword = hashedPassword
 	}
 
-	if newFirstName == "" && newLastName == "" && newOrganization == "" && newHashedPassword == "" && newEmail == "" {
-		return nil, consts.ErrEmptyRequestUser
+	newIsVerified := dbDerived.GetIsVerified()
+
+	newEmail := ""
+	var newEmailToken string
+	if svcDerived.GetEmail() != "" && svcDerived.GetEmail() != dbDerived.GetEmail() {
+		if err := validateEmail(svcDerived.GetEmail()); err != nil {
+			return nil, err
+		}
+		newEmail = svcDerived.GetEmail()
+
+		emailTaken, err := isEmailTaken(newEmail)
+		if err != nil {
+			return nil, err
+		}
+
+		if emailTaken {
+			return nil, consts.ErrEmailExists
+		}
+
+		// create unique email token
+		token, err := generateSecretKey(emailTokenByteSize)
+		if err != nil {
+			// does not return error because we can regen a token and thus resend email
+			logger.Error(consts.UpdatingUserRowTag, consts.MsgErrGeneratingEmailToken, err.Error())
+		}
+		newEmailToken = token
+		newIsVerified = false
 	}
 
-	newIsVerified := dbDerived.GetIsVerified()
-	if newEmailToken != "" {
-		newIsVerified = false
+	if newFirstName == "" && newLastName == "" && newOrganization == "" && newHashedPassword == "" && newEmail == "" {
+		return nil, consts.ErrEmptyRequestUser
 	}
 
 	command := `UPDATE user_svc.accounts SET 
@@ -317,13 +318,32 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 		IsVerified:   newIsVerified,
 	}
 
+	// new email process
 	if newEmailToken != "" {
-		// insert token into db
-		if err := insertEmailToken(uuid); err != nil {
-			if err := deleteUserRow(uuid); err != nil {
-				return nil, err
-			}
-			return nil, err
+		// do not return error b/c we can resend verification emails
+
+		if err := insertEmailToken(uuid, newEmailToken); err != nil {
+			logger.Error(consts.UpdateUserTag, consts.MsgErrInsertEmailToken, err.Error())
+		}
+
+		// generate a new verification link
+		verificationLink, err := generateEmailVerifyLink(newEmailToken)
+		if err != nil {
+			logger.Error(consts.UpdateUserTag, consts.MsgErrGeneratingEmailVerifyLink, err.Error())
+		}
+
+		// send email
+		emailData := make(map[string]string)
+		if verificationLink != "" {
+			emailData[verificationLinkKey] = verificationLink
+		}
+
+		emailReq, err := newEmailRequest(emailData, []string{newEmail}, conf.EmailHost.Username, subjectUpdateEmail)
+		if err != nil {
+			logger.Error(consts.UpdateUserTag, consts.MsgErrEmailRequest, err.Error())
+		}
+		if err := emailReq.sendEmail(templateUpdateEmail); err != nil {
+			logger.Error(consts.UpdateUserTag, consts.MsgErrSendEmail, err.Error())
 		}
 	}
 
@@ -424,9 +444,9 @@ func getLatestSecret(seconds int) (string, error) {
 	return secretKey, nil
 }
 
-// insertJWToken inserts new token information for auditing in the database.
+// insertAuthToken inserts new token information for auditing in the database.
 // Returns error if parameters are zero values, expired secret, db error.
-func insertJWToken(token string, header *auth.Header, body *auth.Body, secret *pblib.Secret) error {
+func insertAuthToken(token string, header *auth.Header, body *auth.Body, secret *pblib.Secret) error {
 	if token == "" {
 		return authconst.ErrEmptyToken
 	}
@@ -573,6 +593,34 @@ func hasActiveSecret() (bool, error) {
 	}
 
 	if exists {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// isEmailTaken takes received email and checks it against user_svc.accounts table for
+// existing email in both email and prospective_email columns.
+// On success querying, returns true if exists, false otherwise.
+func isEmailTaken(prospectiveEmail string) (bool, error) {
+	if err := validateEmail(prospectiveEmail); err != nil {
+		return false, err
+	}
+
+	// do a query to check prospective_email is not a existing email for someone else
+	command := `SELECT EXISTS(
+  					SELECT email
+  					FROM user_svc.accounts
+  					WHERE email = $1 OR prospective_email = $1
+				)`
+
+	var emailExists bool
+	err := postgresDB.QueryRow(command, prospectiveEmail).Scan(&emailExists)
+	if err != nil {
+		return false, err
+	}
+
+	if emailExists {
 		return true, nil
 	}
 

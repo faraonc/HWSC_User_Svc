@@ -123,32 +123,48 @@ func TestInsertNewUser(t *testing.T) {
 }
 
 func TestInsertEmailToken(t *testing.T) {
-	response, err := unitTestInsertUser("InsertEmailToken-One")
+	user1, err := unitTestInsertUser("InsertEmailToken-One")
+	assert.Nil(t, err)
+	user2, err := unitTestInsertUser("InsertEmailToken-Two")
 	assert.Nil(t, err)
 	// TODO temporary
-	err = unitTestRemovePendingToken(response.GetUser().GetUuid())
+	err = unitTestRemovePendingToken(user1.GetUser().GetUuid())
+	assert.Nil(t, err)
+	err = unitTestRemovePendingToken(user2.GetUser().GetUuid())
 	assert.Nil(t, err)
 
-	// invalid
-	err = insertEmailToken("")
-	assert.EqualError(t, err, authconst.ErrInvalidUUID.Error())
-
-	// invalid
-	err = insertEmailToken("1234")
-	assert.EqualError(t, err, authconst.ErrInvalidUUID.Error())
-
-	// valid
-	err = insertEmailToken(response.GetUser().GetUuid())
+	validToken1, err := generateSecretKey(emailTokenByteSize)
 	assert.Nil(t, err)
 
-	// test duplicate uuid in user_svc.email_tokens table
-	err = insertEmailToken(response.GetUser().GetUuid())
-	assert.EqualError(t, err, "pq: duplicate key value violates unique constraint \"email_tokens_uuid_key\"")
+	desc := "empty uuid"
+	err = insertEmailToken("", validToken1)
+	assert.EqualError(t, err, authconst.ErrInvalidUUID.Error(), desc)
 
-	// test non-existent uuid
+	desc = "invalid uuid format"
+	err = insertEmailToken("1234", validToken1)
+	assert.EqualError(t, err, authconst.ErrInvalidUUID.Error(), desc)
+
+	desc = "empty token"
+	err = insertEmailToken(user1.GetUser().GetUuid(), "")
+	assert.EqualError(t, err, authconst.ErrEmptyToken.Error(), desc)
+
+	desc = "valid uuid and valid token"
+	err = insertEmailToken(user1.GetUser().GetUuid(), validToken1)
+	assert.Nil(t, err, desc)
+
+	desc = "test duplicate uuid in user_svc.email_tokens table"
+	err = insertEmailToken(user1.GetUser().GetUuid(), "some token")
+	assert.EqualError(t, err, "pq: duplicate key value violates unique constraint \"email_tokens_uuid_key\"", desc)
+
+	desc = "test non-existent uuid"
 	nonExistentUUID, _ := generateUUID()
-	err = insertEmailToken(nonExistentUUID)
-	assert.EqualError(t, err, "pq: insert or update on table \"email_tokens\" violates foreign key constraint \"email_tokens_uuid_fkey\"")
+	err = insertEmailToken(nonExistentUUID, "some token")
+	assert.EqualError(t, err, "pq: insert or update on table \"email_tokens\" violates foreign key constraint \"email_tokens_uuid_fkey\"", desc)
+
+	desc = "test duplicate token"
+	err = insertEmailToken(user2.GetUser().GetUuid(), validToken1)
+	assert.EqualError(t, err, "pq: duplicate key value violates unique constraint \"email_tokens_pkey\"", desc)
+
 }
 
 func TestDeleteUserRow(t *testing.T) {
@@ -210,9 +226,22 @@ func TestUpdateUserRow(t *testing.T) {
 	}
 
 	// update prospective_email, is_verified, modified_date
+	newEmail := unitTestEmailGenerator()
 	svc2 := &pblib.User{
-		Email: response2.GetUser().GetEmail() + "-UPDATED",
+		Email: newEmail,
 		Uuid:  response2.GetUser().GetUuid(),
+	}
+
+	// invalid - update prospective_email with an EXISTING email
+	svc3 := &pblib.User{
+		Email: response2.GetUser().GetEmail(),
+		Uuid:  response1.GetUser().GetUuid(),
+	}
+
+	// invalid - update prosptive_email with a EXISTING prospective_email
+	svc4 := &pblib.User{
+		Email: newEmail,
+		Uuid:  response1.GetUser().GetUuid(),
 	}
 
 	nonExistentUUID, _ := generateUUID()
@@ -238,6 +267,8 @@ func TestUpdateUserRow(t *testing.T) {
 			consts.ErrInvalidUserEmail.Error()},
 		{svc.Uuid, svc, response1.GetUser(), false, ""},
 		{svc2.Uuid, svc2, response2.GetUser(), false, ""},
+		{svc3.Uuid, svc3, response1.GetUser(), true, consts.ErrEmailExists.Error()},
+		{svc4.Uuid, svc4, response1.GetUser(), true, consts.ErrEmailExists.Error()},
 	}
 
 	for _, c := range cases {
@@ -250,6 +281,8 @@ func TestUpdateUserRow(t *testing.T) {
 			assert.Equal(t, c.uuid, updatedUser.GetUuid())
 		}
 	}
+
+	//TODO test for new insertion of token for new email updates
 }
 
 func TestGetActiveSecretRow(t *testing.T) {
@@ -310,7 +343,7 @@ func TestGetLatestSecret(t *testing.T) {
 
 }
 
-func TestInsertJWToken(t *testing.T) {
+func TestInsertAuthToken(t *testing.T) {
 	token := "someToken"
 
 	// retrieve freshly active secret
@@ -390,7 +423,7 @@ func TestInsertJWToken(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		err := insertJWToken(c.token, c.header, c.body, c.secret)
+		err := insertAuthToken(c.token, c.header, c.body, c.secret)
 
 		if c.isExpErr {
 			assert.EqualError(t, err, c.expMsg)
@@ -436,7 +469,7 @@ func TestRetrieveExistingToken(t *testing.T) {
 	validTokenBody.UUID = validUUID
 	// the above happens so fast that validating secret creation time fails b/c time == now()
 	time.Sleep(2 * time.Second)
-	err = insertJWToken("TestRetrieveExistingToken", validTokenHeader, validTokenBody, retrievedSecret)
+	err = insertAuthToken("TestRetrieveExistingToken", validTokenHeader, validTokenBody, retrievedSecret)
 	assert.Nil(t, err)
 
 	retrievedToken, err := getExistingToken(validUUID)
@@ -516,4 +549,51 @@ func TestActiveSecretTrigger(t *testing.T) {
 	retrievedSecret, err := getActiveSecretRow()
 	assert.Nil(t, err)
 	assert.Equal(t, retrievedSecret.GetKey(), secretKey)
+}
+
+func TestIsEmailTaken(t *testing.T) {
+	// create a user to test with
+	user1, err := unitTestInsertUser("IsEmailTaken-One")
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), user1.GetMessage())
+
+	// update prospective_email for user1
+	newEmail := unitTestEmailGenerator()
+	svcDerived := &pblib.User{
+		Email: newEmail,
+		Uuid:  user1.GetUser().GetUuid(),
+	}
+	// update user1's email
+	updatedUser, err := updateUserRow(user1.GetUser().GetUuid(), svcDerived, user1.GetUser())
+	assert.Nil(t, err)
+	assert.NotNil(t, updatedUser)
+
+	cases := []struct {
+		desc         string
+		email        string
+		isEmailTaken bool
+		isExpErr     bool
+		expMsg       string
+	}{
+		{"test an existing prospective email", newEmail, true, false, ""},
+		{"test an existing email in db", user1.GetUser().GetEmail(), true, false, ""},
+		{"test non-existent email in db", "test-is-email-taken@unit-test.com", false, false, ""},
+		{"test invalid email format", "@", false, true, consts.ErrInvalidUserEmail.Error()},
+		{"test empty email string", "", false, true, consts.ErrInvalidUserEmail.Error()},
+	}
+
+	for _, c := range cases {
+		emailTaken, err := isEmailTaken(c.email)
+		if c.isExpErr {
+			assert.EqualError(t, err, consts.ErrInvalidUserEmail.Error(), c.desc)
+			assert.Equal(t, false, emailTaken, c.desc)
+		} else {
+			assert.Nil(t, err, c.desc)
+			if c.isEmailTaken {
+				assert.Equal(t, true, emailTaken, c.desc)
+			} else {
+				assert.Equal(t, false, emailTaken, c.desc)
+			}
+		}
+	}
 }

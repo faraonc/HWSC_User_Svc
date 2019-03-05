@@ -3,7 +3,9 @@ package service
 import (
 	cryptorand "crypto/rand"
 	"encoding/base64"
+	"fmt"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
+	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/oklog/ulid"
 	"golang.org/x/crypto/bcrypt"
@@ -15,11 +17,13 @@ import (
 )
 
 const (
-	maxFirstNameLength = 32
-	maxLastNameLength  = 32
-	emailTokenByteSize = 32
-	utc                = "UTC"
-	daysInWeek         = 7
+	maxFirstNameLength  = 32
+	maxLastNameLength   = 32
+	emailTokenByteSize  = 32
+	utc                 = "UTC"
+	daysInWeek          = 7
+	domainName          = "localhost"
+	verifyEmailLinkStub = "verify-email?token"
 )
 
 var (
@@ -211,4 +215,17 @@ func setCurrentSecretOnce() error {
 	}
 
 	return nil
+}
+
+// generateEmailVerifyLink generates a verification email link.
+// Used to be sent as part of verification email sent to new users or users updating their email.
+// Returns error if token string is empty.
+func generateEmailVerifyLink(token string) (string, error) {
+	if token == "" {
+		return "", authconst.ErrEmptyToken
+	}
+
+	link := fmt.Sprintf("%s/%s=%s", domainName, verifyEmailLinkStub, token)
+
+	return link, nil
 }

@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
+	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/stretchr/testify/assert"
 	"sync"
@@ -419,5 +420,18 @@ func TestSetCurrentSecretOnce(t *testing.T) {
 	retrievedSecret, err := getActiveSecretRow()
 	assert.Nil(t, err)
 	assert.Equal(t, currSecret.GetKey(), retrievedSecret.GetKey())
+}
 
+func TestGenerateEmailVerifyLink(t *testing.T) {
+	desc := "test empty string"
+	link, err := generateEmailVerifyLink("")
+	assert.Empty(t, link, desc)
+	assert.EqualError(t, err, authconst.ErrEmptyToken.Error(), desc)
+
+	desc = "test valid token"
+	token := "someRandomTokenString123"
+	manuallyBuiltLink := fmt.Sprintf("%s/%s=%s", domainName, verifyEmailLinkStub, token)
+	link, err = generateEmailVerifyLink(token)
+	assert.Equal(t, manuallyBuiltLink, link, desc)
+	assert.Nil(t, err, desc)
 }

@@ -9,26 +9,27 @@ import (
 )
 
 const (
-	MsgErrInsertUser         string = "unable to insert new user into db:"
-	MsgErrInsertToken        string = "unable to insert token into db:"
-	MsgErrGeneratingUUID     string = "generating uuid:"
-	MsgErrGeneratingToken    string = "generating token:"
-	MsgErrEmailRequest       string = "unable to make email request object:"
-	MsgErrSendEmail          string = "unable to send email:"
-	MsgErrDeleteUser         string = "unable to delete user:"
-	MsgErrGetUserRow         string = "unable to get user row:"
-	MsgErrUpdateUserRow      string = "unable to update user row:"
-	MsgErrAuthenticateUser   string = "failed to authenticate user:"
-	MsgErrMatchPassword      string = "failed to match password:"
-	MsgErrMatchEmail         string = "email does not match"
-	MsgErrSecret             string = "failed to insert new secret into db:"
-	MsgErrGetActiveSecret    string = "failed to get active secret row from db:"
-	MsgErrLookUpActiveSecret string = "failed to look up active secret from db"
-	MsgErrInsertingJWToken   string = "failed to insert jwt into db:"
-	MsgErrGetExistingToken   string = "error retrieving existing token:"
-	MsgErrPermissionMismatch string = "permission level does not match"
-	MsgErrValidatingIdentity string = "failed to validate identity:"
-	MsgErrValidatingToken    string = "failed to match token with db:"
+	MsgErrInsertUser                string = "failed to insert new user into db:"
+	MsgErrInsertEmailToken          string = "failed to insert email token into db:"
+	MsgErrInsertAuthToken           string = "failed to insert auth token into db:"
+	MsgErrGeneratingUUID            string = "error in generating uuid:"
+	MsgErrGeneratingEmailToken      string = "error in generating email token:"
+	MsgErrGeneratingAuthToken       string = "error in generating auth token:"
+	MsgErrEmailRequest              string = "failed to make email request object:"
+	MsgErrSendEmail                 string = "failed to send email:"
+	MsgErrDeleteUser                string = "failed to delete user:"
+	MsgErrGetUserRow                string = "failed to get user row:"
+	MsgErrUpdateUserRow             string = "failed to update user row:"
+	MsgErrAuthenticateUser          string = "failed to authenticate user:"
+	MsgErrMatchPassword             string = "failed to match password:"
+	MsgErrMatchEmail                string = "email does not match"
+	MsgErrSecret                    string = "failed to insert new secret into db:"
+	MsgErrGetActiveSecret           string = "failed to get active secret row from db:"
+	MsgErrLookUpActiveSecret        string = "failed to look up active secret from db"
+	MsgErrPermissionMismatch        string = "permission level does not match"
+	MsgErrValidatingIdentity        string = "failed to validate identity:"
+	MsgErrValidatingToken           string = "failed to match token with db:"
+	MsgErrGeneratingEmailVerifyLink string = "failed to generate email verfication link:"
 )
 
 var (
@@ -51,8 +52,8 @@ var (
 	ErrNoExistingTokenFound         = errors.New("no existing token were found for user")
 	ErrNoActiveSecretKeyFound       = errors.New("no active secret key found in database")
 	ErrMismatchingToken             = errors.New("tokens do not match")
-	ErrInvalidRowCount              = errors.New("query resulted more than one count")
 	ErrInvalidAddTime               = errors.New("add time is zero")
+	ErrEmailExists                  = errors.New("email already exists")
 	ResponseServiceUnavailable      = &pbsvc.UserResponse{
 		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.Unavailable)},
 		Message: codes.Unavailable.String(),
