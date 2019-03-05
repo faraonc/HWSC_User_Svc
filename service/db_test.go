@@ -127,10 +127,9 @@ func TestInsertEmailToken(t *testing.T) {
 	assert.Nil(t, err)
 	user2, err := unitTestInsertUser("InsertEmailToken-Two")
 	assert.Nil(t, err)
-	// TODO temporary
-	err = unitTestRemovePendingToken(user1.GetUser().GetUuid())
+	err = deleteEmailTokenRow(user1.GetUser().GetUuid())
 	assert.Nil(t, err)
-	err = unitTestRemovePendingToken(user2.GetUser().GetUuid())
+	err = deleteEmailTokenRow(user2.GetUser().GetUuid())
 	assert.Nil(t, err)
 
 	validToken1, err := generateSecretKey(emailTokenByteSize)
@@ -215,7 +214,7 @@ func TestUpdateUserRow(t *testing.T) {
 	response2, err := unitTestInsertUser("UpdateUserRow-Two")
 	assert.Nil(t, err)
 	assert.Equal(t, codes.OK.String(), response2.GetMessage())
-	err = unitTestRemovePendingToken(response2.GetUser().GetUuid())
+	err = deleteEmailTokenRow(response2.GetUser().GetUuid())
 	assert.Nil(t, err)
 	response2.GetUser().IsVerified = true
 
@@ -604,8 +603,7 @@ func TestGetEmailTokenRow(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, codes.OK.String(), user1.GetMessage())
 
-	//TODO temporary
-	err = unitTestRemovePendingToken(user1.GetUser().GetUuid())
+	err = deleteEmailTokenRow(user1.GetUser().GetUuid())
 	assert.Nil(t, err)
 
 	// generate a email token
@@ -637,6 +635,38 @@ func TestGetEmailTokenRow(t *testing.T) {
 		} else {
 			assert.Nil(t, err, c.desc)
 			assert.Equal(t, retrievedRow.token, emailToken, c.desc)
+		}
+	}
+}
+
+func TestDeleteEmailTokenRow(t *testing.T) {
+	// create a user to insert a token
+	user1, err := unitTestInsertUser("DeleteEmailTokenRow-One")
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), user1.GetMessage())
+
+	testUUID, err := generateUUID()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, testUUID)
+
+	cases := []struct {
+		desc     string
+		uuid     string
+		isExpErr bool
+		expMsg   string
+	}{
+		{"test with existing valid uuid", user1.GetUser().GetUuid(), false, ""},
+		{"test with a non-existing valid uuid", testUUID, false, ""},
+		{"test with invalid uuid format", "1234", true, authconst.ErrInvalidUUID.Error()},
+	}
+
+	for _, c := range cases {
+		err := deleteEmailTokenRow(c.uuid)
+
+		if c.isExpErr {
+			assert.EqualError(t, err, c.expMsg, c.desc)
+		} else {
+			assert.Nil(t, err)
 		}
 	}
 }

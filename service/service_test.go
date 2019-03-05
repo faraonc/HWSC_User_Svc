@@ -337,8 +337,7 @@ func TestUpdateUser(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, codes.OK.String(), response2.GetMessage())
 
-	// TODO force remove pending token until we have a service for removing pending tokens
-	err = unitTestRemovePendingToken(response2.GetUser().GetUuid())
+	err = deleteEmailTokenRow(response2.GetUser().GetUuid())
 	assert.Nil(t, err)
 
 	nonExistingUUID, err := generateUUID()
@@ -763,7 +762,7 @@ func TestVerifyAuthToken(t *testing.T) {
 			"rpc error: code = InvalidArgument desc = nil request identification",
 		},
 		{"test non-existent token", &pbsvc.UserRequest{Identification: nonExistingToken},
-			"rpc error: code = Unauthenticated desc = no existing token were found for user",
+			"rpc error: code = Unauthenticated desc = no matching auth token were found with given token",
 		},
 	}
 

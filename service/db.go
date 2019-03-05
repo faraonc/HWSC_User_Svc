@@ -682,3 +682,21 @@ func getEmailTokenRow(token string) (*tokenEmailRow, error) {
 
 	return nil, consts.ErrNoMatchingEmailTokenFound
 }
+
+// deleteEmailTokenRow looks up the given uuid in user_svc.email_tokens table and deletes the matching row.
+// Returns error if given uuid is invalid or any db error.
+func deleteEmailTokenRow(uuid string) error {
+	if err := validation.ValidateUserUUID(uuid); err != nil {
+		return authconst.ErrInvalidUUID
+	}
+
+	command := `DELETE FROM user_svc.email_tokens WHERE uuid = $1`
+
+	_, err := postgresDB.Exec(command, uuid)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
