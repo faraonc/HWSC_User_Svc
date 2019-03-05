@@ -545,7 +545,7 @@ func (s *Service) GetAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pb
 
 	var identity *pblib.Identification
 
-	existingToken, err := getExistingAuthToken(retrievedUser.GetUuid())
+	existingToken, err := getAuthTokenRow(retrievedUser.GetUuid())
 	if err == nil {
 		if existingToken.permission != retrievedUser.PermissionLevel {
 			logger.Error(consts.GetAuthTokenTag, consts.MsgErrPermissionMismatch)

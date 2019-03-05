@@ -433,7 +433,7 @@ func TestInsertAuthToken(t *testing.T) {
 	}
 }
 
-func TestRetrieveExistingAuthToken(t *testing.T) {
+func TestGetAuthTokenRow(t *testing.T) {
 	retrievedSecret, err := unitTestDeleteInsertGetSecret()
 	assert.Nil(t, err)
 	assert.NotNil(t, retrievedSecret)
@@ -448,13 +448,13 @@ func TestRetrieveExistingAuthToken(t *testing.T) {
 		isExpErr bool
 		expMsg   string
 	}{
-		{"test valid, non existing user", validUUID, true, consts.ErrNoExistingTokenFound.Error()},
+		{"test valid, non existing user", validUUID, true, consts.ErrNoAuthTokenFound.Error()},
 		{"test empty uuid", "", true, authconst.ErrInvalidUUID.Error()},
 		{"test invalid uuid form", "invalid", true, authconst.ErrInvalidUUID.Error()},
 	}
 
 	for _, c := range cases {
-		retrievedToken, err := getExistingAuthToken(c.uuid)
+		retrievedToken, err := getAuthTokenRow(c.uuid)
 
 		if c.isExpErr {
 			assert.EqualError(t, err, c.expMsg, c.desc)
@@ -472,7 +472,7 @@ func TestRetrieveExistingAuthToken(t *testing.T) {
 	err = insertAuthToken("TestRetrieveExistingToken", validTokenHeader, validTokenBody, retrievedSecret)
 	assert.Nil(t, err)
 
-	retrievedToken, err := getExistingAuthToken(validUUID)
+	retrievedToken, err := getAuthTokenRow(validUUID)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, retrievedToken.uuid)
 	assert.NotEmpty(t, retrievedToken.token)
@@ -490,7 +490,7 @@ func TestPairTokenWithSecret(t *testing.T) {
 
 	desc = "test non-existing token"
 	retrievedSecret, err = pairTokenWithSecret("non-existing-token")
-	assert.EqualError(t, err, consts.ErrNoExistingTokenFound.Error(), desc)
+	assert.EqualError(t, err, consts.ErrNoMatchingAuthTokenFound.Error(), desc)
 	assert.Nil(t, retrievedSecret, desc)
 
 	newSecret, newToken, err := unitTestInsertNewToken()
@@ -594,6 +594,49 @@ func TestIsEmailTaken(t *testing.T) {
 			} else {
 				assert.Equal(t, false, emailTaken, c.desc)
 			}
+		}
+	}
+}
+
+func TestGetEmailTokenRow(t *testing.T) {
+	// create a user to insert a token to its uuid
+	user1, err := unitTestInsertUser("GetExistingEmailToken-One")
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), user1.GetMessage())
+
+	//TODO temporary
+	err = unitTestRemovePendingToken(user1.GetUser().GetUuid())
+	assert.Nil(t, err)
+
+	// generate a email token
+	emailToken, err := generateSecretKey(emailTokenByteSize)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, emailToken)
+
+	// insert token
+	err = insertEmailToken(user1.GetUser().GetUuid(), emailToken)
+	assert.Nil(t, err)
+
+	cases := []struct {
+		desc     string
+		token    string
+		isExpErr bool
+		expMsg   string
+	}{
+		{"test existing token", emailToken, false, ""},
+		{"test empty token string", "", true, authconst.ErrEmptyToken.Error()},
+		{"test non-existing token", "1234abc", true, consts.ErrNoMatchingEmailTokenFound.Error()},
+	}
+
+	for _, c := range cases {
+		retrievedRow, err := getEmailTokenRow(c.token)
+
+		if c.isExpErr {
+			assert.Nil(t, retrievedRow, c.desc)
+			assert.EqualError(t, err, c.expMsg, c.desc)
+		} else {
+			assert.Nil(t, err, c.desc)
+			assert.Equal(t, retrievedRow.token, emailToken, c.desc)
 		}
 	}
 }

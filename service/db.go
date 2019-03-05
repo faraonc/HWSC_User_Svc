@@ -493,11 +493,11 @@ func insertAuthToken(token string, header *auth.Header, body *auth.Body, secret 
 	return nil
 }
 
-// getExistingAuthToken looks up existing user and grabs row where token is not expired from the auth_tokens table.
+// getAuthTokenRow looks up existing user and grabs row where token is not expired from the auth_tokens table.
 // Once matched, inner join will join a row from secrets table that matches its secrets_key with
 // the matched token's row secret_key.
 // Returns tokenAuthRow object if existing token is found and unexpired, nil if not found, else errors.
-func getExistingAuthToken(uuid string) (*tokenAuthRow, error) {
+func getAuthTokenRow(uuid string) (*tokenAuthRow, error) {
 	if err := validation.ValidateUserUUID(uuid); err != nil {
 		return nil, authconst.ErrInvalidUUID
 	}
@@ -542,7 +542,7 @@ func getExistingAuthToken(uuid string) (*tokenAuthRow, error) {
 		}, nil
 	}
 
-	return nil, consts.ErrNoExistingTokenFound
+	return nil, consts.ErrNoAuthTokenFound
 }
 
 // pairTokenWithSecret will look up matching token in the tokens table.
@@ -589,7 +589,7 @@ func pairTokenWithSecret(token string) (*pblib.Identification, error) {
 		}, nil
 	}
 
-	return nil, consts.ErrNoExistingTokenFound
+	return nil, consts.ErrNoMatchingAuthTokenFound
 }
 
 // hasActiveSecret checks active_secret table for a row.
@@ -640,4 +640,45 @@ func isEmailTaken(prospectiveEmail string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+// getEmailTokenRow looks up existing token from user_svc.email_tokens table.
+// If token exists, the rows information are returned in a tokenEmailRow struct.
+// If token does not exist, return error.
+func getEmailTokenRow(token string) (*tokenEmailRow, error) {
+	if token == "" {
+		return nil, authconst.ErrEmptyToken
+	}
+
+	command := `SELECT * FROM user_svc.email_tokens
+				WHERE token = $1`
+
+	row, err := postgresDB.Query(command, token)
+	if err != nil {
+		return nil, err
+	}
+
+	defer row.Close()
+	for row.Next() {
+		var emailToken, uuid string
+		var createdTimestamp, expirationTimestamp time.Time
+
+		err := row.Scan(&emailToken, &createdTimestamp, &expirationTimestamp, &uuid)
+		if err != nil {
+			return nil, err
+		}
+
+		if token != emailToken {
+			return nil, consts.ErrMismatchingEmailToken
+		}
+
+		return &tokenEmailRow{
+			token:               emailToken,
+			createdTimestamp:    createdTimestamp.Unix(),
+			expirationTimestamp: expirationTimestamp.Unix(),
+			uuid:                uuid,
+		}, nil
+	}
+
+	return nil, consts.ErrNoMatchingEmailTokenFound
 }

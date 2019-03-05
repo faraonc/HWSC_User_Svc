@@ -50,9 +50,12 @@ var (
 	ErrEmailRequestFieldsEmpty      = errors.New("empty or nil fields in emailRequest struct")
 	ErrUUIDNotFound                 = errors.New("uuid does not exist in database")
 	ErrNoRowsFound                  = errors.New("no query row found in database")
-	ErrNoExistingTokenFound         = errors.New("no existing token were found for user")
+	ErrNoAuthTokenFound             = errors.New("no auth token were found under given uuid")
+	ErrNoMatchingAuthTokenFound     = errors.New("no matching auth token were found given token")
+	ErrNoMatchingEmailTokenFound    = errors.New("no matching email token were found with given token")
 	ErrNoActiveSecretKeyFound       = errors.New("no active secret key found in database")
 	ErrMismatchingToken             = errors.New("tokens do not match")
+	ErrMismatchingEmailToken        = errors.New("email tokens do not match")
 	ErrInvalidAddTime               = errors.New("add time is zero")
 	ErrEmailExists                  = errors.New("email already exists")
 	ResponseServiceUnavailable      = &pbsvc.UserResponse{
