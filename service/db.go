@@ -118,7 +118,7 @@ func insertNewUser(user *pblib.User) error {
 	return nil
 }
 
-// insertToken inserts received token to user_svc.email_tokens.
+// insertEmailToken inserts received token to user_svc.email_tokens.
 // Returns error if strings are empty or error with inserting to database.
 func insertEmailToken(uuid string, token string) error {
 	// check if uuid is valid form
@@ -283,7 +283,7 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 		token, err := generateSecretKey(emailTokenByteSize)
 		if err != nil {
 			// does not return error because we can regen a token and thus resend email
-			logger.Error(consts.UpdatingUserRowTag, consts.MsgErrGeneratingToken, err.Error())
+			logger.Error(consts.UpdatingUserRowTag, consts.MsgErrGeneratingEmailToken, err.Error())
 		}
 		newEmailToken = token
 		newIsVerified = false
@@ -323,7 +323,7 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 		// do not return error b/c we can resend verification emails
 
 		if err := insertEmailToken(uuid, newEmailToken); err != nil {
-			logger.Error(consts.UpdateUserTag, consts.MsgErrGeneratingToken, err.Error())
+			logger.Error(consts.UpdateUserTag, consts.MsgErrInsertEmailToken, err.Error())
 		}
 
 		// generate a new verification link
@@ -338,7 +338,7 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 			emailData[verificationLinkKey] = verificationLink
 		}
 
-		emailReq, err := newEmailRequest(emailData, []string{newEmail}, conf.EmailHost.Username, subjectVerifyEmail)
+		emailReq, err := newEmailRequest(emailData, []string{newEmail}, conf.EmailHost.Username, subjectUpdateEmail)
 		if err != nil {
 			logger.Error(consts.UpdateUserTag, consts.MsgErrEmailRequest, err.Error())
 		}
@@ -444,9 +444,9 @@ func getLatestSecret(seconds int) (string, error) {
 	return secretKey, nil
 }
 
-// insertJWToken inserts new token information for auditing in the database.
+// insertAuthToken inserts new token information for auditing in the database.
 // Returns error if parameters are zero values, expired secret, db error.
-func insertJWToken(token string, header *auth.Header, body *auth.Body, secret *pblib.Secret) error {
+func insertAuthToken(token string, header *auth.Header, body *auth.Body, secret *pblib.Secret) error {
 	if token == "" {
 		return authconst.ErrEmptyToken
 	}

@@ -113,7 +113,7 @@ func unitTestInsertNewToken() (*pblib.Secret, string, error) {
 	}
 
 	// insert a token
-	if err := insertJWToken(newToken, validTokenHeader, validTokenBody, newSecret); err != nil {
+	if err := insertAuthToken(newToken, validTokenHeader, validTokenBody, newSecret); err != nil {
 		return nil, "", err
 	}
 

@@ -26,6 +26,7 @@ const (
 	// MIME (Multipurpose Internet Mail Extension), extends the format of email
 	mime                = "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
 	subjectVerifyEmail  = "Verify email for Humpback Whale Social Call"
+	subjectUpdateEmail  = "Verify Request to Update Email"
 	templateVerifyEmail = "verify_new_user_email.html"
 	templateUpdateEmail = "verify_email_update.html"
 	maxEmailLength      = 320

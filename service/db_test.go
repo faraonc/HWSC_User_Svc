@@ -343,7 +343,7 @@ func TestGetLatestSecret(t *testing.T) {
 
 }
 
-func TestInsertJWToken(t *testing.T) {
+func TestInsertAuthToken(t *testing.T) {
 	token := "someToken"
 
 	// retrieve freshly active secret
@@ -423,7 +423,7 @@ func TestInsertJWToken(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		err := insertJWToken(c.token, c.header, c.body, c.secret)
+		err := insertAuthToken(c.token, c.header, c.body, c.secret)
 
 		if c.isExpErr {
 			assert.EqualError(t, err, c.expMsg)
@@ -469,7 +469,7 @@ func TestRetrieveExistingToken(t *testing.T) {
 	validTokenBody.UUID = validUUID
 	// the above happens so fast that validating secret creation time fails b/c time == now()
 	time.Sleep(2 * time.Second)
-	err = insertJWToken("TestRetrieveExistingToken", validTokenHeader, validTokenBody, retrievedSecret)
+	err = insertAuthToken("TestRetrieveExistingToken", validTokenHeader, validTokenBody, retrievedSecret)
 	assert.Nil(t, err)
 
 	retrievedToken, err := getExistingToken(validUUID)

@@ -131,12 +131,12 @@ func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 	// create unique email token
 	emailToken, err := generateSecretKey(emailTokenByteSize)
 	if err != nil {
-		logger.Error(consts.CreateUserTag, consts.MsgErrGeneratingToken, err.Error())
+		logger.Error(consts.CreateUserTag, consts.MsgErrGeneratingEmailToken, err.Error())
 	}
 
 	// insert token into db, if nondb error returns, token will simply expire, so no need to remove
 	if err := insertEmailToken(user.GetUuid(), emailToken); err != nil {
-		logger.Error(consts.CreateUserTag, consts.MsgErrInsertToken, err.Error())
+		logger.Error(consts.CreateUserTag, consts.MsgErrInsertEmailToken, err.Error())
 	}
 
 	// generate verficiation link for emails
@@ -575,13 +575,13 @@ func (s *Service) GetAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pb
 		}
 		newToken, err := auth.NewToken(header, body, currSecret)
 		if err != nil {
-			logger.Error(consts.GetAuthTokenTag, consts.MsgErrGeneratingToken, err.Error())
+			logger.Error(consts.GetAuthTokenTag, consts.MsgErrGeneratingAuthToken, err.Error())
 			return nil, status.Error(codes.Unauthenticated, err.Error())
 		}
 
 		// insert token into db for auditing
-		if err := insertJWToken(newToken, header, body, currSecret); err != nil {
-			logger.Error(consts.GetAuthTokenTag, consts.MsgErrInsertingJWToken, err.Error())
+		if err := insertAuthToken(newToken, header, body, currSecret); err != nil {
+			logger.Error(consts.GetAuthTokenTag, consts.MsgErrInsertAuthToken, err.Error())
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
