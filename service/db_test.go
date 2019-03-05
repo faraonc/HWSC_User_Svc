@@ -433,7 +433,7 @@ func TestInsertAuthToken(t *testing.T) {
 	}
 }
 
-func TestRetrieveExistingToken(t *testing.T) {
+func TestRetrieveExistingAuthToken(t *testing.T) {
 	retrievedSecret, err := unitTestDeleteInsertGetSecret()
 	assert.Nil(t, err)
 	assert.NotNil(t, retrievedSecret)
@@ -454,7 +454,7 @@ func TestRetrieveExistingToken(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		retrievedToken, err := getExistingToken(c.uuid)
+		retrievedToken, err := getExistingAuthToken(c.uuid)
 
 		if c.isExpErr {
 			assert.EqualError(t, err, c.expMsg, c.desc)
@@ -472,7 +472,7 @@ func TestRetrieveExistingToken(t *testing.T) {
 	err = insertAuthToken("TestRetrieveExistingToken", validTokenHeader, validTokenBody, retrievedSecret)
 	assert.Nil(t, err)
 
-	retrievedToken, err := getExistingToken(validUUID)
+	retrievedToken, err := getExistingAuthToken(validUUID)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, retrievedToken.uuid)
 	assert.NotEmpty(t, retrievedToken.token)

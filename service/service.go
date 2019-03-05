@@ -545,7 +545,7 @@ func (s *Service) GetAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pb
 
 	var identity *pblib.Identification
 
-	existingToken, err := getExistingToken(retrievedUser.GetUuid())
+	existingToken, err := getExistingAuthToken(retrievedUser.GetUuid())
 	if err == nil {
 		if existingToken.permission != retrievedUser.PermissionLevel {
 			logger.Error(consts.GetAuthTokenTag, consts.MsgErrPermissionMismatch)
@@ -692,6 +692,29 @@ func (s *Service) MakeNewSecret(ctx context.Context, req *pbsvc.UserRequest) (*p
 // and return ERROR with token expired message.
 // If token is not found, return ERROR with token does not exist message.
 func (s *Service) VerifyEmailToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
-	// TODO
+	logger.RequestService("VerifyEmailToken")
+
+	if ok := serviceStateLocker.isStateAvailable(); !ok {
+		logger.Error(consts.MakeNewSecret, consts.ErrServiceUnavailable.Error())
+		return nil, consts.ErrStatusServiceUnavailable
+	}
+
+	if req == nil {
+		return nil, consts.ErrStatusNilRequestUser
+	}
+
+	if err := refreshDBConnection(); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	emailToken := req.GetIdentification().GetToken()
+	if emailToken == "" {
+		return nil, status.Error(codes.InvalidArgument, authconst.ErrEmptyToken.Error())
+	}
+
+	// find email token (return the row info, token, uuid, expiration_timestamp)
+	// if not nil, check expiration
+	// if expired or token does not exist, create email token
+
 	return nil, nil
 }

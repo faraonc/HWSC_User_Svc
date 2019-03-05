@@ -20,11 +20,18 @@ import (
 	"syscall"
 )
 
-type tokenRow struct {
+type tokenAuthRow struct {
 	uuid       string
 	permission string
 	token      string
 	secret     *pblib.Secret
+}
+
+type tokenEmailRow struct {
+	token               string
+	createdTimestamp    int64
+	expirationTimestamp int64
+	uuid                string
 }
 
 const (
@@ -130,8 +137,16 @@ func insertEmailToken(uuid string, token string) error {
 		return authconst.ErrEmptyToken
 	}
 
-	command := `INSERT INTO user_svc.email_tokens(token, created_timestamp, uuid) VALUES($1, $2, $3)`
-	_, err := postgresDB.Exec(command, token, time.Now().UTC(), uuid)
+	createdTimestamp := time.Now().UTC()
+	expirationTimestamp, err := generateExpirationTimestamp(createdTimestamp, daysInTwoWeeks)
+	if err != nil {
+		return err
+	}
+
+	command := `INSERT INTO user_svc.email_tokens(token, created_timestamp, expiration_timestamp, uuid) 
+				VALUES($1, $2, $3, $4)
+				`
+	_, err = postgresDB.Exec(command, token, createdTimestamp, expirationTimestamp, uuid)
 
 	if err != nil {
 		return err
@@ -401,7 +416,7 @@ func insertNewSecret() error {
 				`
 
 	createdTimestamp := time.Now().UTC()
-	expirationTimestamp, err := generateSecretExpirationTimestamp(createdTimestamp)
+	expirationTimestamp, err := generateExpirationTimestamp(createdTimestamp, daysInOneWeek)
 	if err != nil {
 		return err
 	}
@@ -478,11 +493,11 @@ func insertAuthToken(token string, header *auth.Header, body *auth.Body, secret 
 	return nil
 }
 
-// getExistingToken looks up existing user and grabs row where token is not expired from the tokens table.
+// getExistingAuthToken looks up existing user and grabs row where token is not expired from the auth_tokens table.
 // Once matched, inner join will join a row from secrets table that matches its secrets_key with
 // the matched token's row secret_key.
-// Returns tokenRow object if existing token is found and unexpired, nil if not found, else errors.
-func getExistingToken(uuid string) (*tokenRow, error) {
+// Returns tokenAuthRow object if existing token is found and unexpired, nil if not found, else errors.
+func getExistingAuthToken(uuid string) (*tokenAuthRow, error) {
 	if err := validation.ValidateUserUUID(uuid); err != nil {
 		return nil, authconst.ErrInvalidUUID
 	}
@@ -515,7 +530,7 @@ func getExistingToken(uuid string) (*tokenRow, error) {
 			return nil, authconst.ErrInvalidUUID
 		}
 
-		return &tokenRow{
+		return &tokenAuthRow{
 			uuid:       retrievedUUID,
 			permission: permission,
 			token:      token,

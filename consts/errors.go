@@ -38,6 +38,7 @@ var (
 	ErrNilRequestIdentification     = errors.New("nil request identification")
 	ErrEmptyRequestUser             = errors.New("empty fields in request User")
 	ErrInvalidTimeStamp             = errors.New("zero timestamp")
+	ErrInvalidNumberOfDays          = errors.New("invalid number of days to add to expiration timestamp")
 	ErrInvalidTokenSize             = errors.New("invalid token size")
 	ErrInvalidUserFirstName         = errors.New("invalid User first name")
 	ErrInvalidUserLastName          = errors.New("invalid User last name")
