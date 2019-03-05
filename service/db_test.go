@@ -226,9 +226,22 @@ func TestUpdateUserRow(t *testing.T) {
 	}
 
 	// update prospective_email, is_verified, modified_date
+	newEmail := unitTestEmailGenerator()
 	svc2 := &pblib.User{
-		Email: response2.GetUser().GetEmail() + "-UPDATED",
+		Email: newEmail,
 		Uuid:  response2.GetUser().GetUuid(),
+	}
+
+	// invalid - update prospective_email with an EXISTING email
+	svc3 := &pblib.User{
+		Email: response2.GetUser().GetEmail(),
+		Uuid:  response1.GetUser().GetUuid(),
+	}
+
+	// invalid - update prosptive_email with a EXISTING prospective_email
+	svc4 := &pblib.User{
+		Email: newEmail,
+		Uuid:  response1.GetUser().GetUuid(),
 	}
 
 	nonExistentUUID, _ := generateUUID()
@@ -254,6 +267,8 @@ func TestUpdateUserRow(t *testing.T) {
 			consts.ErrInvalidUserEmail.Error()},
 		{svc.Uuid, svc, response1.GetUser(), false, ""},
 		{svc2.Uuid, svc2, response2.GetUser(), false, ""},
+		{svc3.Uuid, svc3, response1.GetUser(), true, consts.ErrEmailExists.Error()},
+		{svc4.Uuid, svc4, response1.GetUser(), true, consts.ErrEmailExists.Error()},
 	}
 
 	for _, c := range cases {
@@ -266,6 +281,8 @@ func TestUpdateUserRow(t *testing.T) {
 			assert.Equal(t, c.uuid, updatedUser.GetUuid())
 		}
 	}
+
+	//TODO test for new insertion of token for new email updates
 }
 
 func TestGetActiveSecretRow(t *testing.T) {
@@ -532,4 +549,51 @@ func TestActiveSecretTrigger(t *testing.T) {
 	retrievedSecret, err := getActiveSecretRow()
 	assert.Nil(t, err)
 	assert.Equal(t, retrievedSecret.GetKey(), secretKey)
+}
+
+func TestIsEmailTaken(t *testing.T) {
+	// create a user to test with
+	user1, err := unitTestInsertUser("IsEmailTaken-One")
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), user1.GetMessage())
+
+	// update prospective_email for user1
+	newEmail := unitTestEmailGenerator()
+	svcDerived := &pblib.User{
+		Email: newEmail,
+		Uuid:  user1.GetUser().GetUuid(),
+	}
+	// update user1's email
+	updatedUser, err := updateUserRow(user1.GetUser().GetUuid(), svcDerived, user1.GetUser())
+	assert.Nil(t, err)
+	assert.NotNil(t, updatedUser)
+
+	cases := []struct {
+		desc         string
+		email        string
+		isEmailTaken bool
+		isExpErr     bool
+		expMsg       string
+	}{
+		{"test an existing prospective email", newEmail, true, false, ""},
+		{"test an existing email in db", user1.GetUser().GetEmail(), true, false, ""},
+		{"test non-existent email in db", "test-is-email-taken@unit-test.com", false, false, ""},
+		{"test invalid email format", "@", false, true, consts.ErrInvalidUserEmail.Error()},
+		{"test empty email string", "", false, true, consts.ErrInvalidUserEmail.Error()},
+	}
+
+	for _, c := range cases {
+		emailTaken, err := isEmailTaken(c.email)
+		if c.isExpErr {
+			assert.EqualError(t, err, consts.ErrInvalidUserEmail.Error(), c.desc)
+			assert.Equal(t, false, emailTaken, c.desc)
+		} else {
+			assert.Nil(t, err, c.desc)
+			if c.isEmailTaken {
+				assert.Equal(t, true, emailTaken, c.desc)
+			} else {
+				assert.Equal(t, false, emailTaken, c.desc)
+			}
+		}
+	}
 }

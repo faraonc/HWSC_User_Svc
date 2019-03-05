@@ -357,10 +357,25 @@ func TestUpdateUser(t *testing.T) {
 	// valid response2
 	// test prospective_email is set
 	// modified_date set
+	newEmail := unitTestEmailGenerator()
 	updateUser2 := &pblib.User{
 		LastName: response1.GetUser().GetLastName() + " UPDATED",
-		Email:    response2.GetUser().GetEmail() + "UPDATED",
+		Email:    newEmail,
 		Uuid:     response2.GetUser().GetUuid(),
+	}
+
+	// invalid using response2
+	// test duplicated email
+	updateUser8 := &pblib.User{
+		Email: response1.GetUser().GetEmail(),
+		Uuid:  response2.GetUser().GetUuid(),
+	}
+
+	// invalid using response1
+	// test duplicated prospective email
+	updateUser9 := &pblib.User{
+		Email: newEmail,
+		Uuid:  response1.GetUser().GetUuid(),
 	}
 
 	// fail - invalid uuid
@@ -414,6 +429,10 @@ func TestUpdateUser(t *testing.T) {
 			"rpc error: code = Internal desc = invalid User last name"},
 		{&pbsvc.UserRequest{User: nil}, true,
 			"rpc error: code = InvalidArgument desc = nil request User"},
+		{&pbsvc.UserRequest{User: updateUser8}, true,
+			"rpc error: code = Internal desc = email already exists"},
+		{&pbsvc.UserRequest{User: updateUser9}, true,
+			"rpc error: code = Internal desc = email already exists"},
 	}
 
 	for _, c := range cases {

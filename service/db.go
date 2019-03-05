@@ -270,6 +270,15 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 		}
 		newEmail = svcDerived.GetEmail()
 
+		emailTaken, err := isEmailTaken(newEmail)
+		if err != nil {
+			return nil, err
+		}
+
+		if emailTaken {
+			return nil, consts.ErrEmailExists
+		}
+
 		// create unique email token
 		token, err := generateSecretKey(emailTokenByteSize)
 		if err != nil {
@@ -309,15 +318,33 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 		IsVerified:   newIsVerified,
 	}
 
-	// send required emails
+	// new email process
 	if newEmailToken != "" {
 		// do not return error b/c we can resend verification emails
+
 		if err := insertEmailToken(uuid, newEmailToken); err != nil {
 			logger.Error(consts.UpdateUserTag, consts.MsgErrGeneratingToken, err.Error())
 		}
 
-		//TODO send an email to user asking them to verify new email
-		//TODO change email templates to new_user_email_verify and update_email_verify
+		// generate a new verification link
+		verificationLink, err := generateEmailVerifyLink(newEmailToken)
+		if err != nil {
+			logger.Error(consts.UpdateUserTag, consts.MsgErrGeneratingEmailVerifyLink, err.Error())
+		}
+
+		// send email
+		emailData := make(map[string]string)
+		if verificationLink != "" {
+			emailData[verificationLinkKey] = verificationLink
+		}
+
+		emailReq, err := newEmailRequest(emailData, []string{newEmail}, conf.EmailHost.Username, subjectVerifyEmail)
+		if err != nil {
+			logger.Error(consts.UpdateUserTag, consts.MsgErrEmailRequest, err.Error())
+		}
+		if err := emailReq.sendEmail(templateUpdateEmail); err != nil {
+			logger.Error(consts.UpdateUserTag, consts.MsgErrSendEmail, err.Error())
+		}
 	}
 
 	return updatedUser, nil
@@ -566,6 +593,34 @@ func hasActiveSecret() (bool, error) {
 	}
 
 	if exists {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// isEmailTaken takes received email and checks it against user_svc.accounts table for
+// existing email in both email and prospective_email columns.
+// On success querying, returns true if exists, false otherwise.
+func isEmailTaken(prospectiveEmail string) (bool, error) {
+	if err := validateEmail(prospectiveEmail); err != nil {
+		return false, err
+	}
+
+	// do a query to check prospective_email is not a existing email for someone else
+	command := `SELECT EXISTS(
+  					SELECT email
+  					FROM user_svc.accounts
+  					WHERE email = $1 OR prospective_email = $1
+				)`
+
+	var emailExists bool
+	err := postgresDB.QueryRow(command, prospectiveEmail).Scan(&emailExists)
+	if err != nil {
+		return false, err
+	}
+
+	if emailExists {
 		return true, nil
 	}
 

@@ -97,7 +97,7 @@ func TestProcessEmail(t *testing.T) {
 		{mixedValidEmails, true, ""},
 	}
 
-	testData := map[string]string {verificationLinkKey: "Unit Testing Process Email"}
+	testData := map[string]string{verificationLinkKey: "Unit Testing Process Email"}
 	for _, c := range cases {
 		r, err := newEmailRequest(testData, c.emails, conf.EmailHost.Username, "HWSC Testing")
 		assert.Nil(t, err)
@@ -118,7 +118,7 @@ func TestProcessEmail(t *testing.T) {
 }
 
 func TestSendEmail(t *testing.T) {
-	testData := map[string]string { verificationLinkKey: "Unit Testing sendEmail"}
+	testData := map[string]string{verificationLinkKey: "Unit Testing sendEmail"}
 	email := []string{"hwsc.test+user0@gmail.com"}
 	r, err := newEmailRequest(testData, email, conf.EmailHost.Username, "HWSC Testing")
 	assert.Nil(t, err)

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+{{ template "header" }}
+<body>
+<table style="text-align: center;">
+    <tr class="header">
+        <td>
+            <h1>
+                Request to Update Email
+            </h1>
+        </td>
+    </tr>
+    <tr class="content">
+        <td>
+            <p>
+                Please verify your new email by clicking below.<br>
+                If you have received this in error, please ignore this email.
+            </p>
+        </td>
+    </tr>
+    <tr>
+        <td class="button-container">
+            <table class="button-wrapper" style="margin: 0 auto; background-color: #14776f;">
+                <tr>
+                    <td class="button">
+                        <a href="{{.VERIFICATION_LINK}}" target="_blank">
+                            VERIFY EMAIL
+                        </a>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <p>
+                If the button doesn't work, please copy and paste the following URL in your browser:<br/>
+                <a href="{{.VERIFICATION_LINK}}" target="_blank">http://{{.VERIFICATION_LINK}}</a>
+            </p>
+        </td>
+    </tr>
+    <tr>
+        <td class="small-print">
+            <p class="line-break">
+                *The link contained in this email will expire in 2 weeks.<br/>
+
+                Please do not reply to this message. Replies made to this message will not be read or replied.
+            </p>
+        </td>
+    </tr>
+    {{ template "footer" }}
+</table>
+</body>
+</html>

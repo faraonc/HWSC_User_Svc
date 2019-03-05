@@ -25,8 +25,9 @@ type emailRequest struct {
 const (
 	// MIME (Multipurpose Internet Mail Extension), extends the format of email
 	mime                = "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
-	subjectVerifyEmail  = "Verify account for Humpback Whale Social Call"
-	templateVerifyEmail = "verify_email.html"
+	subjectVerifyEmail  = "Verify email for Humpback Whale Social Call"
+	templateVerifyEmail = "verify_new_user_email.html"
+	templateUpdateEmail = "verify_email_update.html"
 	maxEmailLength      = 320
 
 	verificationLinkKey = "VERIFICATION_LINK"

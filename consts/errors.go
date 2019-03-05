@@ -54,6 +54,7 @@ var (
 	ErrMismatchingToken             = errors.New("tokens do not match")
 	ErrInvalidRowCount              = errors.New("query resulted more than one count")
 	ErrInvalidAddTime               = errors.New("add time is zero")
+	ErrEmailExists                  = errors.New("email already exists")
 	ResponseServiceUnavailable      = &pbsvc.UserResponse{
 		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.Unavailable)},
 		Message: codes.Unavailable.String(),
