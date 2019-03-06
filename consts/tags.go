@@ -1,6 +1,7 @@
 package consts
 
 const (
+	VerifyEmailToken    string = "VerifyEmailToken -"
 	UpdatingUserRowTag  string = "UpdateUserRow -"
 	AuthenticateUserTag string = "AuthenticateUser -"
 	CreateUserTag       string = "CreateUser -"

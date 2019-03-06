@@ -20,11 +20,18 @@ import (
 	"syscall"
 )
 
-type tokenRow struct {
+type tokenAuthRow struct {
 	uuid       string
 	permission string
 	token      string
 	secret     *pblib.Secret
+}
+
+type tokenEmailRow struct {
+	token               string
+	createdTimestamp    int64
+	expirationTimestamp int64
+	uuid                string
 }
 
 const (
@@ -130,8 +137,16 @@ func insertEmailToken(uuid string, token string) error {
 		return authconst.ErrEmptyToken
 	}
 
-	command := `INSERT INTO user_svc.email_tokens(token, created_timestamp, uuid) VALUES($1, $2, $3)`
-	_, err := postgresDB.Exec(command, token, time.Now().UTC(), uuid)
+	createdTimestamp := time.Now().UTC()
+	expirationTimestamp, err := generateExpirationTimestamp(createdTimestamp, daysInTwoWeeks)
+	if err != nil {
+		return err
+	}
+
+	command := `INSERT INTO user_svc.email_tokens(token, created_timestamp, expiration_timestamp, uuid) 
+				VALUES($1, $2, $3, $4)
+				`
+	_, err = postgresDB.Exec(command, token, createdTimestamp, expirationTimestamp, uuid)
 
 	if err != nil {
 		return err
@@ -170,7 +185,7 @@ func getUserRow(uuid string) (*pblib.User, error) {
 	}
 
 	command := `SELECT uuid, first_name, last_name, email, organization, 
-       				created_timestamp, is_verified, password, permission_level
+       				created_timestamp, is_verified, password, permission_level, prospective_email
 				FROM user_svc.accounts WHERE user_svc.accounts.uuid = $1
 				`
 	row, err := postgresDB.Query(command, uuid)
@@ -180,18 +195,24 @@ func getUserRow(uuid string) (*pblib.User, error) {
 
 	defer row.Close()
 
-	var userObject *pblib.User
+	var foundUser *pblib.User
 	for row.Next() {
-		var uid, firstName, lastName, email, organization, password, permissionLevel string
+		var prospectiveEmailNullable sql.NullString
+		var uid, firstName, lastName, email, organization, password, permissionLevel, prospectiveEmail string
 		var isVerified bool
 		var createdTimestamp time.Time
 
 		err := row.Scan(&uid, &firstName, &lastName, &email, &organization,
-			&createdTimestamp, &isVerified, &password, &permissionLevel)
+			&createdTimestamp, &isVerified, &password, &permissionLevel, &prospectiveEmailNullable)
 		if err != nil {
 			return nil, err
 		}
-		userObject = &pblib.User{
+
+		if prospectiveEmailNullable.Valid {
+			prospectiveEmail = prospectiveEmailNullable.String
+		}
+
+		foundUser = &pblib.User{
 			Uuid:             uid,
 			FirstName:        firstName,
 			LastName:         lastName,
@@ -201,17 +222,18 @@ func getUserRow(uuid string) (*pblib.User, error) {
 			IsVerified:       isVerified,
 			Password:         password,
 			PermissionLevel:  permissionLevel,
+			ProspectiveEmail: prospectiveEmail,
 		}
 	}
 	if err := row.Err(); err != nil {
 		return nil, err
 	}
 
-	if userObject.GetUuid() != uuid {
-		return nil, authconst.ErrInvalidUUID
+	if foundUser == nil {
+		return nil, consts.ErrUserNotFound
 	}
 
-	return userObject, nil
+	return foundUser, nil
 }
 
 // updateUser does a partial update by going through each User fields and replacing values.
@@ -310,12 +332,13 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 	}
 
 	updatedUser := &pblib.User{
-		Uuid:         uuid,
-		FirstName:    newFirstName,
-		LastName:     newLastName,
-		Organization: newOrganization,
-		Email:        newEmail,
-		IsVerified:   newIsVerified,
+		Uuid:             uuid,
+		FirstName:        newFirstName,
+		LastName:         newLastName,
+		Organization:     newOrganization,
+		Email:            newEmail,
+		IsVerified:       newIsVerified,
+		ProspectiveEmail: newEmail,
 	}
 
 	// new email process
@@ -401,7 +424,7 @@ func insertNewSecret() error {
 				`
 
 	createdTimestamp := time.Now().UTC()
-	expirationTimestamp, err := generateSecretExpirationTimestamp(createdTimestamp)
+	expirationTimestamp, err := generateExpirationTimestamp(createdTimestamp, daysInOneWeek)
 	if err != nil {
 		return err
 	}
@@ -478,11 +501,11 @@ func insertAuthToken(token string, header *auth.Header, body *auth.Body, secret 
 	return nil
 }
 
-// getExistingToken looks up existing user and grabs row where token is not expired from the tokens table.
+// getAuthTokenRow looks up existing user and grabs row where token is not expired from the auth_tokens table.
 // Once matched, inner join will join a row from secrets table that matches its secrets_key with
 // the matched token's row secret_key.
-// Returns tokenRow object if existing token is found and unexpired, nil if not found, else errors.
-func getExistingToken(uuid string) (*tokenRow, error) {
+// Returns tokenAuthRow object if existing token is found and unexpired, nil if not found, else errors.
+func getAuthTokenRow(uuid string) (*tokenAuthRow, error) {
 	if err := validation.ValidateUserUUID(uuid); err != nil {
 		return nil, authconst.ErrInvalidUUID
 	}
@@ -515,7 +538,7 @@ func getExistingToken(uuid string) (*tokenRow, error) {
 			return nil, authconst.ErrInvalidUUID
 		}
 
-		return &tokenRow{
+		return &tokenAuthRow{
 			uuid:       retrievedUUID,
 			permission: permission,
 			token:      token,
@@ -527,7 +550,7 @@ func getExistingToken(uuid string) (*tokenRow, error) {
 		}, nil
 	}
 
-	return nil, consts.ErrNoExistingTokenFound
+	return nil, consts.ErrNoAuthTokenFound
 }
 
 // pairTokenWithSecret will look up matching token in the tokens table.
@@ -574,7 +597,7 @@ func pairTokenWithSecret(token string) (*pblib.Identification, error) {
 		}, nil
 	}
 
-	return nil, consts.ErrNoExistingTokenFound
+	return nil, consts.ErrNoMatchingAuthTokenFound
 }
 
 // hasActiveSecret checks active_secret table for a row.
@@ -625,4 +648,63 @@ func isEmailTaken(prospectiveEmail string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+// getEmailTokenRow looks up existing token from user_svc.email_tokens table.
+// If token exists, the rows information are returned in a tokenEmailRow struct.
+// If token does not exist, return error.
+func getEmailTokenRow(token string) (*tokenEmailRow, error) {
+	if token == "" {
+		return nil, authconst.ErrEmptyToken
+	}
+
+	command := `SELECT * FROM user_svc.email_tokens
+				WHERE token = $1`
+
+	row, err := postgresDB.Query(command, token)
+	if err != nil {
+		return nil, err
+	}
+
+	defer row.Close()
+	for row.Next() {
+		var emailToken, uuid string
+		var createdTimestamp, expirationTimestamp time.Time
+
+		err := row.Scan(&emailToken, &createdTimestamp, &expirationTimestamp, &uuid)
+		if err != nil {
+			return nil, err
+		}
+
+		if token != emailToken {
+			return nil, consts.ErrMismatchingEmailToken
+		}
+
+		return &tokenEmailRow{
+			token:               emailToken,
+			createdTimestamp:    createdTimestamp.Unix(),
+			expirationTimestamp: expirationTimestamp.Unix(),
+			uuid:                uuid,
+		}, nil
+	}
+
+	return nil, consts.ErrNoMatchingEmailTokenFound
+}
+
+// deleteEmailTokenRow looks up the given uuid in user_svc.email_tokens table and deletes the matching row.
+// Returns error if given uuid is invalid or any db error.
+func deleteEmailTokenRow(uuid string) error {
+	if err := validation.ValidateUserUUID(uuid); err != nil {
+		return authconst.ErrInvalidUUID
+	}
+
+	command := `DELETE FROM user_svc.email_tokens WHERE uuid = $1`
+
+	_, err := postgresDB.Exec(command, uuid)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

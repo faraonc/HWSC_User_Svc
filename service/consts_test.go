@@ -53,13 +53,6 @@ func unitTestInsertUser(lastName string) (*pbsvc.UserResponse, error) {
 	return s.CreateUser(context.TODO(), &pbsvc.UserRequest{User: insertUser})
 }
 
-// TODO temporary, remove after removing pending token is implemented
-func unitTestRemovePendingToken(uuid string) error {
-	command := `DELETE FROM user_svc.email_tokens WHERE uuid = $1`
-	_, err := postgresDB.Exec(command, uuid)
-	return err
-}
-
 func unitTestDeleteSecretTable() error {
 	_, err := postgresDB.Exec("DELETE FROM user_security.secrets")
 	if err != nil {

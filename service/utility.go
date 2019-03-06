@@ -20,8 +20,9 @@ const (
 	maxFirstNameLength  = 32
 	maxLastNameLength   = 32
 	emailTokenByteSize  = 32
+	daysInOneWeek       = 7
+	daysInTwoWeeks      = 14
 	utc                 = "UTC"
-	daysInWeek          = 7
 	domainName          = "localhost"
 	verifyEmailLinkStub = "verify-email?token"
 )
@@ -177,12 +178,16 @@ func generateSecretKey(tokenSize int) (string, error) {
 	return base64.URLEncoding.EncodeToString(randomBytes), nil
 }
 
-// generateSecretExpirationDate returns the expiration date for secret keys used for signing JWT.
-// Currently sets expiration date to one week later at 3AM UTC.
+// generateExpirationTimestamp returns the expiration date set with addDays parameter.
+// Currently only adds number of days to currentTimestamp.
 // Returns error if date object is nil or error with loading location.
-func generateSecretExpirationTimestamp(currentTimestamp time.Time) (*time.Time, error) {
+func generateExpirationTimestamp(currentTimestamp time.Time, addDays int) (*time.Time, error) {
 	if currentTimestamp.IsZero() {
 		return nil, consts.ErrInvalidTimeStamp
+	}
+
+	if addDays <= 0 {
+		return nil, consts.ErrInvalidNumberOfDays
 	}
 
 	timeZonedTimestamp := currentTimestamp
@@ -190,8 +195,9 @@ func generateSecretExpirationTimestamp(currentTimestamp time.Time) (*time.Time, 
 		timeZonedTimestamp = currentTimestamp.UTC()
 	}
 
-	// add 7 days to current weekday to get to one week later
-	modifiedTimestamp := timeZonedTimestamp.AddDate(0, 0, daysInWeek)
+	// addDays to current weekday to get to addDays later
+	// ie: adding 7 days to current weekday gets you one week later timestamp
+	modifiedTimestamp := timeZonedTimestamp.AddDate(0, 0, addDays)
 
 	// reset time to 3 AM
 	expirationTimestamp := time.Date(modifiedTimestamp.Year(), modifiedTimestamp.Month(), modifiedTimestamp.Day(),

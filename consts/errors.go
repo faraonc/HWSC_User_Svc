@@ -30,14 +30,20 @@ const (
 	MsgErrValidatingIdentity        string = "failed to validate identity:"
 	MsgErrValidatingToken           string = "failed to match token with db:"
 	MsgErrGeneratingEmailVerifyLink string = "failed to generate email verfication link:"
+	MsgErrDeletingEmailToken        string = "failed to delete email token:"
+	MsgErrRetrieveEmailTokenRow     string = "failed to retrieve matched email token row"
 )
 
 var (
+	ErrDBConnectionError            = errors.New("db connection error")
+	ErrExpiredEmailToken            = errors.New("email token is expired")
 	ErrServiceUnavailable           = errors.New("service unavailable")
+	ErrNilRequest                   = errors.New("nil request object")
 	ErrNilRequestUser               = errors.New("nil request User")
 	ErrNilRequestIdentification     = errors.New("nil request identification")
 	ErrEmptyRequestUser             = errors.New("empty fields in request User")
 	ErrInvalidTimeStamp             = errors.New("zero timestamp")
+	ErrInvalidNumberOfDays          = errors.New("invalid number of days to add to expiration timestamp")
 	ErrInvalidTokenSize             = errors.New("invalid token size")
 	ErrInvalidUserFirstName         = errors.New("invalid User first name")
 	ErrInvalidUserLastName          = errors.New("invalid User last name")
@@ -48,10 +54,14 @@ var (
 	ErrEmailNilFilePaths            = errors.New("nil email template file paths")
 	ErrEmailRequestFieldsEmpty      = errors.New("empty or nil fields in emailRequest struct")
 	ErrUUIDNotFound                 = errors.New("uuid does not exist in database")
+	ErrUserNotFound                 = errors.New("user is not found in database")
 	ErrNoRowsFound                  = errors.New("no query row found in database")
-	ErrNoExistingTokenFound         = errors.New("no existing token were found for user")
+	ErrNoAuthTokenFound             = errors.New("no auth token were found with given uuid")
+	ErrNoMatchingAuthTokenFound     = errors.New("no matching auth token were found with given token")
+	ErrNoMatchingEmailTokenFound    = errors.New("no matching email token were found with given token")
 	ErrNoActiveSecretKeyFound       = errors.New("no active secret key found in database")
 	ErrMismatchingToken             = errors.New("tokens do not match")
+	ErrMismatchingEmailToken        = errors.New("email tokens do not match")
 	ErrInvalidAddTime               = errors.New("add time is zero")
 	ErrEmailExists                  = errors.New("email already exists")
 	ResponseServiceUnavailable      = &pbsvc.UserResponse{

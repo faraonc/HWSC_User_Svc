@@ -39,9 +39,10 @@ CREATE TABLE user_svc.accounts
 
 CREATE TABLE user_svc.email_tokens
 (
-  token             TEXT PRIMARY KEY,
-  created_timestamp TIMESTAMPTZ NOT NULL,
-  uuid              ulid UNIQUE REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE
+  token                 TEXT PRIMARY KEY,
+  created_timestamp     TIMESTAMPTZ NOT NULL,
+  expiration_timestamp  TIMESTAMPTZ NOT NULL,
+  uuid                  ulid UNIQUE REFERENCES user_svc.accounts(uuid) ON DELETE CASCADE
 );
 
 CREATE TABLE user_svc.documents

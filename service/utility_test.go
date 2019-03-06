@@ -356,41 +356,66 @@ func TestGenerateSecretKey(t *testing.T) {
 	wg.Wait()
 }
 
-func TestGenerateSecretExpirationTimestamp(t *testing.T) {
-	expirationHour := 3
+func TestGenerateExpirationTimestamp(t *testing.T) {
+	desc := "test zero value for time"
+	date, err := generateExpirationTimestamp(time.Time{}, 0)
+	assert.EqualError(t, err, consts.ErrInvalidTimeStamp.Error(), desc)
+	assert.Nil(t, date, desc)
 
-	// test zero value
-	date, err := generateSecretExpirationTimestamp(time.Time{})
-	assert.EqualError(t, err, consts.ErrInvalidTimeStamp.Error())
-	assert.Nil(t, date)
+	desc = "test zero number of days"
+	date, err = generateExpirationTimestamp(time.Now(), 0)
+	assert.EqualError(t, err, consts.ErrInvalidNumberOfDays.Error(), desc)
+	assert.Nil(t, date, desc)
 
-	// test all days of the week
+	desc = "test negative number of days"
+	date, err = generateExpirationTimestamp(time.Now(), -5)
+	assert.EqualError(t, err, consts.ErrInvalidNumberOfDays.Error(), desc)
+	assert.Nil(t, date, desc)
+
+	desc7days := "test adding 7 days to current date to various days of the week"
+	desc14days := "test adding 14 days to current date to various days of the week"
 	currentDate := time.Now()
 
 	// non UTC date
 	timeZonedDate := currentDate.UTC()
+	expirationHour := 3
 
 	cases := []struct {
-		date time.Time
+		date    time.Time
+		addDays time.Weekday
 	}{
-		{currentDate},
-		{currentDate.AddDate(0, 0, 1)},
-		{currentDate.AddDate(0, 0, 2)},
-		{currentDate.AddDate(0, 0, 3)},
-		{timeZonedDate.AddDate(0, 0, 4)},
-		{timeZonedDate.AddDate(0, 0, 5)},
-		{timeZonedDate.AddDate(0, 0, 6)},
+		{currentDate, daysInOneWeek},
+		{currentDate.AddDate(0, 0, 1), daysInOneWeek},
+		{currentDate.AddDate(0, 0, 2), daysInOneWeek},
+		{currentDate.AddDate(0, 0, 3), daysInOneWeek},
+		{timeZonedDate.AddDate(0, 0, 4), daysInOneWeek},
+		{timeZonedDate.AddDate(0, 0, 5), daysInOneWeek},
+		{timeZonedDate.AddDate(0, 0, 6), daysInOneWeek},
+		{currentDate, daysInTwoWeeks},
+		{currentDate.AddDate(0, 0, 1), daysInTwoWeeks},
+		{currentDate.AddDate(0, 0, 2), daysInTwoWeeks},
+		{currentDate.AddDate(0, 0, 3), daysInTwoWeeks},
+		{timeZonedDate.AddDate(0, 0, 4), daysInTwoWeeks},
+		{timeZonedDate.AddDate(0, 0, 5), daysInTwoWeeks},
+		{timeZonedDate.AddDate(0, 0, 6), daysInTwoWeeks},
 	}
 
 	for _, c := range cases {
-		expirationDate, err := generateSecretExpirationTimestamp(c.date)
-		assert.Nil(t, err)
+		expirationDate, err := generateExpirationTimestamp(c.date, int(c.addDays))
 
 		if c.date.Location().String() != utc {
 			c.date = c.date.UTC()
 		}
-		assert.Equal(t, (c.date.Weekday()+daysInWeek)%daysInWeek, expirationDate.Weekday())
-		assert.Equal(t, expirationHour, expirationDate.Hour())
+
+		if c.addDays == daysInOneWeek {
+			desc = desc7days
+		} else {
+			desc = desc14days
+		}
+
+		assert.Nil(t, err, desc)
+		assert.Equal(t, (c.date.Weekday()+c.addDays)%c.addDays, expirationDate.Weekday(), desc)
+		assert.Equal(t, expirationHour, expirationDate.Hour(), desc)
 	}
 }
 
