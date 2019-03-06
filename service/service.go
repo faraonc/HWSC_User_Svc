@@ -167,9 +167,10 @@ func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 	user.IsVerified = false
 
 	return &pbsvc.UserResponse{
-		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
-		Message: codes.OK.String(),
-		User:    user,
+		Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
+		Message:        codes.OK.String(),
+		User:           user,
+		Identification: &pblib.Identification{Token: emailToken},
 	}, nil
 }
 
