@@ -1,1 +1,0 @@
-DROP INDEX user_svc_accounts_email_index;
