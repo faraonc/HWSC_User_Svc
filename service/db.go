@@ -10,8 +10,6 @@ import (
 	"github.com/hwsc-org/hwsc-lib/validation"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"log"
 	"time"
 
@@ -657,7 +655,7 @@ func isEmailTaken(prospectiveEmail string) (bool, error) {
 // If token does not exist, return error.
 func getEmailTokenRow(token string) (*tokenEmailRow, error) {
 	if token == "" {
-		return nil, status.Error(codes.InvalidArgument, authconst.ErrEmptyToken.Error())
+		return nil, authconst.ErrEmptyToken
 	}
 
 	command := `SELECT * FROM user_svc.email_tokens
@@ -665,7 +663,7 @@ func getEmailTokenRow(token string) (*tokenEmailRow, error) {
 
 	row, err := postgresDB.Query(command, token)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
 	defer row.Close()
@@ -675,11 +673,11 @@ func getEmailTokenRow(token string) (*tokenEmailRow, error) {
 
 		err := row.Scan(&emailToken, &createdTimestamp, &expirationTimestamp, &uuid)
 		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+			return nil, err
 		}
 
 		if token != emailToken {
-			return nil, status.Error(codes.InvalidArgument, consts.ErrMismatchingEmailToken.Error())
+			return nil, consts.ErrMismatchingEmailToken
 		}
 
 		return &tokenEmailRow{
@@ -690,7 +688,7 @@ func getEmailTokenRow(token string) (*tokenEmailRow, error) {
 		}, nil
 	}
 
-	return nil, status.Error(codes.NotFound, consts.ErrNoMatchingEmailTokenFound.Error())
+	return nil, consts.ErrNoMatchingEmailTokenFound
 }
 
 // deleteEmailTokenRow looks up the given uuid in user_svc.email_tokens table and deletes the matching row.

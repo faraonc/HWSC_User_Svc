@@ -186,7 +186,7 @@ func generateExpirationTimestamp(currentTimestamp time.Time, addDays int) (*time
 		return nil, consts.ErrInvalidTimeStamp
 	}
 
-	if addDays == 0 || addDays < 0 {
+	if addDays <= 0 {
 		return nil, consts.ErrInvalidNumberOfDays
 	}
 

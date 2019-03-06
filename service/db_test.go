@@ -7,7 +7,6 @@ import (
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"testing"
 	"time"
 )
@@ -623,12 +622,8 @@ func TestGetEmailTokenRow(t *testing.T) {
 		expMsg   string
 	}{
 		{"test existing token", emailToken, false, ""},
-		{"test empty token string", "", true,
-			status.Error(codes.InvalidArgument, authconst.ErrEmptyToken.Error()).Error(),
-		},
-		{"test non-existing token", "1234abc", true,
-			status.Error(codes.NotFound, consts.ErrNoMatchingEmailTokenFound.Error()).Error(),
-		},
+		{"test empty token string", "", true, authconst.ErrEmptyToken.Error()},
+		{"test non-existing token", "1234abc", true, consts.ErrNoMatchingEmailTokenFound.Error()},
 	}
 
 	for _, c := range cases {
