@@ -163,9 +163,13 @@ func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 
 	logger.Info("Inserted new user:", user.GetUuid(), user.GetFirstName(), user.GetLastName())
 
+	user.Password = ""
+	user.IsVerified = false
+
 	return &pbsvc.UserResponse{
 		Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
 		Message:        codes.OK.String(),
+		User:           user,
 		Identification: &pblib.Identification{Token: emailToken},
 	}, nil
 }
