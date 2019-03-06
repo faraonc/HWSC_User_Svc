@@ -10,6 +10,8 @@ import (
 	"github.com/hwsc-org/hwsc-lib/validation"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"log"
 	"time"
 
@@ -185,7 +187,7 @@ func getUserRow(uuid string) (*pblib.User, error) {
 	}
 
 	command := `SELECT uuid, first_name, last_name, email, organization, 
-       				created_timestamp, is_verified, password, permission_level
+       				created_timestamp, is_verified, password, permission_level, prospective_email
 				FROM user_svc.accounts WHERE user_svc.accounts.uuid = $1
 				`
 	row, err := postgresDB.Query(command, uuid)
@@ -195,18 +197,24 @@ func getUserRow(uuid string) (*pblib.User, error) {
 
 	defer row.Close()
 
-	var userObject *pblib.User
+	var foundUser *pblib.User
 	for row.Next() {
-		var uid, firstName, lastName, email, organization, password, permissionLevel string
+		var prospectiveEmailNullable sql.NullString
+		var uid, firstName, lastName, email, organization, password, permissionLevel, prospectiveEmail string
 		var isVerified bool
 		var createdTimestamp time.Time
 
 		err := row.Scan(&uid, &firstName, &lastName, &email, &organization,
-			&createdTimestamp, &isVerified, &password, &permissionLevel)
+			&createdTimestamp, &isVerified, &password, &permissionLevel, &prospectiveEmailNullable)
 		if err != nil {
 			return nil, err
 		}
-		userObject = &pblib.User{
+
+		if prospectiveEmailNullable.Valid {
+			prospectiveEmail = prospectiveEmailNullable.String
+		}
+
+		foundUser = &pblib.User{
 			Uuid:             uid,
 			FirstName:        firstName,
 			LastName:         lastName,
@@ -216,17 +224,18 @@ func getUserRow(uuid string) (*pblib.User, error) {
 			IsVerified:       isVerified,
 			Password:         password,
 			PermissionLevel:  permissionLevel,
+			ProspectiveEmail: prospectiveEmail,
 		}
 	}
 	if err := row.Err(); err != nil {
 		return nil, err
 	}
 
-	if userObject.GetUuid() != uuid {
-		return nil, authconst.ErrInvalidUUID
+	if foundUser == nil {
+		return nil, consts.ErrUserNotFound
 	}
 
-	return userObject, nil
+	return foundUser, nil
 }
 
 // updateUser does a partial update by going through each User fields and replacing values.
@@ -325,12 +334,13 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 	}
 
 	updatedUser := &pblib.User{
-		Uuid:         uuid,
-		FirstName:    newFirstName,
-		LastName:     newLastName,
-		Organization: newOrganization,
-		Email:        newEmail,
-		IsVerified:   newIsVerified,
+		Uuid:             uuid,
+		FirstName:        newFirstName,
+		LastName:         newLastName,
+		Organization:     newOrganization,
+		Email:            newEmail,
+		IsVerified:       newIsVerified,
+		ProspectiveEmail: newEmail,
 	}
 
 	// new email process
@@ -647,7 +657,7 @@ func isEmailTaken(prospectiveEmail string) (bool, error) {
 // If token does not exist, return error.
 func getEmailTokenRow(token string) (*tokenEmailRow, error) {
 	if token == "" {
-		return nil, authconst.ErrEmptyToken
+		return nil, status.Error(codes.InvalidArgument, authconst.ErrEmptyToken.Error())
 	}
 
 	command := `SELECT * FROM user_svc.email_tokens
@@ -655,7 +665,7 @@ func getEmailTokenRow(token string) (*tokenEmailRow, error) {
 
 	row, err := postgresDB.Query(command, token)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	defer row.Close()
@@ -665,11 +675,11 @@ func getEmailTokenRow(token string) (*tokenEmailRow, error) {
 
 		err := row.Scan(&emailToken, &createdTimestamp, &expirationTimestamp, &uuid)
 		if err != nil {
-			return nil, err
+			return nil, status.Error(codes.Internal, err.Error())
 		}
 
 		if token != emailToken {
-			return nil, consts.ErrMismatchingEmailToken
+			return nil, status.Error(codes.InvalidArgument, consts.ErrMismatchingEmailToken.Error())
 		}
 
 		return &tokenEmailRow{
@@ -680,7 +690,7 @@ func getEmailTokenRow(token string) (*tokenEmailRow, error) {
 		}, nil
 	}
 
-	return nil, consts.ErrNoMatchingEmailTokenFound
+	return nil, status.Error(codes.NotFound, consts.ErrNoMatchingEmailTokenFound.Error())
 }
 
 // deleteEmailTokenRow looks up the given uuid in user_svc.email_tokens table and deletes the matching row.

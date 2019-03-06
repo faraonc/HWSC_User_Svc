@@ -8,6 +8,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	pbsvc "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
+	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-lib/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
@@ -15,8 +16,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"os"
 	"testing"
+	"time"
 )
 
 const (
@@ -306,7 +309,7 @@ func TestGetUser(t *testing.T) {
 	}{
 		{&pbsvc.UserRequest{User: test1}, false, ""},
 		{&pbsvc.UserRequest{User: test2}, true,
-			"rpc error: code = Internal desc = invalid uuid"},
+			"rpc error: code = Internal desc = user is not found in database"},
 		{&pbsvc.UserRequest{User: nil}, true,
 			"rpc error: code = InvalidArgument desc = nil request User"},
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
@@ -419,7 +422,7 @@ func TestUpdateUser(t *testing.T) {
 		{&pbsvc.UserRequest{User: updateUser3}, true,
 			"rpc error: code = InvalidArgument desc = invalid uuid"},
 		{&pbsvc.UserRequest{User: updateUser4}, true,
-			"rpc error: code = Internal desc = invalid uuid"},
+			"rpc error: code = Internal desc = user is not found in database"},
 		{&pbsvc.UserRequest{User: updateUser5}, true,
 			"rpc error: code = Internal desc = invalid User email"},
 		{&pbsvc.UserRequest{User: updateUser6}, true,
@@ -541,7 +544,7 @@ func TestAuthenticateUser(t *testing.T) {
 		{&pbsvc.UserRequest{User: nil}, true,
 			"rpc error: code = InvalidArgument desc = nil request User"},
 		{&pbsvc.UserRequest{User: invalidUser1}, true,
-			"rpc error: code = Unknown desc = invalid uuid"},
+			"rpc error: code = Unknown desc = user is not found in database"},
 		{&pbsvc.UserRequest{User: invalidUser2}, true,
 			"rpc error: code = InvalidArgument desc = email does not match"},
 		{&pbsvc.UserRequest{User: invalidUser3}, true,
@@ -792,4 +795,124 @@ func TestVerifyAuthToken(t *testing.T) {
 	assert.Equal(t, newSecret.GetKey(), responseSecret.GetKey(), desc)
 	assert.Equal(t, newSecret.GetCreatedTimestamp(), responseSecret.GetCreatedTimestamp(), desc)
 	assert.Equal(t, newSecret.GetExpirationTimestamp(), responseSecret.GetExpirationTimestamp(), desc)
+}
+
+func TestVerifyEmailToken(t *testing.T) {
+	// create user 1 to emulate new user
+	user1, err := unitTestInsertUser("VerifyEmailToken-NewUser")
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), user1.GetMessage())
+
+	// create user 2 to emulate existing user (requires updating this user)
+	user2, err := unitTestInsertUser("VerifyEmailToken-ExistingUser")
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), user2.GetMessage())
+	updateData := &pblib.User{
+		Email: unitTestEmailGenerator(),
+		Uuid:  user2.GetUser().GetUuid(),
+	}
+	updatedUser2, err := updateUserRow(updateData.GetUuid(), updateData, user2.GetUser())
+	assert.Nil(t, err)
+	assert.Equal(t, user2.GetUser().GetUuid(), updatedUser2.GetUuid())
+	assert.Equal(t, false, updatedUser2.GetIsVerified())
+	assert.NotEmpty(t, updatedUser2.GetProspectiveEmail())
+
+	// remove the existing tokens so we can manually create, insert and reference this token
+	err = deleteEmailTokenRow(user1.GetUser().GetUuid())
+	assert.Nil(t, err)
+	err = deleteEmailTokenRow(user2.GetUser().GetUuid())
+	assert.Nil(t, err)
+
+	// generate a token we can refer to
+	user1EmailToken, err := generateSecretKey(emailTokenByteSize)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, user1EmailToken)
+	user2EmailToken, err := generateSecretKey(emailTokenByteSize)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, user2EmailToken)
+
+	// insert this token to test against
+	err = insertEmailToken(user1.GetUser().GetUuid(), user1EmailToken)
+	assert.Nil(t, err)
+	err = insertEmailToken(user2.GetUser().GetUuid(), user2EmailToken)
+	assert.Nil(t, err)
+
+	// define test cases to test against non expired tokens
+	notExpiredCases := []struct {
+		desc     string
+		req      *pbsvc.UserRequest
+		isExpErr bool
+		expMsg   string
+	}{
+		{"test nil req object", nil, true, consts.ErrStatusNilRequestUser.Error()},
+		{"test nil identification object", &pbsvc.UserRequest{Identification: nil}, true,
+			status.Error(codes.InvalidArgument, authconst.ErrEmptyToken.Error()).Error(),
+		},
+		{"test empty token string", &pbsvc.UserRequest{Identification: &pblib.Identification{Token: ""}},
+			true, status.Error(codes.InvalidArgument, authconst.ErrEmptyToken.Error()).Error(),
+		},
+		{"test non-existing token", &pbsvc.UserRequest{Identification: &pblib.Identification{Token: "1234"}},
+			true, status.Error(codes.NotFound, consts.ErrNoMatchingEmailTokenFound.Error()).Error(),
+		},
+		{"test valid new user", &pbsvc.UserRequest{Identification: &pblib.Identification{Token: user1EmailToken}},
+			false, "",
+		},
+		{"test valid existing user", &pbsvc.UserRequest{Identification: &pblib.Identification{Token: user2EmailToken}},
+			false, "",
+		},
+	}
+
+	for _, c := range notExpiredCases {
+		s := Service{}
+		response, err := s.VerifyEmailToken(context.TODO(), c.req)
+		if c.isExpErr {
+			assert.EqualError(t, err, c.expMsg, c.desc)
+			assert.Nil(t, response, c.desc)
+		} else {
+			assert.Nil(t, err, c.desc)
+			assert.Equal(t, codes.OK.String(), response.GetMessage())
+		}
+	}
+
+	// force expire the tokens for both new and existing user
+	expiredTimestamp := time.Now().AddDate(0, 0, -5)
+
+	command := `INSERT INTO user_svc.email_tokens(token, created_timestamp, expiration_timestamp, uuid)
+				VALUES($1, $2, $3, $4)
+				`
+
+	_, err = postgresDB.Exec(command, user1EmailToken, time.Now(), expiredTimestamp, user1.GetUser().GetUuid())
+	assert.Nil(t, err)
+	_, err = postgresDB.Exec(command, user2EmailToken, time.Now(), expiredTimestamp, user2.GetUser().GetUuid())
+	assert.Nil(t, err)
+
+	expiredTestCase := []struct {
+		desc       string
+		req        *pbsvc.UserRequest
+		deleteUser bool
+	}{
+		{"test expired token for new user",
+			&pbsvc.UserRequest{Identification: &pblib.Identification{Token: user1EmailToken}}, true,
+		},
+		{"test expired token for existing user",
+			&pbsvc.UserRequest{Identification: &pblib.Identification{Token: user2EmailToken}}, false,
+		},
+	}
+
+	for _, c := range expiredTestCase {
+		s := Service{}
+		response, err := s.VerifyEmailToken(context.TODO(), c.req)
+		assert.Nil(t, response, c.desc)
+		assert.EqualError(t, err, status.Error(codes.DeadlineExceeded, consts.ErrExpiredEmailToken.Error()).Error(), c.desc)
+
+		if c.deleteUser {
+			retrievedUser, err := getUserRow(user1.GetUser().GetUuid())
+			assert.EqualError(t, err, consts.ErrUserNotFound.Error())
+			assert.Nil(t, retrievedUser, c.desc)
+		} else {
+			retrievedUser, err := getUserRow(user2.GetUser().GetUuid())
+			assert.Nil(t, err)
+			assert.Equal(t, user2.GetUser().GetUuid(), retrievedUser.GetUuid(), c.desc)
+		}
+	}
 }

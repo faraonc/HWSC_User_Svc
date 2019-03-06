@@ -30,9 +30,11 @@ const (
 	MsgErrValidatingIdentity        string = "failed to validate identity:"
 	MsgErrValidatingToken           string = "failed to match token with db:"
 	MsgErrGeneratingEmailVerifyLink string = "failed to generate email verfication link:"
+	MsgErrDeletingEmailToken        string = "failed to delete email token:"
 )
 
 var (
+	ErrExpiredEmailToken            = errors.New("email token is expired")
 	ErrServiceUnavailable           = errors.New("service unavailable")
 	ErrNilRequestUser               = errors.New("nil request User")
 	ErrNilRequestIdentification     = errors.New("nil request identification")
@@ -49,6 +51,7 @@ var (
 	ErrEmailNilFilePaths            = errors.New("nil email template file paths")
 	ErrEmailRequestFieldsEmpty      = errors.New("empty or nil fields in emailRequest struct")
 	ErrUUIDNotFound                 = errors.New("uuid does not exist in database")
+	ErrUserNotFound                 = errors.New("user is not found in database")
 	ErrNoRowsFound                  = errors.New("no query row found in database")
 	ErrNoAuthTokenFound             = errors.New("no auth token were found with given uuid")
 	ErrNoMatchingAuthTokenFound     = errors.New("no matching auth token were found with given token")

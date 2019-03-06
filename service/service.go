@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	pbsvc "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
 	"github.com/hwsc-org/hwsc-lib/auth"
@@ -686,16 +687,15 @@ func (s *Service) MakeNewSecret(ctx context.Context, req *pbsvc.UserRequest) (*p
 }
 
 // VerifyEmailToken checks if received token is found in the email_tokens table.
-// If found and token is NOT expired, returns OK.
-// If found, but token IS expired, the token row with expired token will be deleted,
-// service will generate a new email token and insert into email_tokens table,
-// and return ERROR with token expired message.
-// If token is not found, return ERROR with token does not exist message.
+// If found and token is NOT expired, deletes token row and returns OK.
+// If found, but token IS expired, it will return a expired token error.
+// Additionally for expired tokens, if user is new, it will delete token AND user row, else just deletes the token row.
+// If token is not found, return error with token does not exist message.
 func (s *Service) VerifyEmailToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("VerifyEmailToken")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		logger.Error(consts.MakeNewSecret, consts.ErrServiceUnavailable.Error())
+		logger.Error(consts.VerifyEmailToken, consts.ErrServiceUnavailable.Error())
 		return nil, consts.ErrStatusServiceUnavailable
 	}
 
@@ -712,9 +712,40 @@ func (s *Service) VerifyEmailToken(ctx context.Context, req *pbsvc.UserRequest) 
 		return nil, status.Error(codes.InvalidArgument, authconst.ErrEmptyToken.Error())
 	}
 
-	// find email token (return the row info, token, uuid, expiration_timestamp)
-	// if not nil, check expiration
-	// if expired or token does not exist, create email token
+	// find matching email token row
+	retrievedToken, err := getEmailTokenRow(emailToken)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	// delete token row
+	if err := deleteEmailTokenRow(retrievedToken.uuid); err != nil {
+		logger.Error(consts.VerifyEmailToken, consts.MsgErrDeletingEmailToken)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// if token is expired
+	if time.Now().Unix() >= retrievedToken.expirationTimestamp {
+
+		// look up user to determine if user is a new user
+		retrievedUser, err := getUserRow(retrievedToken.uuid)
+		if err != nil {
+			return nil, status.Error(codes.Internal, fmt.Sprintf("%s && %s", err.Error(), consts.ErrExpiredEmailToken.Error()))
+		}
+
+		// delete stale new user
+		if retrievedUser.GetProspectiveEmail() == "" && retrievedUser.GetIsVerified() == false {
+			if err := deleteUserRow(retrievedToken.uuid); err != nil {
+				return nil, status.Error(codes.Internal, fmt.Sprintf("%s && %s", err.Error(), consts.ErrExpiredEmailToken.Error()))
+			}
+		}
+
+		logger.Error(consts.VerifyEmailToken, consts.ErrExpiredEmailToken.Error())
+		return nil, status.Error(codes.DeadlineExceeded, consts.ErrExpiredEmailToken.Error())
+	}
+
+	return &pbsvc.UserResponse{
+		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
+		Message: codes.OK.String(),
+	}, nil
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"testing"
 	"time"
 )
@@ -188,7 +189,7 @@ func TestGetUserRow(t *testing.T) {
 	// non existent uuid
 	nonExistentUUID, _ := generateUUID()
 	retrievedUser, err := getUserRow(nonExistentUUID)
-	assert.EqualError(t, err, authconst.ErrInvalidUUID.Error())
+	assert.EqualError(t, err, consts.ErrUserNotFound.Error())
 	assert.Nil(t, retrievedUser)
 
 	// existent uuid
@@ -622,8 +623,12 @@ func TestGetEmailTokenRow(t *testing.T) {
 		expMsg   string
 	}{
 		{"test existing token", emailToken, false, ""},
-		{"test empty token string", "", true, authconst.ErrEmptyToken.Error()},
-		{"test non-existing token", "1234abc", true, consts.ErrNoMatchingEmailTokenFound.Error()},
+		{"test empty token string", "", true,
+			status.Error(codes.InvalidArgument, authconst.ErrEmptyToken.Error()).Error(),
+		},
+		{"test non-existing token", "1234abc", true,
+			status.Error(codes.NotFound, consts.ErrNoMatchingEmailTokenFound.Error()).Error(),
+		},
 	}
 
 	for _, c := range cases {
