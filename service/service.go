@@ -704,11 +704,6 @@ func (s *Service) VerifyEmailToken(ctx context.Context, req *pbsvc.UserRequest) 
 		return nil, consts.ErrStatusNilRequestUser
 	}
 
-	if err := refreshDBConnection(); err != nil {
-		logger.Error(consts.VerifyEmailToken, consts.ErrDBConnectionError.Error())
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
 	if req.GetIdentification() == nil {
 		logger.Error(consts.VerifyEmailToken, consts.ErrNilRequestIdentification.Error())
 		return nil, status.Error(codes.InvalidArgument, consts.ErrNilRequestIdentification.Error())
@@ -718,6 +713,11 @@ func (s *Service) VerifyEmailToken(ctx context.Context, req *pbsvc.UserRequest) 
 	if emailToken == "" {
 		logger.Error(consts.VerifyEmailToken, authconst.ErrEmptyToken.Error())
 		return nil, status.Error(codes.InvalidArgument, authconst.ErrEmptyToken.Error())
+	}
+
+	if err := refreshDBConnection(); err != nil {
+		logger.Error(consts.VerifyEmailToken, consts.ErrDBConnectionError.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// find matching email token row
