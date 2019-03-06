@@ -461,76 +461,45 @@ func TestAuthenticateUser(t *testing.T) {
 	createdUser := response.GetUser()
 	assert.NotNil(t, createdUser)
 
-	validUUID := createdUser.GetUuid()
 	validEmail := createdUser.GetEmail()
-
-	nonExistingUUID, err := generateUUID()
-	assert.Nil(t, err)
 
 	// valid user
 	validUser := &pblib.User{
-		Uuid:     validUUID,
-		Email:    validEmail,
-		Password: validPassword,
-	}
-
-	// non existing uuid
-	invalidUser1 := &pblib.User{
-		Uuid:     nonExistingUUID,
 		Email:    validEmail,
 		Password: validPassword,
 	}
 
 	// non existing email
 	invalidUser2 := &pblib.User{
-		Uuid:     validUUID,
 		Email:    unitTestFailEmail,
 		Password: validPassword,
 	}
 
 	// non matching password
 	invalidUser3 := &pblib.User{
-		Uuid:     validUUID,
 		Email:    validEmail,
 		Password: unitTestFailValue,
 	}
 
-	// invalid uuid form
-	invalidUser4 := &pblib.User{
-		Uuid:     "0000xsnjg0mq",
-		Email:    validEmail,
-		Password: validPassword,
-	}
-
 	// invalid email form
-	invalidUser5 := &pblib.User{
-		Uuid:     validUUID,
+	invalidUser4 := &pblib.User{
 		Email:    "@",
 		Password: validPassword,
 	}
 
 	// invalid password
-	invalidUser6 := &pblib.User{
-		Uuid:     validUUID,
+	invalidUser5 := &pblib.User{
 		Email:    validEmail,
 		Password: "",
 	}
 
-	// missing uuid
-	invalidUser7 := &pblib.User{
-		Email:    validEmail,
-		Password: validPassword,
-	}
-
 	// missing email
-	invalidUser8 := &pblib.User{
-		Uuid:     validUUID,
+	invalidUser6 := &pblib.User{
 		Password: validPassword,
 	}
 
 	// missing password
-	invalidUser9 := &pblib.User{
-		Uuid:  validUUID,
+	invalidUser7 := &pblib.User{
 		Email: validEmail,
 	}
 
@@ -543,24 +512,17 @@ func TestAuthenticateUser(t *testing.T) {
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
 		{&pbsvc.UserRequest{User: nil}, true,
 			"rpc error: code = InvalidArgument desc = nil request User"},
-		{&pbsvc.UserRequest{User: invalidUser1}, true,
-			"rpc error: code = Unknown desc = user is not found in database"},
 		{&pbsvc.UserRequest{User: invalidUser2}, true,
-			"rpc error: code = InvalidArgument desc = email does not match"},
+			"rpc error: code = Unknown desc = email does not exist in db"},
 		{&pbsvc.UserRequest{User: invalidUser3}, true,
-			"rpc error: code = Unauthenticated desc = " +
-				"crypto/bcrypt: hashedPassword is not the hash of the given password"},
+			"rpc error: code = Unknown desc = crypto/bcrypt: hashedPassword is not the hash of the given password"},
 		{&pbsvc.UserRequest{User: invalidUser4}, true,
-			"rpc error: code = InvalidArgument desc = invalid uuid"},
+			"rpc error: code = InvalidArgument desc = invalid User email"},
 		{&pbsvc.UserRequest{User: invalidUser5}, true,
-			"rpc error: code = InvalidArgument desc = invalid User email"},
-		{&pbsvc.UserRequest{User: invalidUser6}, true,
 			"rpc error: code = InvalidArgument desc = invalid User password"},
-		{&pbsvc.UserRequest{User: invalidUser7}, true,
-			"rpc error: code = InvalidArgument desc = invalid uuid"},
-		{&pbsvc.UserRequest{User: invalidUser8}, true,
+		{&pbsvc.UserRequest{User: invalidUser6}, true,
 			"rpc error: code = InvalidArgument desc = invalid User email"},
-		{&pbsvc.UserRequest{User: invalidUser9}, true,
+		{&pbsvc.UserRequest{User: invalidUser7}, true,
 			"rpc error: code = InvalidArgument desc = invalid User password"},
 	}
 

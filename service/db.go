@@ -708,3 +708,76 @@ func deleteEmailTokenRow(uuid string) error {
 
 	return nil
 }
+
+// matchEmailAndPassword looks up a row that matches the email. Then after the matched row is retrieved,
+// password retrieved from db is matched with given password.
+// If both email and password matches, returns the matched users row.
+// If the query by email returns nothing, returns email does not exist error.
+// If email is found, but password does not match, returns password does not match error.
+// All other errors are returned.
+func matchEmailAndPassword(email string, password string) (*pblib.User, error) {
+	if err := validateEmail(email); err != nil {
+		return nil, err
+	}
+
+	if err := validatePassword(password); err != nil {
+		return nil, err
+	}
+
+	command := `SELECT uuid, first_name, last_name, email, organization, 
+       				created_timestamp, is_verified, password, permission_level, prospective_email
+				FROM user_svc.accounts 
+				WHERE email = $1
+				`
+
+	row, err := postgresDB.Query(command, email)
+	if err != nil {
+		return nil, err
+	}
+
+	defer row.Close()
+	var foundUser *pblib.User
+	for row.Next() {
+		var prospectiveEmailNullable sql.NullString
+		var uuid, firstName, lastName, email, organization, hashedPassword, permissionLevel, prospectiveEmail string
+		var isVerified bool
+		var createdTimestamp time.Time
+
+		err := row.Scan(&uuid, &firstName, &lastName, &email, &organization,
+			&createdTimestamp, &isVerified, &hashedPassword, &permissionLevel, &prospectiveEmailNullable)
+		if err != nil {
+			return nil, err
+		}
+
+		if prospectiveEmailNullable.Valid {
+			prospectiveEmail = prospectiveEmailNullable.String
+		}
+
+		foundUser = &pblib.User{
+			Uuid:             uuid,
+			FirstName:        firstName,
+			LastName:         lastName,
+			Email:            email,
+			Organization:     organization,
+			CreatedTimestamp: createdTimestamp.Unix(),
+			IsVerified:       isVerified,
+			Password:         hashedPassword,
+			PermissionLevel:  permissionLevel,
+			ProspectiveEmail: prospectiveEmail,
+		}
+	}
+	if err := row.Err(); err != nil {
+		return nil, err
+	}
+
+	if foundUser == nil {
+		return nil, consts.ErrEmailDoesNotExist
+	}
+
+	// match password
+	if err := comparePassword(foundUser.GetPassword(), password); err != nil {
+		return nil, err
+	}
+
+	return foundUser, nil
+}

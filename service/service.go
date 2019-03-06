@@ -303,24 +303,22 @@ func (s *Service) AuthenticateUser(ctx context.Context, req *pbsvc.UserRequest) 
 	}
 
 	if req == nil {
+		logger.Error(consts.AuthenticateUserTag, consts.ErrNilRequest.Error())
 		return nil, consts.ErrStatusNilRequestUser
-	}
-
-	if err := refreshDBConnection(); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	user := req.GetUser()
 	if user == nil {
-		logger.Error(consts.ErrNilRequestUser.Error())
+		logger.Error(consts.AuthenticateUserTag, consts.ErrNilRequestUser.Error())
 		return nil, consts.ErrStatusNilRequestUser
 	}
 
-	// validate uuid, email, password
-	if err := validation.ValidateUserUUID(user.GetUuid()); err != nil {
-		logger.Error(consts.AuthenticateUserTag, authconst.ErrInvalidUUID.Error())
-		return nil, consts.ErrStatusUUIDInvalid
+	if err := refreshDBConnection(); err != nil {
+		logger.Error(consts.AuthenticateUserTag, consts.ErrDBConnectionError.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	// email, password
 	if err := validateEmail(user.GetEmail()); err != nil {
 		logger.Error(consts.AuthenticateUserTag, consts.ErrInvalidUserEmail.Error())
 		return nil, status.Error(codes.InvalidArgument, consts.ErrInvalidUserEmail.Error())
@@ -334,31 +332,21 @@ func (s *Service) AuthenticateUser(ctx context.Context, req *pbsvc.UserRequest) 
 	lock.(*sync.RWMutex).RLock()
 	defer lock.(*sync.RWMutex).RUnlock()
 
-	// look up email and password
-	retrievedUser, err := getUserRow(user.GetUuid())
+	// match email and password
+	matchedUser, err := matchEmailAndPassword(user.GetEmail(), user.GetPassword())
 	if err != nil {
-		logger.Error(consts.AuthenticateUserTag, consts.MsgErrAuthenticateUser, err.Error())
+		logger.Error(consts.AuthenticateUserTag, consts.MsgErrMatchEmailPassword, err.Error())
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	if retrievedUser.GetEmail() != user.GetEmail() {
-		logger.Error(consts.AuthenticateUserTag, consts.MsgErrMatchEmail)
-		return nil, status.Error(codes.InvalidArgument, consts.MsgErrMatchEmail)
-	}
+	logger.Info("Authenticated user:", matchedUser.GetUuid(),
+		matchedUser.GetFirstName(), matchedUser.GetLastName())
 
-	if err := comparePassword(retrievedUser.GetPassword(), user.GetPassword()); err != nil {
-		logger.Error(consts.AuthenticateUserTag, consts.MsgErrMatchPassword, err.Error())
-		return nil, status.Error(codes.Unauthenticated, err.Error())
-	}
-
-	logger.Info("Authenticated user:", retrievedUser.GetUuid(),
-		retrievedUser.GetFirstName(), retrievedUser.GetLastName())
-
-	retrievedUser.Password = ""
+	matchedUser.Password = ""
 	return &pbsvc.UserResponse{
 		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
 		Message: codes.OK.String(),
-		User:    retrievedUser,
+		User:    matchedUser,
 	}, nil
 }
 
