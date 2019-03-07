@@ -21,6 +21,7 @@ const (
 	MsgErrGetUserRow                string = "failed to get user row:"
 	MsgErrUpdateUserRow             string = "failed to update user row:"
 	MsgErrAuthenticateUser          string = "failed to authenticate user:"
+	MsgErrMatchEmailPassword        string = "failed to match email and password in db:"
 	MsgErrMatchPassword             string = "failed to match password:"
 	MsgErrMatchEmail                string = "email does not match"
 	MsgErrSecret                    string = "failed to insert new secret into db:"
@@ -64,6 +65,7 @@ var (
 	ErrMismatchingEmailToken        = errors.New("email tokens do not match")
 	ErrInvalidAddTime               = errors.New("add time is zero")
 	ErrEmailExists                  = errors.New("email already exists")
+	ErrEmailDoesNotExist            = errors.New("email does not exist in db")
 	ResponseServiceUnavailable      = &pbsvc.UserResponse{
 		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.Unavailable)},
 		Message: codes.Unavailable.String(),

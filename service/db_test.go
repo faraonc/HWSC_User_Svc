@@ -670,3 +670,58 @@ func TestDeleteEmailTokenRow(t *testing.T) {
 		}
 	}
 }
+
+func TestMatchEmailAndPassword(t *testing.T) {
+	// create a user
+	user1Password := "TestMatchEmailAndPassword-One"
+	user1, err := unitTestInsertUser(user1Password)
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), user1.GetMessage())
+	u1 := user1.GetUser()
+
+	cases := []struct {
+		desc     string
+		email    string
+		password string
+		isExpErr bool
+		expMsg   string
+	}{
+		{
+			"test empty email", "", unitTestFailValue,
+			true, consts.ErrInvalidUserEmail.Error(),
+		},
+		{
+			"test invalid email format", "@", unitTestFailValue,
+			true, consts.ErrInvalidUserEmail.Error(),
+		},
+		{
+			"test existing email but empty password", u1.GetEmail(), "",
+			true, consts.ErrInvalidPassword.Error(),
+		},
+		{
+			"test valid password but non-existent email", unitTestFailEmail, user1Password,
+			true, consts.ErrEmailDoesNotExist.Error(),
+		},
+		{
+			"test existing email but non-existent password", u1.GetEmail(), unitTestFailValue,
+			true, "crypto/bcrypt: hashedPassword is not the hash of the given password",
+		},
+		{
+			"valid, test existing email and matching password", u1.GetEmail(), user1Password,
+			false, "",
+		},
+	}
+
+	for _, c := range cases {
+		retrievedUser, err := matchEmailAndPassword(c.email, c.password)
+		if c.isExpErr {
+			assert.Nil(t, retrievedUser, c.desc)
+			assert.EqualError(t, err, c.expMsg, c.desc)
+		} else {
+			assert.Nil(t, err, c.desc)
+			assert.Equal(t, u1.GetEmail(), retrievedUser.GetEmail(), c.desc)
+			assert.Equal(t, u1.GetUuid(), retrievedUser.GetUuid(), c.desc)
+		}
+	}
+
+}
