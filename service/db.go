@@ -3,7 +3,7 @@ package service
 import (
 	"database/sql"
 	"fmt"
-	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
+	pblib "github.com/hwsc-org/hwsc-api-blocks/int/lib"
 	"github.com/hwsc-org/hwsc-lib/auth"
 	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-lib/logger"
