@@ -4,7 +4,7 @@ import (
 	cryptorand "crypto/rand"
 	"encoding/base64"
 	"fmt"
-	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
+	pblib "github.com/hwsc-org/hwsc-api-blocks/int/lib"
 	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/oklog/ulid"

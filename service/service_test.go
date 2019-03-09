@@ -7,7 +7,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	pbsvc "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user"
-	pblib "github.com/hwsc-org/hwsc-api-blocks/lib"
+	pblib "github.com/hwsc-org/hwsc-api-blocks/int/lib"
 	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-lib/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
