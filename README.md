@@ -39,5 +39,3 @@ The proto file and compiled proto buffers are located in
 
 ###### DeleteDocuments
 - TODO
-
-###### TODO
