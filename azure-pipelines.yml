@@ -118,7 +118,6 @@ steps:
     displayName: 'Build Docker Image Internal Release'
 
   - script: |
-      docker tag hwsc-user-svc hwsc/hwsc-user-svc:int
       docker push hwsc/hwsc-user-svc:int
     workingDirectory: '$(modulePath)'
     displayName: 'Push Docker Image Internal Release'
