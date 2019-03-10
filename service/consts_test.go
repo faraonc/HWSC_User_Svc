@@ -2,8 +2,8 @@ package service
 
 import (
 	"fmt"
-	pbsvc "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user"
-	pblib "github.com/hwsc-org/hwsc-api-blocks/int/lib"
+	pbsvc "github.com/hwsc-org/hwsc-api-blocks/protobuf/hwsc-user-svc/user"
+	pblib "github.com/hwsc-org/hwsc-api-blocks/protobuf/lib"
 	"github.com/hwsc-org/hwsc-lib/auth"
 	"golang.org/x/net/context"
 	"time"

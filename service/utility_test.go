@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	pblib "github.com/hwsc-org/hwsc-api-blocks/int/lib"
+	pblib "github.com/hwsc-org/hwsc-api-blocks/protobuf/lib"
 	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/stretchr/testify/assert"

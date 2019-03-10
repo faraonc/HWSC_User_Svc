@@ -2,7 +2,7 @@ package consts
 
 import (
 	"errors"
-	pbsvc "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user"
+	pbsvc "github.com/hwsc-org/hwsc-api-blocks/protobuf/hwsc-user-svc/user"
 	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

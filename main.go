@@ -1,7 +1,7 @@
 package main
 
 import (
-	pbsvc "github.com/hwsc-org/hwsc-api-blocks/int/hwsc-user-svc/user"
+	pbsvc "github.com/hwsc-org/hwsc-api-blocks/protobuf/hwsc-user-svc/user"
 	"github.com/hwsc-org/hwsc-lib/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
