@@ -100,7 +100,7 @@ steps:
       secureFile: hwscdevcontainer_pw.txt # contains password for hwsc docker hub
   - script: |
       cat $(Agent.TempDirectory)/hwscdevcontainer_pw.txt | docker login -u "$(hwscDevContainerUser)" --password-stdin
-      docker build --no-cache -f Dockerfile -t hwsc/hwsc-user-svc:test-ext.
+      docker build --no-cache -f Dockerfile -t hwsc/hwsc-user-svc:test-ext .
     workingDirectory: '$(modulePath)'
     displayName: 'Build Docker Image Test External'
 
