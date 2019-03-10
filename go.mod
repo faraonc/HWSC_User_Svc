@@ -23,7 +23,7 @@ require (
 	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.8.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
-	github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190310100938-90fdd4e075ac
+	github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190310103314-d5245c3ac7ad
 	github.com/hwsc-org/hwsc-lib v0.0.0-20190310101323-fc5160aa3a53
 	github.com/kisielk/errcheck v1.2.0 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
