@@ -33,6 +33,7 @@ const (
 	MsgErrGeneratingEmailVerifyLink string = "failed to generate email verfication link:"
 	MsgErrDeletingEmailToken        string = "failed to delete email token:"
 	MsgErrRetrieveEmailTokenRow     string = "failed to retrieve matched email token row"
+	MsgErrUpdatePermLevel           string = "failed to update permission level of user:"
 )
 
 var (

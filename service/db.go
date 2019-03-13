@@ -116,7 +116,7 @@ func insertNewUser(user *pblib.User) error {
 
 	_, err = postgresDB.Exec(command, user.GetUuid(), user.GetFirstName(), user.GetLastName(),
 		user.GetEmail(), hashedPassword, user.GetOrganization(),
-		time.Now().UTC(), false, auth.PermissionStringMap[auth.User])
+		time.Now().UTC(), false, auth.PermissionStringMap[auth.NoPermission])
 
 	if err != nil {
 		return err
@@ -780,4 +780,27 @@ func matchEmailAndPassword(email string, password string) (*pblib.User, error) {
 	}
 
 	return foundUser, nil
+}
+
+// updatePermissionLevel changes the permission level for given UUID.
+// returns nil on success, nil if user doesnt exist, else err
+func updatePermissionLevel(uuid string, permissionLevel string) error {
+	if err := validation.ValidateUserUUID(uuid); err != nil {
+		return err
+	}
+	if _, ok := auth.PermissionEnumMap[permissionLevel]; !ok {
+		return authconst.ErrInvalidPermission
+	}
+
+	command := `UPDATE user_svc.accounts
+				SET permission_level = $2
+				WHERE uuid = $1
+				`
+
+	_, err := postgresDB.Exec(command, uuid, permissionLevel)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
