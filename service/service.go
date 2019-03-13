@@ -43,7 +43,7 @@ const (
 var (
 	serviceStateLocker stateLocker
 	uuidMapLocker      sync.Map
-	readSecretLocker   sync.RWMutex
+	secretLocker   sync.RWMutex
 
 	// converts the state of the service to a string
 	serviceStateMap = map[state]string{
@@ -440,8 +440,9 @@ func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 	}
 
 	// the chance of creating a new secret is very slim thus the usage of read lock
-	readSecretLocker.RLock()
-	defer readSecretLocker.RUnlock()
+	// b/c an admin or a job runner will be responsible for creating new secrets
+	secretLocker.RLock()
+	defer secretLocker.RUnlock()
 
 	// check for any active secret
 	exists, err := hasActiveSecret()
@@ -653,8 +654,8 @@ func (s *Service) MakeNewSecret(ctx context.Context, req *pbsvc.UserRequest) (*p
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	readSecretLocker.Lock()
-	defer readSecretLocker.Unlock()
+	secretLocker.Lock()
+	defer secretLocker.Unlock()
 
 	// insert new secret
 	if err := insertNewSecret(); err != nil {
