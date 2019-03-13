@@ -725,3 +725,62 @@ func TestMatchEmailAndPassword(t *testing.T) {
 	}
 
 }
+
+func TestUpdatePermissionLevel(t *testing.T) {
+	// create a test user
+	user1, err := unitTestInsertUser("TestUpdatePermissionLevel")
+	assert.Nil(t, err)
+	assert.Equal(t, codes.OK.String(), user1.GetMessage())
+	u1 := user1.GetUser()
+	assert.Equal(t, auth.PermissionStringMap[auth.NoPermission], u1.GetPermissionLevel())
+
+	uuid, err := generateUUID()
+	assert.Nil(t, err)
+
+	cases := []struct {
+		desc      string
+		uuid      string
+		permLevel string
+		isExpErr  bool
+		expMsg    string
+	}{
+		{
+			"test valid uuid, but not existing in db", uuid, auth.PermissionStringMap[auth.User],
+			false, "",
+		},
+		{
+			"test invalid uuid", unitTestFailValue, "", true,
+			authconst.ErrInvalidUUID.Error(),
+		},
+		{
+			"test blank uuid", "", "", true,
+			authconst.ErrInvalidUUID.Error(),
+		},
+		{
+			"test invalid permLevel", u1.GetUuid(), "unitTestFailValue", true,
+			authconst.ErrInvalidPermission.Error(),
+		},
+		{
+			"test blank permLevel", u1.GetUuid(), "", true,
+			authconst.ErrInvalidPermission.Error(),
+		},
+		{
+			"test valid uuid and permLevel", u1.GetUuid(), auth.PermissionStringMap[auth.User],
+			false, "",
+		},
+	}
+
+	for _, c := range cases {
+		err := updatePermissionLevel(c.uuid, c.permLevel)
+		if c.isExpErr {
+			assert.EqualError(t, err, c.expMsg, c.desc)
+		} else {
+			assert.Nil(t, err, c.desc)
+
+			retrievedUser, err := getUserRow(c.uuid)
+			if err == nil {
+				assert.Equal(t, c.permLevel, retrievedUser.GetPermissionLevel())
+			}
+		}
+	}
+}

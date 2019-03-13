@@ -8,6 +8,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	pbsvc "github.com/hwsc-org/hwsc-api-blocks/protobuf/hwsc-user-svc/user"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/protobuf/lib"
+	"github.com/hwsc-org/hwsc-lib/auth"
 	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-lib/logger"
 	"github.com/hwsc-org/hwsc-user-svc/conf"
@@ -219,6 +220,13 @@ func TestCreateUser(t *testing.T) {
 			assert.EqualError(t, err, c.expMsg)
 		} else {
 			assert.Equal(t, codes.OK.String(), response.GetMessage())
+			assert.Nil(t, err)
+			assert.Equal(t, c.request.GetUser().GetEmail(), response.GetUser().GetEmail())
+			assert.Equal(t, false, response.GetUser().GetIsVerified())
+
+			retrievedUser, err := getUserRow(response.GetUser().GetUuid())
+			assert.Nil(t, err)
+			assert.Equal(t, auth.PermissionStringMap[auth.NoPermission], retrievedUser.GetPermissionLevel())
 		}
 	}
 }
@@ -833,6 +841,16 @@ func TestVerifyEmailToken(t *testing.T) {
 		} else {
 			assert.Nil(t, err, c.desc)
 			assert.Equal(t, codes.OK.String(), response.GetMessage())
+
+			var retrievedUser *pblib.User
+			var err error
+			if c.req.Identification.GetToken() == user1EmailToken {
+				retrievedUser, err = getUserRow(user1.GetUser().GetUuid())
+			} else {
+				retrievedUser, err = getUserRow(user2.GetUser().GetUuid())
+			}
+			assert.Nil(t, err)
+			assert.Equal(t, auth.PermissionStringMap[auth.User], retrievedUser.GetPermissionLevel())
 		}
 	}
 
@@ -846,6 +864,12 @@ func TestVerifyEmailToken(t *testing.T) {
 	_, err = postgresDB.Exec(command, user1EmailToken, time.Now(), expiredTimestamp, user1.GetUser().GetUuid())
 	assert.Nil(t, err)
 	_, err = postgresDB.Exec(command, user2EmailToken, time.Now(), expiredTimestamp, user2.GetUser().GetUuid())
+	assert.Nil(t, err)
+
+	// reset permissionLevel
+	err = updatePermissionLevel(user1.GetUser().GetUuid(), auth.PermissionStringMap[auth.NoPermission])
+	assert.Nil(t, err)
+	err = updatePermissionLevel(user2.GetUser().GetUuid(), auth.PermissionStringMap[auth.NoPermission])
 	assert.Nil(t, err)
 
 	expiredTestCase := []struct {

@@ -43,7 +43,7 @@ const (
 var (
 	serviceStateLocker stateLocker
 	uuidMapLocker      sync.Map
-	secretLocker       sync.RWMutex
+	readSecretLocker   sync.RWMutex
 
 	// converts the state of the service to a string
 	serviceStateMap = map[state]string{
@@ -165,6 +165,7 @@ func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 
 	user.Password = ""
 	user.IsVerified = false
+	user.PermissionLevel = auth.PermissionStringMap[auth.NoPermission]
 
 	return &pbsvc.UserResponse{
 		Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
@@ -439,8 +440,8 @@ func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 	}
 
 	// the chance of creating a new secret is very slim thus the usage of read lock
-	secretLocker.RLock()
-	defer secretLocker.RUnlock()
+	readSecretLocker.RLock()
+	defer readSecretLocker.RUnlock()
 
 	// check for any active secret
 	exists, err := hasActiveSecret()
@@ -652,8 +653,8 @@ func (s *Service) MakeNewSecret(ctx context.Context, req *pbsvc.UserRequest) (*p
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	secretLocker.Lock()
-	defer secretLocker.Unlock()
+	readSecretLocker.Lock()
+	defer readSecretLocker.Unlock()
 
 	// insert new secret
 	if err := insertNewSecret(); err != nil {
@@ -709,6 +710,8 @@ func (s *Service) VerifyEmailToken(ctx context.Context, req *pbsvc.UserRequest) 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// TODO add uuid locker
+
 	// find matching email token row
 	retrievedToken, err := getEmailTokenRow(emailToken)
 	if err != nil {
@@ -722,18 +725,18 @@ func (s *Service) VerifyEmailToken(ctx context.Context, req *pbsvc.UserRequest) 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// look up user to determine permission level
+	retrievedUser, err := getUserRow(retrievedToken.uuid)
+	if err != nil {
+		logger.Error(consts.VerifyEmailToken, consts.MsgErrGetUserRow, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	// if token is expired
 	if time.Now().Unix() >= retrievedToken.expirationTimestamp || retrievedToken.expirationTimestamp <= 0 {
-
-		// look up user to determine if user is a new user
-		retrievedUser, err := getUserRow(retrievedToken.uuid)
-		if err != nil {
-			logger.Error(consts.VerifyEmailToken, consts.MsgErrGetUserRow, " && ", consts.ErrExpiredEmailToken.Error())
-			return nil, status.Error(codes.Internal, fmt.Sprintf("%s && %s", err.Error(), consts.ErrExpiredEmailToken.Error()))
-		}
-
 		// delete stale new user
-		if retrievedUser.GetProspectiveEmail() == "" && retrievedUser.GetIsVerified() == false {
+		if (retrievedUser.GetProspectiveEmail() == "" && retrievedUser.GetIsVerified() == false) &&
+			retrievedUser.GetPermissionLevel() == auth.PermissionStringMap[auth.NoPermission] {
 			if err := deleteUserRow(retrievedToken.uuid); err != nil {
 				logger.Error(consts.VerifyEmailToken, consts.MsgErrDeleteUser, " && ", consts.ErrExpiredEmailToken.Error())
 				return nil, status.Error(codes.Internal, fmt.Sprintf("%s && %s", err.Error(), consts.ErrExpiredEmailToken.Error()))
@@ -742,6 +745,13 @@ func (s *Service) VerifyEmailToken(ctx context.Context, req *pbsvc.UserRequest) 
 
 		logger.Error(consts.VerifyEmailToken, consts.ErrExpiredEmailToken.Error())
 		return nil, status.Error(codes.DeadlineExceeded, consts.ErrExpiredEmailToken.Error())
+	}
+
+	// update user's permission level
+	err = updatePermissionLevel(retrievedUser.GetUuid(), auth.PermissionStringMap[auth.User])
+	if err != nil {
+		logger.Error(consts.VerifyEmailToken, consts.MsgErrUpdatePermLevel, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &pbsvc.UserResponse{

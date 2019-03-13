@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	tokenLocker         sync.Mutex
+	keyGenLocker        sync.Mutex
 	uuidLocker          sync.Mutex
 	multiSpaceRegex     = regexp.MustCompile(`[\s\p{Zs}]{2,}`)
 	nameValidCharsRegex = regexp.MustCompile(`^[[:alpha:]]+((['.\s-][[:alpha:]\s])?[[:alpha:]]*)*$`)
@@ -166,8 +166,8 @@ func generateSecretKey(tokenSize int) (string, error) {
 		return "", consts.ErrInvalidTokenSize
 	}
 
-	tokenLocker.Lock()
-	defer tokenLocker.Unlock()
+	keyGenLocker.Lock()
+	defer keyGenLocker.Unlock()
 
 	randomBytes := make([]byte, tokenSize)
 	_, err := cryptorand.Read(randomBytes)
