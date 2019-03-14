@@ -34,6 +34,8 @@ const (
 	MsgErrDeletingEmailToken        string = "failed to delete email token:"
 	MsgErrRetrieveEmailTokenRow     string = "failed to retrieve matched email token row"
 	MsgErrUpdatePermLevel           string = "failed to update permission level of user:"
+	MsgErrGenExpirationTimestamp    string = "failed to generate a expiration timestamp:"
+	MsgErrGenerateEmailSecret       string = "failed to generate secret for JET:"
 )
 
 var (

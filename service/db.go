@@ -126,27 +126,23 @@ func insertNewUser(user *pblib.User) error {
 }
 
 // insertEmailToken inserts received token to user_svc.email_tokens.
+// We are using secret's createdTimestamp and expirationTimestamp b/c it is set identical to the token itself.
 // Returns error if strings are empty or error with inserting to database.
-func insertEmailToken(uuid string, token string) error {
-	// check if uuid is valid form
-	if err := validation.ValidateUserUUID(uuid); err != nil {
-		return err
-	}
-
+func insertEmailToken(token string, uuid string, secret *pblib.Secret) error {
 	if token == "" {
 		return authconst.ErrEmptyToken
 	}
-
-	createdTimestamp := time.Now().UTC()
-	expirationTimestamp, err := generateExpirationTimestamp(createdTimestamp, daysInTwoWeeks)
-	if err != nil {
+	if err := validation.ValidateUserUUID(uuid); err != nil {
+		return err
+	}
+	if err := auth.ValidateSecret(secret); err != nil {
 		return err
 	}
 
 	command := `INSERT INTO user_svc.email_tokens(token, created_timestamp, expiration_timestamp, uuid) 
 				VALUES($1, $2, $3, $4)
 				`
-	_, err = postgresDB.Exec(command, token, createdTimestamp, expirationTimestamp, uuid)
+	_, err := postgresDB.Exec(command, token, secret.CreatedTimestamp, secret.ExpirationTimestamp, uuid)
 
 	if err != nil {
 		return err

@@ -43,7 +43,7 @@ const (
 var (
 	serviceStateLocker stateLocker
 	uuidMapLocker      sync.Map
-	secretLocker   sync.RWMutex
+	secretLocker       sync.RWMutex
 
 	// converts the state of the service to a string
 	serviceStateMap = map[state]string{
@@ -127,21 +127,67 @@ func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// from here on: do not return an error because we can always regenerate tokens and resend verification emails
+	// from here on: do not return a service error
+	// because we can always regenerate tokens and resend verification emails
+	// however, upon error, return success to terminate later codes
+	user.Password = ""
+	user.IsVerified = false
+	user.PermissionLevel = auth.PermissionStringMap[auth.NoPermission]
 
-	// create unique email token
-	emailToken, err := generateSecretKey(emailTokenByteSize)
+	successResponseWithoutJET := &pbsvc.UserResponse{
+		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
+		Message: codes.OK.String(),
+		User:    user,
+	}
+
+	// build header and body for JET
+	header := &auth.Header{
+		Alg:      auth.AlgorithmMap[auth.NoPermission],
+		TokenTyp: auth.Jet,
+	}
+	createdTimestamp := time.Now().UTC()
+	expirationTimestamp, err := generateExpirationTimestamp(createdTimestamp, daysInTwoWeeks)
 	if err != nil {
-		logger.Error(consts.CreateUserTag, consts.MsgErrGeneratingEmailToken, err.Error())
+		logger.Error(consts.CreateUserTag, consts.MsgErrGenExpirationTimestamp, err.Error())
+		return successResponseWithoutJET, nil
+	}
+
+	body := &auth.Body{
+		UUID:                user.GetUuid(),
+		Permission:          auth.UserRegistration,
+		ExpirationTimestamp: expirationTimestamp.Unix(),
+	}
+
+	// generate a new secret to expire same time as token itself (secrets expire 1 week earlier)
+	newSecretKey, err := generateSecretKey(auth.SecretByteSize)
+	if err != nil {
+		logger.Error(consts.CreateUserTag, consts.MsgErrGenerateEmailSecret, err.Error())
+		return successResponseWithoutJET, nil
+	}
+	newSecret := &pblib.Secret{
+		Key:                 newSecretKey,
+		CreatedTimestamp:    createdTimestamp.Unix(),
+		ExpirationTimestamp: expirationTimestamp.Unix(),
+	}
+
+	// get a new json string
+	newTokenString, err := auth.NewToken(header, body, newSecret)
+	if err != nil {
+		logger.Error(consts.CreateUserTag, consts.MsgErrGeneratingAuthToken, err.Error())
+		return successResponseWithoutJET, nil
 	}
 
 	// insert token into db, if nondb error returns, token will simply expire, so no need to remove
-	if err := insertEmailToken(user.GetUuid(), emailToken); err != nil {
+	if err := insertEmailToken(newTokenString, user.GetUuid(), newSecret); err != nil {
 		logger.Error(consts.CreateUserTag, consts.MsgErrInsertEmailToken, err.Error())
+		return successResponseWithoutJET, nil
 	}
 
+	// since JET has been successfully inserted to db, we can now send this token back with response
+	successResponseWithoutJET.Identification = &pblib.Identification{Token: newTokenString}
+
 	// generate verficiation link for emails
-	verificationLink, err := generateEmailVerifyLink(emailToken)
+	verificationLink, err := generateEmailVerifyLink(newTokenString)
 	if err != nil {
 		logger.Error(consts.CreateUserTag, consts.MsgErrGeneratingEmailVerifyLink, err.Error())
 	}
@@ -161,18 +207,7 @@ func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 		logger.Error(consts.CreateUserTag, consts.MsgErrSendEmail, err.Error())
 	}
 
-	logger.Info("Inserted new user:", user.GetUuid(), user.GetFirstName(), user.GetLastName())
-
-	user.Password = ""
-	user.IsVerified = false
-	user.PermissionLevel = auth.PermissionStringMap[auth.NoPermission]
-
-	return &pbsvc.UserResponse{
-		Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
-		Message:        codes.OK.String(),
-		User:           user,
-		Identification: &pblib.Identification{Token: emailToken},
-	}, nil
+	return successResponseWithoutJET, nil
 }
 
 // DeleteUser deletes a user row in accounts table.
@@ -565,20 +600,20 @@ func (s *Service) GetAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pb
 			logger.Error(consts.GetAuthTokenTag, consts.MsgErrGetActiveSecret, err.Error())
 			return nil, status.Error(codes.Unauthenticated, err.Error())
 		}
-		newToken, err := auth.NewToken(header, body, currSecret)
+		newTokenString, err := auth.NewToken(header, body, currSecret)
 		if err != nil {
 			logger.Error(consts.GetAuthTokenTag, consts.MsgErrGeneratingAuthToken, err.Error())
 			return nil, status.Error(codes.Unauthenticated, err.Error())
 		}
 
 		// insert token into db for auditing
-		if err := insertAuthToken(newToken, header, body, currSecret); err != nil {
+		if err := insertAuthToken(newTokenString, header, body, currSecret); err != nil {
 			logger.Error(consts.GetAuthTokenTag, consts.MsgErrInsertAuthToken, err.Error())
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
 		identity = &pblib.Identification{
-			Token:  newToken,
+			Token:  newTokenString,
 			Secret: currSecret,
 		}
 	}
