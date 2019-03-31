@@ -1,6 +1,7 @@
 package conf
 
 import (
+	pblib "github.com/hwsc-org/hwsc-api-blocks/protobuf/lib"
 	"github.com/hwsc-org/hwsc-lib/hosts"
 	"github.com/hwsc-org/hwsc-lib/logger"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
@@ -21,6 +22,9 @@ var (
 
 	// EmailHost contains smtp configs grabbed from env vars
 	EmailHost hosts.SMTPHost
+
+	// DummyAccount reads from environment variables, and it is used for creating accounts
+	DummyAccount pblib.User
 )
 
 func init() {
@@ -53,5 +57,9 @@ func init() {
 
 	if err := conf.Get("hosts", "smtp").Scan(&EmailHost); err != nil {
 		logger.Fatal(consts.UserServiceTag, "Failed to get smtp email configurations", err.Error())
+	}
+
+	if err := conf.Get("hosts", "dummy").Scan(&DummyAccount); err != nil {
+		logger.Fatal(consts.UserServiceTag, "Failed to get dummy account configurations", err.Error())
 	}
 }

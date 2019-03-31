@@ -43,7 +43,7 @@ const (
 var (
 	serviceStateLocker stateLocker
 	uuidMapLocker      sync.Map
-	secretLocker   sync.RWMutex
+	secretLocker       sync.RWMutex
 
 	// converts the state of the service to a string
 	serviceStateMap = map[state]string{

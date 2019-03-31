@@ -66,6 +66,8 @@ steps:
       export hosts_smtp_port=$(testGmailPort)
       export hosts_smtp_username=$(testGmailUser)
       export hosts_smtp_password=$PASSWORD
+      export hosts_dummy_email=$(testDummyEmail)
+      export hosts_dummy_password=$(testDummyPassword)
       go test -v -cover -race ./...
       go get github.com/jstemmer/go-junit-report
       go get github.com/axw/gocov/gocov
