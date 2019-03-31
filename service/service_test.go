@@ -549,7 +549,6 @@ func TestAuthenticateUser(t *testing.T) {
 	dummyReq := &pbsvc.UserRequest{
 		User: &conf.DummyAccount,
 	}
-	fmt.Println("asdsadas", conf.DummyAccount)
 	s := Service{}
 	response, err = s.AuthenticateUser(context.TODO(), dummyReq)
 	assert.Nil(t, err)
