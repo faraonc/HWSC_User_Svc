@@ -23,7 +23,7 @@ var (
 	// EmailHost contains smtp configs grabbed from env vars
 	EmailHost hosts.SMTPHost
 
-	// DummyAccount is used for creating accounts
+	// DummyAccount reads from environment variables, and it is used for creating accounts
 	DummyAccount pblib.User
 )
 
