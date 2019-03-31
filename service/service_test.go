@@ -545,6 +545,15 @@ func TestAuthenticateUser(t *testing.T) {
 			assert.Equal(t, codes.OK.String(), response.Message)
 		}
 	}
+
+	dummyReq := &pbsvc.UserRequest{
+		User: &conf.DummyAccount,
+	}
+	fmt.Println("asdsadas", conf.DummyAccount)
+	s := Service{}
+	response, err = s.AuthenticateUser(context.TODO(), dummyReq)
+	assert.Nil(t, err)
+	assert.Equal(t, conf.DummyAccount.Email, response.User.Email)
 }
 
 func TestMakeNewSecret(t *testing.T) {
