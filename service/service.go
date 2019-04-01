@@ -172,7 +172,12 @@ func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 		logger.Error(consts.CreateUserTag, consts.MsgErrSendEmail, err.Error())
 	}
 
-	return userCreatedResponse, nil
+	return &pbsvc.UserResponse{
+		Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
+		Message:        codes.OK.String(),
+		Identification: &pblib.Identification{Token: emailID.GetToken()},
+		User:           user,
+	}, nil
 }
 
 // DeleteUser deletes a user row in accounts table.
