@@ -132,37 +132,42 @@ func TestInsertEmailToken(t *testing.T) {
 	err = deleteEmailTokenRow(user2.GetUser().GetUuid())
 	assert.Nil(t, err)
 
-	validToken1, err := generateSecretKey(emailTokenByteSize)
+	validID1, err := generateEmailToken(user1.GetUser().GetUuid(), user1.GetUser().GetPermissionLevel())
 	assert.Nil(t, err)
+	assert.NotNil(t, validID1)
 
 	desc := "empty uuid"
-	err = insertEmailToken("", validToken1)
+	err = insertEmailToken("", validID1.GetToken(), validID1.GetSecret())
 	assert.EqualError(t, err, authconst.ErrInvalidUUID.Error(), desc)
 
 	desc = "invalid uuid format"
-	err = insertEmailToken("1234", validToken1)
+	err = insertEmailToken("1234", validID1.GetToken(), validID1.GetSecret())
 	assert.EqualError(t, err, authconst.ErrInvalidUUID.Error(), desc)
 
 	desc = "empty token"
-	err = insertEmailToken(user1.GetUser().GetUuid(), "")
+	err = insertEmailToken(user1.GetUser().GetUuid(), "", validID1.GetSecret())
 	assert.EqualError(t, err, authconst.ErrEmptyToken.Error(), desc)
 
 	desc = "valid uuid and valid token"
-	err = insertEmailToken(user1.GetUser().GetUuid(), validToken1)
+	err = insertEmailToken(user1.GetUser().GetUuid(), validID1.GetToken(), validID1.GetSecret())
 	assert.Nil(t, err, desc)
 
 	desc = "test duplicate uuid in user_svc.email_tokens table"
-	err = insertEmailToken(user1.GetUser().GetUuid(), "some token")
+	err = insertEmailToken(user1.GetUser().GetUuid(), "some token", validID1.GetSecret())
 	assert.EqualError(t, err, "pq: duplicate key value violates unique constraint \"email_tokens_uuid_key\"", desc)
 
 	desc = "test non-existent uuid"
 	nonExistentUUID, _ := generateUUID()
-	err = insertEmailToken(nonExistentUUID, "some token")
+	err = insertEmailToken(nonExistentUUID, "some token", validID1.GetSecret())
 	assert.EqualError(t, err, "pq: insert or update on table \"email_tokens\" violates foreign key constraint \"email_tokens_uuid_fkey\"", desc)
 
 	desc = "test duplicate token"
-	err = insertEmailToken(user2.GetUser().GetUuid(), validToken1)
+	err = insertEmailToken(user2.GetUser().GetUuid(), validID1.GetToken(), validID1.GetSecret())
 	assert.EqualError(t, err, "pq: duplicate key value violates unique constraint \"email_tokens_pkey\"", desc)
+
+	desc = "test nil secret"
+	err = insertEmailToken(user2.GetUser().GetUuid(), validID1.GetToken(), nil)
+	assert.EqualError(t, err, authconst.ErrNilSecret.Error(), desc)
 
 }
 
@@ -606,13 +611,12 @@ func TestGetEmailTokenRow(t *testing.T) {
 	err = deleteEmailTokenRow(user1.GetUser().GetUuid())
 	assert.Nil(t, err)
 
-	// generate a email token
-	emailToken, err := generateSecretKey(emailTokenByteSize)
+	emailID, err := generateEmailToken(user1.GetUser().GetUuid(), user1.GetUser().GetPermissionLevel())
 	assert.Nil(t, err)
-	assert.NotEmpty(t, emailToken)
+	assert.NotNil(t, emailID)
 
 	// insert token
-	err = insertEmailToken(user1.GetUser().GetUuid(), emailToken)
+	err = insertEmailToken(user1.GetUser().GetUuid(), emailID.GetToken(), emailID.GetSecret())
 	assert.Nil(t, err)
 
 	cases := []struct {
@@ -621,7 +625,7 @@ func TestGetEmailTokenRow(t *testing.T) {
 		isExpErr bool
 		expMsg   string
 	}{
-		{"test existing token", emailToken, false, ""},
+		{"test existing token", emailID.GetToken(), false, ""},
 		{"test empty token string", "", true, authconst.ErrEmptyToken.Error()},
 		{"test non-existing token", "1234abc", true, consts.ErrNoMatchingEmailTokenFound.Error()},
 	}
@@ -634,7 +638,7 @@ func TestGetEmailTokenRow(t *testing.T) {
 			assert.EqualError(t, err, c.expMsg, c.desc)
 		} else {
 			assert.Nil(t, err, c.desc)
-			assert.Equal(t, retrievedRow.token, emailToken, c.desc)
+			assert.Equal(t, retrievedRow.token, emailID.GetToken(), c.desc)
 		}
 	}
 }

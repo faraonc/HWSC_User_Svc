@@ -314,6 +314,29 @@ func TestComparePassword(t *testing.T) {
 	assert.EqualError(t, err, consts.ErrInvalidPassword.Error())
 }
 
+func TestGenerateEmailToken(t *testing.T) {
+	cases := []struct {
+		uuid       string
+		permission string
+		isExpError bool
+		expError   error
+	}{
+		{"", "", true, authconst.ErrInvalidUUID},
+		{"01d1na5ekzr7p98hragv5fmvx", "", true, authconst.ErrInvalidUUID},
+		{"01d3x3wm2nnrdfzp0tka2vw9dx", "", true, authconst.ErrInvalidPermission},
+		{"01d3x3wm2nnrdfzp0tka2vw9dx", "SuperAdmin", true, authconst.ErrInvalidPermission},
+		{"01d3x3wm2nnrdfzp0tka2vw9dx", "USER", false, nil},
+	}
+	for _, c := range cases {
+		id, err := generateEmailToken(c.uuid, c.permission)
+		if c.isExpError {
+			assert.EqualError(t, err, c.expError.Error())
+		} else {
+			assert.NotNil(t, id)
+		}
+	}
+}
+
 func TestGenerateSecretKey(t *testing.T) {
 	// NOTE: unable to force a race condition given the nature of randomByte used in generateEmailToken()
 	// but functionality is same as generateUUID and that's been tested for race conditions
