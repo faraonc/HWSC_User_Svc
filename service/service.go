@@ -718,6 +718,7 @@ func (s *Service) VerifyEmailToken(ctx context.Context, req *pbsvc.UserRequest) 
 
 	uuid := auth.ExtractUUID(emailToken)
 	if uuid == "" {
+		logger.Error(consts.VerifyEmailToken, authconst.ErrInvalidUUID.Error())
 		return nil, consts.ErrStatusUUIDInvalid
 	}
 
