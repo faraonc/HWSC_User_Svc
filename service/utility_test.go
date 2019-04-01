@@ -120,6 +120,7 @@ func TestValidateUser(t *testing.T) {
 		{&invalidEmail, true, consts.ErrInvalidUserEmail.Error()},
 		{&invalidPassword, true, consts.ErrInvalidPassword.Error()},
 		{&invalidOrg, true, consts.ErrInvalidUserOrganization.Error()},
+		{nil, true, consts.ErrNilRequestUser.Error()},
 	}
 
 	for _, c := range cases {
