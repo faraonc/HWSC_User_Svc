@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/mux v1.7.0 // indirect
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190310103314-d5245c3ac7ad
-	github.com/hwsc-org/hwsc-lib v0.0.0-20190310104150-51f502b2e5cc
+	github.com/hwsc-org/hwsc-lib v0.0.0-20190401004322-783e42349378
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/lib/pq v1.0.0
 	github.com/micro/go-config v0.14.0

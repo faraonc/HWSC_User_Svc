@@ -5,7 +5,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/protobuf/lib"
+	"github.com/hwsc-org/hwsc-lib/auth"
 	authconst "github.com/hwsc-org/hwsc-lib/consts"
+	"github.com/hwsc-org/hwsc-lib/validation"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/oklog/ulid"
 	"golang.org/x/crypto/bcrypt"
@@ -155,6 +157,52 @@ func comparePassword(hashedPassword string, password string) error {
 	}
 
 	return nil
+}
+
+// generateEmailToken takes the user's uuid and permission to generate an email token for verification.
+// Returns an identification containing the secret and token string.
+func generateEmailToken(uuid string, permission string) (*pblib.Identification, error) {
+	if err := validation.ValidateUserUUID(uuid); err != nil {
+		return nil, err
+	}
+	permissionLevel, ok := auth.PermissionEnumMap[permission]
+	if !ok {
+		return nil, authconst.ErrInvalidPermission
+	}
+	emailSecretKey, err := generateSecretKey(emailTokenByteSize)
+	if err != nil {
+		return nil, err
+	}
+	// subtract a second because the test runs fast causing our check to fail
+	emailTokenCreationTime := time.Now().UTC().Add(time.Duration(-1) * time.Second)
+	emailTokenExpirationTime, err := generateExpirationTimestamp(emailTokenCreationTime, daysInTwoWeeks)
+	if err != nil {
+		return nil, err
+	}
+
+	header := &auth.Header{
+		Alg:      auth.AlgorithmMap[auth.UserRegistration],
+		TokenTyp: auth.Jet,
+	}
+	body := &auth.Body{
+		UUID:                uuid,
+		Permission:          permissionLevel,
+		ExpirationTimestamp: emailTokenExpirationTime.Unix(),
+	}
+	secret := &pblib.Secret{
+		Key:                 emailSecretKey,
+		CreatedTimestamp:    emailTokenCreationTime.Unix(),
+		ExpirationTimestamp: emailTokenExpirationTime.Unix(),
+	}
+	emailToken, err := auth.NewToken(header, body, secret)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pblib.Identification{
+		Token:  emailToken,
+		Secret: secret,
+	}, nil
 }
 
 // generateRandomToken generates a base64 URL-safe string

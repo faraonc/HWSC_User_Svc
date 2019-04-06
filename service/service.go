@@ -44,12 +44,6 @@ var (
 	serviceStateLocker stateLocker
 	uuidMapLocker      sync.Map
 	secretLocker       sync.RWMutex
-
-	// converts the state of the service to a string
-	serviceStateMap = map[state]string{
-		available:   "Available",
-		unavailable: "Unavailable",
-	}
 )
 
 func init() {
@@ -127,51 +121,62 @@ func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// from here on: do not return an error because we can always regenerate tokens and resend verification emails
-
-	// create unique email token
-	emailToken, err := generateSecretKey(emailTokenByteSize)
-	if err != nil {
-		logger.Error(consts.CreateUserTag, consts.MsgErrGeneratingEmailToken, err.Error())
-	}
-
-	// insert token into db, if nondb error returns, token will simply expire, so no need to remove
-	if err := insertEmailToken(user.GetUuid(), emailToken); err != nil {
-		logger.Error(consts.CreateUserTag, consts.MsgErrInsertEmailToken, err.Error())
-	}
-
-	// generate verficiation link for emails
-	verificationLink, err := generateEmailVerifyLink(emailToken)
-	if err != nil {
-		logger.Error(consts.CreateUserTag, consts.MsgErrGeneratingEmailVerifyLink, err.Error())
-	}
-
-	// send email
-	emailData := make(map[string]string)
-	if verificationLink != "" {
-		emailData[verificationLinkKey] = verificationLink
-	}
-
-	emailReq, err := newEmailRequest(emailData, []string{user.GetEmail()}, conf.EmailHost.Username, subjectVerifyEmail)
-	if err != nil {
-		logger.Error(consts.CreateUserTag, consts.MsgErrEmailRequest, err.Error())
-	}
-
-	if err := emailReq.sendEmail(templateVerifyEmail); err != nil {
-		logger.Error(consts.CreateUserTag, consts.MsgErrSendEmail, err.Error())
-	}
-
 	logger.Info("Inserted new user:", user.GetUuid(), user.GetFirstName(), user.GetLastName())
 
 	user.Password = ""
 	user.IsVerified = false
 	user.PermissionLevel = auth.PermissionStringMap[auth.NoPermission]
 
+	userCreatedResponse := &pbsvc.UserResponse{
+		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
+		Message: codes.OK.String(),
+		User:    user,
+	}
+
+	// from here on: do not return an error because we can always regenerate tokens and resend verification emails
+
+	// create identification for email token
+	emailID, err := generateEmailToken(user.GetUuid(), user.PermissionLevel)
+	if err != nil {
+		logger.Error(consts.CreateUserTag, consts.MsgErrGeneratingEmailToken, err.Error())
+		return userCreatedResponse, nil
+	}
+
+	// insert token into db, if nondb error returns, token will simply expire, so no need to remove
+	if err := insertEmailToken(user.GetUuid(), emailID.GetToken(), emailID.GetSecret()); err != nil {
+		logger.Error(consts.CreateUserTag, consts.MsgErrInsertEmailToken, err.Error())
+		return userCreatedResponse, nil
+	}
+
+	// generate verification link for emails
+	verificationLink, err := generateEmailVerifyLink(emailID.GetToken())
+	if err != nil {
+		logger.Error(consts.CreateUserTag, consts.MsgErrGeneratingEmailVerifyLink, err.Error())
+		return userCreatedResponse, nil
+	}
+
+	// send email
+	emailData := make(map[string]string)
+	if verificationLink == "" {
+		return userCreatedResponse, nil
+	}
+	emailData[verificationLinkKey] = verificationLink
+
+	emailReq, err := newEmailRequest(emailData, []string{user.GetEmail()}, conf.EmailHost.Username, subjectVerifyEmail)
+	if err != nil {
+		logger.Error(consts.CreateUserTag, consts.MsgErrEmailRequest, err.Error())
+		return userCreatedResponse, nil
+	}
+
+	if err := emailReq.sendEmail(templateVerifyEmail); err != nil {
+		logger.Error(consts.CreateUserTag, consts.MsgErrSendEmail, err.Error())
+	}
+
 	return &pbsvc.UserResponse{
 		Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
 		Message:        codes.OK.String(),
+		Identification: &pblib.Identification{Token: emailID.GetToken()},
 		User:           user,
-		Identification: &pblib.Identification{Token: emailToken},
 	}, nil
 }
 
@@ -711,7 +716,15 @@ func (s *Service) VerifyEmailToken(ctx context.Context, req *pbsvc.UserRequest) 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// TODO add uuid locker
+	uuid := auth.ExtractUUID(emailToken)
+	if uuid == "" {
+		logger.Error(consts.VerifyEmailToken, authconst.ErrInvalidUUID.Error())
+		return nil, consts.ErrStatusUUIDInvalid
+	}
+
+	lock, _ := uuidMapLocker.LoadOrStore(uuid, &sync.RWMutex{})
+	lock.(*sync.RWMutex).Lock()
+	defer lock.(*sync.RWMutex).Unlock()
 
 	// find matching email token row
 	retrievedToken, err := getEmailTokenRow(emailToken)

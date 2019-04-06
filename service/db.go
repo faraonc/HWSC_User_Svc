@@ -29,6 +29,7 @@ type tokenAuthRow struct {
 
 type tokenEmailRow struct {
 	token               string
+	secretKey           string
 	createdTimestamp    int64
 	expirationTimestamp int64
 	uuid                string
@@ -125,9 +126,9 @@ func insertNewUser(user *pblib.User) error {
 	return nil
 }
 
-// insertEmailToken inserts received token to user_svc.email_tokens.
+// insertEmailToken inserts received token and secret to user_svc.email_tokens.
 // Returns error if strings are empty or error with inserting to database.
-func insertEmailToken(uuid string, token string) error {
+func insertEmailToken(uuid string, token string, secret *pblib.Secret) error {
 	// check if uuid is valid form
 	if err := validation.ValidateUserUUID(uuid); err != nil {
 		return err
@@ -137,17 +138,17 @@ func insertEmailToken(uuid string, token string) error {
 		return authconst.ErrEmptyToken
 	}
 
-	createdTimestamp := time.Now().UTC()
-	expirationTimestamp, err := generateExpirationTimestamp(createdTimestamp, daysInTwoWeeks)
-	if err != nil {
+	if err := auth.ValidateSecret(secret); err != nil {
 		return err
 	}
 
-	command := `INSERT INTO user_svc.email_tokens(token, created_timestamp, expiration_timestamp, uuid) 
-				VALUES($1, $2, $3, $4)
-				`
-	_, err = postgresDB.Exec(command, token, createdTimestamp, expirationTimestamp, uuid)
+	createdTimestamp := time.Unix(secret.GetCreatedTimestamp(), 0).UTC()
+	expirationTimestamp := time.Unix(secret.GetExpirationTimestamp(), 0).UTC()
 
+	command := `INSERT INTO user_svc.email_tokens(token, secret_key, created_timestamp, expiration_timestamp, uuid) 
+				VALUES($1, $2, $3, $4, $5)
+				`
+	_, err := postgresDB.Exec(command, token, secret.GetKey(), createdTimestamp, expirationTimestamp, uuid)
 	if err != nil {
 		return err
 	}
@@ -285,7 +286,7 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 	newIsVerified := dbDerived.GetIsVerified()
 
 	newEmail := ""
-	var newEmailToken string
+	var newEmailID *pblib.Identification
 	if svcDerived.GetEmail() != "" && svcDerived.GetEmail() != dbDerived.GetEmail() {
 		if err := validateEmail(svcDerived.GetEmail()); err != nil {
 			return nil, err
@@ -302,12 +303,12 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 		}
 
 		// create unique email token
-		token, err := generateSecretKey(emailTokenByteSize)
+		id, err := generateEmailToken(dbDerived.GetUuid(), dbDerived.GetPermissionLevel())
 		if err != nil {
 			// does not return error because we can regen a token and thus resend email
 			logger.Error(consts.UpdatingUserRowTag, consts.MsgErrGeneratingEmailToken, err.Error())
 		}
-		newEmailToken = token
+		newEmailID = id
 		newIsVerified = false
 	}
 
@@ -342,31 +343,32 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 	}
 
 	// new email process
-	if newEmailToken != "" {
+	if newEmailID != nil {
 		// do not return error b/c we can resend verification emails
-
-		if err := insertEmailToken(uuid, newEmailToken); err != nil {
+		if err := insertEmailToken(uuid, newEmailID.GetToken(), newEmailID.GetSecret()); err != nil {
 			logger.Error(consts.UpdateUserTag, consts.MsgErrInsertEmailToken, err.Error())
+			return updatedUser, nil
 		}
-
 		// generate a new verification link
-		verificationLink, err := generateEmailVerifyLink(newEmailToken)
+		verificationLink, err := generateEmailVerifyLink(newEmailID.GetToken())
 		if err != nil {
 			logger.Error(consts.UpdateUserTag, consts.MsgErrGeneratingEmailVerifyLink, err.Error())
+			return updatedUser, nil
 		}
-
 		// send email
 		emailData := make(map[string]string)
 		if verificationLink != "" {
 			emailData[verificationLinkKey] = verificationLink
+			return updatedUser, nil
 		}
-
 		emailReq, err := newEmailRequest(emailData, []string{newEmail}, conf.EmailHost.Username, subjectUpdateEmail)
 		if err != nil {
 			logger.Error(consts.UpdateUserTag, consts.MsgErrEmailRequest, err.Error())
+			return updatedUser, nil
 		}
 		if err := emailReq.sendEmail(templateUpdateEmail); err != nil {
 			logger.Error(consts.UpdateUserTag, consts.MsgErrSendEmail, err.Error())
+			return updatedUser, nil
 		}
 	}
 
@@ -668,10 +670,10 @@ func getEmailTokenRow(token string) (*tokenEmailRow, error) {
 
 	defer row.Close()
 	for row.Next() {
-		var emailToken, uuid string
+		var emailToken, secretKey, uuid string
 		var createdTimestamp, expirationTimestamp time.Time
 
-		err := row.Scan(&emailToken, &createdTimestamp, &expirationTimestamp, &uuid)
+		err := row.Scan(&emailToken, &secretKey, &createdTimestamp, &expirationTimestamp, &uuid)
 		if err != nil {
 			return nil, err
 		}
@@ -682,6 +684,7 @@ func getEmailTokenRow(token string) (*tokenEmailRow, error) {
 
 		return &tokenEmailRow{
 			token:               emailToken,
+			secretKey:           secretKey,
 			createdTimestamp:    createdTimestamp.Unix(),
 			expirationTimestamp: expirationTimestamp.Unix(),
 			uuid:                uuid,

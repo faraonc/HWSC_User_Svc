@@ -801,18 +801,18 @@ func TestVerifyEmailToken(t *testing.T) {
 	err = deleteEmailTokenRow(user2.GetUser().GetUuid())
 	assert.Nil(t, err)
 
-	// generate a token we can refer to
-	user1EmailToken, err := generateSecretKey(emailTokenByteSize)
+	user1EmailID, err := generateEmailToken(user1.GetUser().GetUuid(), user1.GetUser().GetPermissionLevel())
 	assert.Nil(t, err)
-	assert.NotEmpty(t, user1EmailToken)
-	user2EmailToken, err := generateSecretKey(emailTokenByteSize)
+	assert.NotNil(t, user1EmailID)
+
+	user2EmailID, err := generateEmailToken(user2.GetUser().GetUuid(), user2.GetUser().GetPermissionLevel())
 	assert.Nil(t, err)
-	assert.NotEmpty(t, user2EmailToken)
+	assert.NotNil(t, user2EmailID)
 
 	// insert this token to test against
-	err = insertEmailToken(user1.GetUser().GetUuid(), user1EmailToken)
+	err = insertEmailToken(user1.GetUser().GetUuid(), user1EmailID.GetToken(), user1EmailID.GetSecret())
 	assert.Nil(t, err)
-	err = insertEmailToken(user2.GetUser().GetUuid(), user2EmailToken)
+	err = insertEmailToken(user2.GetUser().GetUuid(), user2EmailID.GetToken(), user2EmailID.GetSecret())
 	assert.Nil(t, err)
 
 	// define test cases to test against non expired tokens
@@ -830,12 +830,12 @@ func TestVerifyEmailToken(t *testing.T) {
 			true, status.Error(codes.InvalidArgument, authconst.ErrEmptyToken.Error()).Error(),
 		},
 		{"test non-existing token", &pbsvc.UserRequest{Identification: &pblib.Identification{Token: "1234"}},
-			true, status.Error(codes.Internal, consts.ErrNoMatchingEmailTokenFound.Error()).Error(),
+			true, consts.ErrStatusUUIDInvalid.Error(),
 		},
-		{"test valid new user", &pbsvc.UserRequest{Identification: &pblib.Identification{Token: user1EmailToken}},
+		{"test valid new user", &pbsvc.UserRequest{Identification: &pblib.Identification{Token: user1EmailID.GetToken()}},
 			false, "",
 		},
-		{"test valid existing user", &pbsvc.UserRequest{Identification: &pblib.Identification{Token: user2EmailToken}},
+		{"test valid existing user", &pbsvc.UserRequest{Identification: &pblib.Identification{Token: user2EmailID.GetToken()}},
 			false, "",
 		},
 	}
@@ -852,7 +852,7 @@ func TestVerifyEmailToken(t *testing.T) {
 
 			var retrievedUser *pblib.User
 			var err error
-			if c.req.Identification.GetToken() == user1EmailToken {
+			if c.req.Identification.GetToken() == user1EmailID.GetToken() {
 				retrievedUser, err = getUserRow(user1.GetUser().GetUuid())
 			} else {
 				retrievedUser, err = getUserRow(user2.GetUser().GetUuid())
@@ -865,13 +865,15 @@ func TestVerifyEmailToken(t *testing.T) {
 	// force expire the tokens for both new and existing user
 	expiredTimestamp := time.Now().AddDate(0, 0, -5)
 
-	command := `INSERT INTO user_svc.email_tokens(token, created_timestamp, expiration_timestamp, uuid)
-				VALUES($1, $2, $3, $4)
+	command := `INSERT INTO user_svc.email_tokens(token, secret_key, created_timestamp, expiration_timestamp, uuid)
+				VALUES($1, $2, $3, $4, $5)
 				`
 
-	_, err = postgresDB.Exec(command, user1EmailToken, time.Now(), expiredTimestamp, user1.GetUser().GetUuid())
+	_, err = postgresDB.Exec(command, user1EmailID.GetToken(), user1EmailID.GetSecret().GetKey(),
+		time.Now(), expiredTimestamp, user1.GetUser().GetUuid())
 	assert.Nil(t, err)
-	_, err = postgresDB.Exec(command, user2EmailToken, time.Now(), expiredTimestamp, user2.GetUser().GetUuid())
+	_, err = postgresDB.Exec(command, user2EmailID.GetToken(), user2EmailID.GetSecret().GetKey(),
+		time.Now(), expiredTimestamp, user2.GetUser().GetUuid())
 	assert.Nil(t, err)
 
 	// reset permissionLevel
@@ -886,10 +888,10 @@ func TestVerifyEmailToken(t *testing.T) {
 		deleteUser bool
 	}{
 		{"test expired token for new user",
-			&pbsvc.UserRequest{Identification: &pblib.Identification{Token: user1EmailToken}}, true,
+			&pbsvc.UserRequest{Identification: &pblib.Identification{Token: user1EmailID.GetToken()}}, true,
 		},
 		{"test expired token for existing user",
-			&pbsvc.UserRequest{Identification: &pblib.Identification{Token: user2EmailToken}}, false,
+			&pbsvc.UserRequest{Identification: &pblib.Identification{Token: user2EmailID.GetToken()}}, false,
 		},
 	}
 
