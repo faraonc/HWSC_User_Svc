@@ -555,7 +555,7 @@ func TestAuthenticateUser(t *testing.T) {
 	assert.Equal(t, conf.DummyAccount.Email, response.User.Email)
 }
 
-func TestMakeNewSecret(t *testing.T) {
+func TestMakeAuthNewSecret(t *testing.T) {
 	// no need to perform a check in the db here using a DAO,
 	// b/c this func is meant to be called by a client
 
@@ -570,7 +570,7 @@ func TestMakeNewSecret(t *testing.T) {
 	s := Service{}
 
 	// test with no secret in table
-	response, err := s.MakeNewSecret(context.TODO(), nil)
+	response, err := s.MakeNewAuthSecret(context.TODO(), nil)
 	assert.Nil(t, err)
 	assert.Equal(t, codes.OK.String(), response.Message)
 
@@ -580,7 +580,7 @@ func TestMakeNewSecret(t *testing.T) {
 	assert.NotNil(t, retrievedSecret)
 
 	// test with a secret already in table
-	response, err = s.MakeNewSecret(context.TODO(), nil)
+	response, err = s.MakeNewAuthSecret(context.TODO(), nil)
 	assert.Nil(t, err)
 	assert.Equal(t, codes.OK.String(), response.Message)
 
@@ -593,14 +593,14 @@ func TestMakeNewSecret(t *testing.T) {
 	assert.NotEqual(t, retrievedSecret.GetKey(), retrievedNewestSecret.GetKey())
 }
 
-func TestGetSecret(t *testing.T) {
+func TestGetAuthSecret(t *testing.T) {
 	err := unitTestDeleteSecretTable()
 	assert.Nil(t, err)
 
 	s := Service{}
 
 	// test secret is generated if no secret present
-	response, err := s.GetSecret(context.TODO(), nil)
+	response, err := s.GetAuthSecret(context.TODO(), nil)
 	assert.Nil(t, err)
 	assert.Equal(t, codes.OK.String(), response.GetMessage())
 	assert.NotEmpty(t, response.GetIdentification().GetSecret())
@@ -616,7 +616,7 @@ func TestGetSecret(t *testing.T) {
 	assert.Equal(t, secretKey, retrievedSecret.GetKey())
 
 	// get secret by service
-	response, err = s.GetSecret(context.TODO(), nil)
+	response, err = s.GetAuthSecret(context.TODO(), nil)
 	assert.Nil(t, err)
 	assert.Equal(t, response.Identification.Secret.Key, retrievedSecret.Key)
 	assert.Equal(t, response.Identification.Secret.CreatedTimestamp, retrievedSecret.CreatedTimestamp)

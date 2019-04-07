@@ -162,14 +162,8 @@ github.com/hashicorp/serf v0.8.2/go.mod h1:6hOLApaqBFA1NXqRQAsxw9QxuDEvNxSQRwA/J
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190310103314-d5245c3ac7ad h1:fWzDe74AMENol7oBM5beu8A6gr2MZDVfRDBlYuFnHBM=
 github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190310103314-d5245c3ac7ad/go.mod h1:/iVVgMsaXIOevC15fCsGWI0Dx2p6POFJQxeYbyjGst0=
-github.com/hwsc-org/hwsc-lib v0.0.0-20190310104150-51f502b2e5cc h1:uwnFS4r85zMd8zM141P2d4hqCrmUPumuNFZpXoIgY6w=
-github.com/hwsc-org/hwsc-lib v0.0.0-20190310104150-51f502b2e5cc/go.mod h1:x+Jk9oHb+7qbcHBKNUkJogQdM2D2BuLXbQ5wsGIiK4E=
-github.com/hwsc-org/hwsc-lib v0.0.0-20190331065020-ea53397bd51f h1:hwMbe+3E0lM2eYzeSAXiFFAz4NgaBqzD7Xmdf3Rbbes=
-github.com/hwsc-org/hwsc-lib v0.0.0-20190331065020-ea53397bd51f/go.mod h1:x+Jk9oHb+7qbcHBKNUkJogQdM2D2BuLXbQ5wsGIiK4E=
-github.com/hwsc-org/hwsc-lib v0.0.0-20190331232933-5620b55ff2c9 h1:rULV5czgClwmJU8b0jOmlKd2vCLFFlfc+uc3f2RqJqo=
-github.com/hwsc-org/hwsc-lib v0.0.0-20190331232933-5620b55ff2c9/go.mod h1:x+Jk9oHb+7qbcHBKNUkJogQdM2D2BuLXbQ5wsGIiK4E=
-github.com/hwsc-org/hwsc-lib v0.0.0-20190331234926-a1a8092ce613 h1:Kl6etvSNV1PB0z89W2iWrIKzv4sqeRUnFA4l6omCmIQ=
-github.com/hwsc-org/hwsc-lib v0.0.0-20190331234926-a1a8092ce613/go.mod h1:x+Jk9oHb+7qbcHBKNUkJogQdM2D2BuLXbQ5wsGIiK4E=
+github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190407062623-e3915e2d7972 h1:7OFhjk4kKgVAN9WtmL5tdZ3cVeXqPBB+ZE3nkUoDtnk=
+github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190407062623-e3915e2d7972/go.mod h1:/iVVgMsaXIOevC15fCsGWI0Dx2p6POFJQxeYbyjGst0=
 github.com/hwsc-org/hwsc-lib v0.0.0-20190401004322-783e42349378 h1:J2ADkUKYjEvOiwacTm8RXjpBThtd75Cg9Trv4zaORXE=
 github.com/hwsc-org/hwsc-lib v0.0.0-20190401004322-783e42349378/go.mod h1:x+Jk9oHb+7qbcHBKNUkJogQdM2D2BuLXbQ5wsGIiK4E=
 github.com/imdario/mergo v0.3.7 h1:Y+UAYTZ7gDEuOfhxKWy+dvb5dRQ6rJjFSdX2HZY1/gI=

@@ -10,8 +10,8 @@ const (
 	GetUserTag          string = "GetUser -"
 	UserServiceTag      string = "User Service -"
 	GetAuthTokenTag     string = "GetAuthToken -"
-	MakeNewSecret       string = "MakeNewSecret -"
-	GetSecret           string = "GetSecret -"
+	MakeNewAuthSecret   string = "MakeNewAuthSecret -"
+	GetAuthSecret       string = "GetAuthSecret -"
 	VerifyAuthToken     string = "VerifyAuthToken -"
 	PSQL                string = "PSQL -"
 )

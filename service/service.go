@@ -429,14 +429,14 @@ func (s *Service) ShareDocument(ctx context.Context, req *pbsvc.UserRequest) (*p
 	return &pbsvc.UserResponse{}, nil
 }
 
-// GetSecret looks up active secret (marked with true boolean) from secrets table.
+// GetAuthSecret looks up active secret (marked with true boolean) from secrets table.
 // If no active secrets were found, this method will generate and insert a new secret to secrets table.
 // On success, returns retrieved secret if active secret was found or new secret.
-func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
-	logger.RequestService("GetSecret")
+func (s *Service) GetAuthSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
+	logger.RequestService("GetAuthSecret")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		logger.Error(consts.GetSecret, consts.ErrServiceUnavailable.Error())
+		logger.Error(consts.GetAuthSecret, consts.ErrServiceUnavailable.Error())
 		return nil, consts.ErrStatusServiceUnavailable
 	}
 
@@ -452,21 +452,21 @@ func (s *Service) GetSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc
 	// check for any active secret
 	exists, err := hasActiveSecret()
 	if err != nil {
-		logger.Error(consts.GetSecret, consts.MsgErrLookUpActiveSecret, err.Error())
+		logger.Error(consts.GetAuthSecret, consts.MsgErrLookUpActiveSecret, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// no active key was found in DB, create and insert new secret
 	if !exists {
 		if err := insertNewSecret(); err != nil {
-			logger.Error(consts.GetSecret, consts.MsgErrSecret, err.Error())
+			logger.Error(consts.GetAuthSecret, consts.MsgErrSecret, err.Error())
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
 
 	retrievedSecret, err := getActiveSecretRow()
 	if err != nil {
-		logger.Error(consts.GetSecret, consts.MsgErrGetActiveSecret, err.Error())
+		logger.Error(consts.GetAuthSecret, consts.MsgErrGetActiveSecret, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -644,14 +644,14 @@ func (s *Service) VerifyAuthToken(ctx context.Context, req *pbsvc.UserRequest) (
 	}, nil
 }
 
-// MakeNewSecret generates and inserts a new secret into DB and
+// MakeNewAuthSecret generates and inserts a new secret into DB and
 // thereby update the currSecret with the newly generated secret.
 // On success, returns message and status marked with OK.
-func (s *Service) MakeNewSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
-	logger.RequestService("MakeNewSecret")
+func (s *Service) MakeNewAuthSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
+	logger.RequestService("MakeNewAuthSecret")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		logger.Error(consts.MakeNewSecret, consts.ErrServiceUnavailable.Error())
+		logger.Error(consts.MakeNewAuthSecret, consts.ErrServiceUnavailable.Error())
 		return nil, consts.ErrStatusServiceUnavailable
 	}
 
@@ -664,14 +664,14 @@ func (s *Service) MakeNewSecret(ctx context.Context, req *pbsvc.UserRequest) (*p
 
 	// insert new secret
 	if err := insertNewSecret(); err != nil {
-		logger.Error(consts.MakeNewSecret, consts.MsgErrSecret, err.Error())
+		logger.Error(consts.MakeNewAuthSecret, consts.MsgErrSecret, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// retrieve the newly updated active secret and set it as the currSecret
 	retrievedSecret, err := getActiveSecretRow()
 	if err != nil {
-		logger.Error(consts.MakeNewSecret, consts.MsgErrGetActiveSecret, err.Error())
+		logger.Error(consts.MakeNewAuthSecret, consts.MsgErrGetActiveSecret, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	currSecret = retrievedSecret

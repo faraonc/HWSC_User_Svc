@@ -8,7 +8,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.2.4
 	github.com/gorilla/mux v1.7.0 // indirect
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
-	github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190310103314-d5245c3ac7ad
+	github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190407062623-e3915e2d7972
 	github.com/hwsc-org/hwsc-lib v0.0.0-20190401004322-783e42349378
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/lib/pq v1.0.0
