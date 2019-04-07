@@ -444,15 +444,15 @@ func TestGenerateExpirationTimestamp(t *testing.T) {
 }
 
 func TestSetCurrentSecretOnce(t *testing.T) {
-	err := unitTestDeleteSecretTable()
+	err := unitTestDeleteAuthSecretTable()
 	assert.Nil(t, err)
 
 	desc := "test no active key in db error"
 	err = setCurrentSecretOnce()
 	assert.EqualError(t, err, consts.ErrNoActiveSecretKeyFound.Error(), desc)
 
-	desc = "test nil return when currSecret is already set"
-	currSecret = &pblib.Secret{
+	desc = "test nil return when currAuthSecret is already set"
+	currAuthSecret = &pblib.Secret{
 		Key:                 "alksjdklasdjf",
 		CreatedTimestamp:    time.Now().Unix(),
 		ExpirationTimestamp: time.Now().Unix(),
@@ -461,14 +461,14 @@ func TestSetCurrentSecretOnce(t *testing.T) {
 	assert.Nil(t, err, desc)
 
 	desc = "test retrieval and setting of an existing active key in db"
-	currSecret = nil
-	err = insertNewSecret()
+	currAuthSecret = nil
+	err = insertNewAuthSecret()
 	assert.Nil(t, err)
 	err = setCurrentSecretOnce()
 	assert.Nil(t, err, desc)
 	retrievedSecret, err := getActiveSecretRow()
 	assert.Nil(t, err)
-	assert.Equal(t, currSecret.GetKey(), retrievedSecret.GetKey())
+	assert.Equal(t, currAuthSecret.GetKey(), retrievedSecret.GetKey())
 }
 
 func TestGenerateEmailVerifyLink(t *testing.T) {

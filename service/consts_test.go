@@ -53,7 +53,7 @@ func unitTestInsertUser(lastName string) (*pbsvc.UserResponse, error) {
 	return s.CreateUser(context.TODO(), &pbsvc.UserRequest{User: insertUser})
 }
 
-func unitTestDeleteSecretTable() error {
+func unitTestDeleteAuthSecretTable() error {
 	_, err := postgresDB.Exec("DELETE FROM user_security.secrets")
 	if err != nil {
 		return err
@@ -63,23 +63,23 @@ func unitTestDeleteSecretTable() error {
 	// it references from secrets table is deleted, but just in case
 	_, err = postgresDB.Exec("DELETE FROM user_security.active_secret")
 
-	currSecret = nil
+	currAuthSecret = nil
 	return err
 }
 
-func unitTestDeleteInsertGetSecret() (*pblib.Secret, error) {
-	if err := unitTestDeleteSecretTable(); err != nil {
+func unitTestDeleteInsertGetAuthSecret() (*pblib.Secret, error) {
+	if err := unitTestDeleteAuthSecretTable(); err != nil {
 		return nil, err
 	}
 
-	if err := insertNewSecret(); err != nil {
+	if err := insertNewAuthSecret(); err != nil {
 		return nil, err
 	}
 
 	return getActiveSecretRow()
 }
 
-func unitTestInsertNewToken() (*pblib.Secret, string, error) {
+func unitTestInsertNewAuthToken() (*pblib.Secret, string, error) {
 	// delete tokens table
 	_, err := postgresDB.Exec("DELETE FROM user_security.auth_tokens")
 	if err != nil {
@@ -87,7 +87,7 @@ func unitTestInsertNewToken() (*pblib.Secret, string, error) {
 	}
 
 	// delete secrets table and generate a new secret
-	newSecret, err := unitTestDeleteInsertGetSecret()
+	newSecret, err := unitTestDeleteInsertGetAuthSecret()
 	if err != nil {
 		return nil, "", err
 	}

@@ -42,7 +42,7 @@ const (
 var (
 	connectionString string
 	postgresDB       *sql.DB
-	currSecret       *pblib.Secret
+	currAuthSecret   *pblib.Secret
 )
 
 func init() {
@@ -408,12 +408,12 @@ func getActiveSecretRow() (*pblib.Secret, error) {
 	return nil, consts.ErrNoActiveSecretKeyFound
 }
 
-// insertNewSecret inserts a newly generated secret key to database.
+// insertNewAuthSecret inserts a newly generated secret key to database.
 // Secret key is used to sign JWT's.
 // There is a trigger set up with secrets table in that with every insert,
 // the active_secret table is updated with the newly inserted secret.
 // Returns err if secret is empty or error with database.
-func insertNewSecret() error {
+func insertNewAuthSecret() error {
 	// generate a new secret
 	secretKey, err := generateSecretKey(auth.SecretByteSize)
 	if err != nil {
@@ -602,10 +602,10 @@ func pairTokenWithSecret(token string) (*pblib.Identification, error) {
 	return nil, consts.ErrNoMatchingAuthTokenFound
 }
 
-// hasActiveSecret checks active_secret table for a row.
+// hasActiveAuthSecret checks active_secret table for a row.
 // active_secret table has a constraint to only one row.
 // Returns true if a row was found, false otherwise, or any error encountered with the db itself.
-func hasActiveSecret() (bool, error) {
+func hasActiveAuthSecret() (bool, error) {
 	command := `SELECT EXISTS( 
   					SELECT *
   					FROM user_security.active_secret

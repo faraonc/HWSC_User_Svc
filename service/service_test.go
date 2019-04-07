@@ -559,7 +559,7 @@ func TestMakeAuthNewSecret(t *testing.T) {
 	// no need to perform a check in the db here using a DAO,
 	// b/c this func is meant to be called by a client
 
-	err := unitTestDeleteSecretTable()
+	err := unitTestDeleteAuthSecretTable()
 	assert.Nil(t, err)
 
 	// test for no active secret
@@ -594,7 +594,7 @@ func TestMakeAuthNewSecret(t *testing.T) {
 }
 
 func TestGetAuthSecret(t *testing.T) {
-	err := unitTestDeleteSecretTable()
+	err := unitTestDeleteAuthSecretTable()
 	assert.Nil(t, err)
 
 	s := Service{}
@@ -627,10 +627,10 @@ func TestGetAuthToken(t *testing.T) {
 	lastName2 := "GetToken-Two"
 
 	// refresh secret table
-	retrievedSecret, err := unitTestDeleteInsertGetSecret()
+	retrievedSecret, err := unitTestDeleteInsertGetAuthSecret()
 	assert.Nil(t, err)
 	assert.NotNil(t, retrievedSecret)
-	currSecret = retrievedSecret
+	currAuthSecret = retrievedSecret
 
 	// insert a user
 	responseUser1, err := unitTestInsertUser(lastName1)
@@ -638,7 +638,7 @@ func TestGetAuthToken(t *testing.T) {
 	assert.NotEmpty(t, responseUser1)
 	responseUser1.GetUser().Password = lastName1
 
-	// insert another user to test setting of nil currSecret
+	// insert another user to test setting of nil currAuthSecret
 	responseUser2, err := unitTestInsertUser(lastName2)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, responseUser2)
@@ -651,7 +651,7 @@ func TestGetAuthToken(t *testing.T) {
 	}{
 		// valid
 		{&pbsvc.UserRequest{User: responseUser1.GetUser()}, false, ""},
-		// valid - test setting of nil currSecret to active secret retrieved from db
+		// valid - test setting of nil currAuthSecret to active secret retrieved from db
 		{&pbsvc.UserRequest{User: responseUser2.GetUser()}, false, ""},
 		// nil request object
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
@@ -690,8 +690,8 @@ func TestGetAuthToken(t *testing.T) {
 	for index, c := range cases {
 		s := Service{}
 		if index == 1 {
-			// test setting of nil currSecret to active secret retrieved from db
-			currSecret = nil
+			// test setting of nil currAuthSecret to active secret retrieved from db
+			currAuthSecret = nil
 		}
 		response, err := s.GetAuthToken(context.TODO(), c.request)
 
@@ -699,7 +699,7 @@ func TestGetAuthToken(t *testing.T) {
 			assert.EqualError(t, err, c.expMsg)
 			assert.Nil(t, response)
 		} else if index == 1 {
-			desc := "test setting of nil currSecret to active secret retrieved from db"
+			desc := "test setting of nil currAuthSecret to active secret retrieved from db"
 			assert.Nil(t, err, desc)
 			assert.Equal(t, codes.OK.String(), response.GetMessage(), desc)
 			assert.Equal(t, response.GetIdentification().GetSecret().GetKey(), retrievedSecret.GetKey(), desc)
@@ -755,7 +755,7 @@ func TestVerifyAuthToken(t *testing.T) {
 		assert.Nil(t, response, c.desc)
 	}
 
-	newSecret, newToken, err := unitTestInsertNewToken()
+	newSecret, newToken, err := unitTestInsertNewAuthToken()
 	assert.Nil(t, err)
 	assert.NotNil(t, newSecret)
 	assert.NotEmpty(t, newToken)

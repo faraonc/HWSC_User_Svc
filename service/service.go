@@ -43,7 +43,7 @@ const (
 var (
 	serviceStateLocker stateLocker
 	uuidMapLocker      sync.Map
-	secretLocker       sync.RWMutex
+	authSecretLocker   sync.RWMutex
 )
 
 func init() {
@@ -446,11 +446,11 @@ func (s *Service) GetAuthSecret(ctx context.Context, req *pbsvc.UserRequest) (*p
 
 	// the chance of creating a new secret is very slim thus the usage of read lock
 	// b/c an admin or a job runner will be responsible for creating new secrets
-	secretLocker.RLock()
-	defer secretLocker.RUnlock()
+	authSecretLocker.RLock()
+	defer authSecretLocker.RUnlock()
 
 	// check for any active secret
-	exists, err := hasActiveSecret()
+	exists, err := hasActiveAuthSecret()
 	if err != nil {
 		logger.Error(consts.GetAuthSecret, consts.MsgErrLookUpActiveSecret, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
@@ -458,7 +458,7 @@ func (s *Service) GetAuthSecret(ctx context.Context, req *pbsvc.UserRequest) (*p
 
 	// no active key was found in DB, create and insert new secret
 	if !exists {
-		if err := insertNewSecret(); err != nil {
+		if err := insertNewAuthSecret(); err != nil {
 			logger.Error(consts.GetAuthSecret, consts.MsgErrSecret, err.Error())
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -570,21 +570,21 @@ func (s *Service) GetAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pb
 			logger.Error(consts.GetAuthTokenTag, consts.MsgErrGetActiveSecret, err.Error())
 			return nil, status.Error(codes.Unauthenticated, err.Error())
 		}
-		newToken, err := auth.NewToken(header, body, currSecret)
+		newToken, err := auth.NewToken(header, body, currAuthSecret)
 		if err != nil {
 			logger.Error(consts.GetAuthTokenTag, consts.MsgErrGeneratingAuthToken, err.Error())
 			return nil, status.Error(codes.Unauthenticated, err.Error())
 		}
 
 		// insert token into db for auditing
-		if err := insertAuthToken(newToken, header, body, currSecret); err != nil {
+		if err := insertAuthToken(newToken, header, body, currAuthSecret); err != nil {
 			logger.Error(consts.GetAuthTokenTag, consts.MsgErrInsertAuthToken, err.Error())
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
 		identity = &pblib.Identification{
 			Token:  newToken,
-			Secret: currSecret,
+			Secret: currAuthSecret,
 		}
 	}
 
@@ -645,7 +645,7 @@ func (s *Service) VerifyAuthToken(ctx context.Context, req *pbsvc.UserRequest) (
 }
 
 // MakeNewAuthSecret generates and inserts a new secret into DB and
-// thereby update the currSecret with the newly generated secret.
+// thereby update the currAuthSecret with the newly generated secret.
 // On success, returns message and status marked with OK.
 func (s *Service) MakeNewAuthSecret(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("MakeNewAuthSecret")
@@ -659,22 +659,22 @@ func (s *Service) MakeNewAuthSecret(ctx context.Context, req *pbsvc.UserRequest)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	secretLocker.Lock()
-	defer secretLocker.Unlock()
+	authSecretLocker.Lock()
+	defer authSecretLocker.Unlock()
 
 	// insert new secret
-	if err := insertNewSecret(); err != nil {
+	if err := insertNewAuthSecret(); err != nil {
 		logger.Error(consts.MakeNewAuthSecret, consts.MsgErrSecret, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// retrieve the newly updated active secret and set it as the currSecret
+	// retrieve the newly updated active secret and set it as the currAuthSecret
 	retrievedSecret, err := getActiveSecretRow()
 	if err != nil {
 		logger.Error(consts.MakeNewAuthSecret, consts.MsgErrGetActiveSecret, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	currSecret = retrievedSecret
+	currAuthSecret = retrievedSecret
 
 	return &pbsvc.UserResponse{
 		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},

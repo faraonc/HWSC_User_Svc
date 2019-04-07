@@ -254,16 +254,16 @@ func generateExpirationTimestamp(currentTimestamp time.Time, addDays int) (*time
 	return &expirationTimestamp, nil
 }
 
-// setCurrentSecretOnce checks if currSecret is set, if not,
+// setCurrentSecretOnce checks if currAuthSecret is set, if not,
 // retrieves the active secret key found in secrets table.
 // Returns any db encountered error, or nil if secret is already set or no error.
 func setCurrentSecretOnce() error {
-	if currSecret != nil {
+	if currAuthSecret != nil {
 		return nil
 	}
 
 	var err error
-	currSecret, err = getActiveSecretRow()
+	currAuthSecret, err = getActiveSecretRow()
 	if err != nil {
 		return err
 	}

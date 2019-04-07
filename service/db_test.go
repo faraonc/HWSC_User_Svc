@@ -290,7 +290,7 @@ func TestUpdateUserRow(t *testing.T) {
 }
 
 func TestGetActiveSecretRow(t *testing.T) {
-	err := unitTestDeleteSecretTable()
+	err := unitTestDeleteAuthSecretTable()
 	assert.Nil(t, err)
 
 	// test empty row
@@ -299,7 +299,7 @@ func TestGetActiveSecretRow(t *testing.T) {
 	assert.Nil(t, retrievedSecret)
 
 	// insert a key to test for active key retrieval
-	err = insertNewSecret()
+	err = insertNewAuthSecret()
 	assert.Nil(t, err)
 
 	retrievedSecret, err = getActiveSecretRow()
@@ -311,10 +311,10 @@ func TestGetActiveSecretRow(t *testing.T) {
 }
 
 func TestInsertNewSecret(t *testing.T) {
-	err := unitTestDeleteSecretTable()
+	err := unitTestDeleteAuthSecretTable()
 	assert.Nil(t, err)
 
-	err = insertNewSecret()
+	err = insertNewAuthSecret()
 	assert.Nil(t, err)
 
 	retrievedSecret, err := getActiveSecretRow()
@@ -328,10 +328,10 @@ func TestInsertNewSecret(t *testing.T) {
 }
 
 func TestGetLatestSecret(t *testing.T) {
-	err := unitTestDeleteSecretTable()
+	err := unitTestDeleteAuthSecretTable()
 	assert.Nil(t, err)
 
-	err = insertNewSecret()
+	err = insertNewAuthSecret()
 	assert.Nil(t, err)
 
 	retrievedSecret, err := getActiveSecretRow()
@@ -351,10 +351,10 @@ func TestInsertAuthToken(t *testing.T) {
 	token := "someToken"
 
 	// retrieve freshly active secret
-	retrievedSecret, err := unitTestDeleteInsertGetSecret()
+	retrievedSecret, err := unitTestDeleteInsertGetAuthSecret()
 	assert.Nil(t, err)
 	assert.NotNil(t, retrievedSecret)
-	currSecret = retrievedSecret
+	currAuthSecret = retrievedSecret
 
 	// the above happens so fast that validating secret creation time fails b/c time == now()
 	time.Sleep(2 * time.Second)
@@ -372,13 +372,13 @@ func TestInsertAuthToken(t *testing.T) {
 		expMsg   string
 	}{
 		// valid
-		{validTokenBody, currSecret, validTokenHeader, token, false, ""},
+		{validTokenBody, currAuthSecret, validTokenHeader, token, false, ""},
 		// empty token
-		{validTokenBody, currSecret, validTokenHeader, "", true, authconst.ErrEmptyToken.Error()},
+		{validTokenBody, currAuthSecret, validTokenHeader, "", true, authconst.ErrEmptyToken.Error()},
 		// nil header
-		{validTokenBody, currSecret, nil, token, true, authconst.ErrNilHeader.Error()},
+		{validTokenBody, currAuthSecret, nil, token, true, authconst.ErrNilHeader.Error()},
 		// nil body
-		{nil, currSecret, validTokenHeader, token, true, authconst.ErrNilBody.Error()},
+		{nil, currAuthSecret, validTokenHeader, token, true, authconst.ErrNilBody.Error()},
 		// nil secret
 		{validTokenBody, nil, validTokenHeader, token, true, authconst.ErrNilSecret.Error()},
 		// body contains invalid UUID
@@ -387,7 +387,7 @@ func TestInsertAuthToken(t *testing.T) {
 				UUID:                "invalid",
 				Permission:          validTokenBody.Permission,
 				ExpirationTimestamp: validTokenBody.ExpirationTimestamp,
-			}, currSecret, validTokenHeader, token, true, authconst.ErrInvalidUUID.Error(),
+			}, currAuthSecret, validTokenHeader, token, true, authconst.ErrInvalidUUID.Error(),
 		},
 		// body contains invalid timestamp
 		{
@@ -395,32 +395,32 @@ func TestInsertAuthToken(t *testing.T) {
 				UUID:                validTokenBody.UUID,
 				Permission:          validTokenBody.Permission,
 				ExpirationTimestamp: 12,
-			}, currSecret, validTokenHeader, token, true, authconst.ErrExpiredBody.Error(),
+			}, currAuthSecret, validTokenHeader, token, true, authconst.ErrExpiredBody.Error(),
 		},
 		// secret contains empty secret Key
 		{
 			validTokenBody,
 			&pblib.Secret{
 				Key:                 "",
-				CreatedTimestamp:    currSecret.CreatedTimestamp,
-				ExpirationTimestamp: currSecret.ExpirationTimestamp,
+				CreatedTimestamp:    currAuthSecret.CreatedTimestamp,
+				ExpirationTimestamp: currAuthSecret.ExpirationTimestamp,
 			}, validTokenHeader, token, true, authconst.ErrEmptySecret.Error(),
 		},
 		// secret contains createTimestamp greater than now
 		{
 			validTokenBody,
 			&pblib.Secret{
-				Key:                 currSecret.Key,
-				CreatedTimestamp:    currSecret.ExpirationTimestamp,
-				ExpirationTimestamp: currSecret.ExpirationTimestamp,
+				Key:                 currAuthSecret.Key,
+				CreatedTimestamp:    currAuthSecret.ExpirationTimestamp,
+				ExpirationTimestamp: currAuthSecret.ExpirationTimestamp,
 			}, validTokenHeader, token, true, authconst.ErrInvalidSecretCreateTimestamp.Error(),
 		},
 		// secret contains invalid expirationTimestamp
 		{
 			validTokenBody,
 			&pblib.Secret{
-				Key:                 currSecret.Key,
-				CreatedTimestamp:    currSecret.CreatedTimestamp,
+				Key:                 currAuthSecret.Key,
+				CreatedTimestamp:    currAuthSecret.CreatedTimestamp,
 				ExpirationTimestamp: 12,
 			}, validTokenHeader, token, true, authconst.ErrExpiredSecret.Error(),
 		},
@@ -438,7 +438,7 @@ func TestInsertAuthToken(t *testing.T) {
 }
 
 func TestGetAuthTokenRow(t *testing.T) {
-	retrievedSecret, err := unitTestDeleteInsertGetSecret()
+	retrievedSecret, err := unitTestDeleteInsertGetAuthSecret()
 	assert.Nil(t, err)
 	assert.NotNil(t, retrievedSecret)
 
@@ -497,7 +497,7 @@ func TestPairTokenWithSecret(t *testing.T) {
 	assert.EqualError(t, err, consts.ErrNoMatchingAuthTokenFound.Error(), desc)
 	assert.Nil(t, retrievedSecret, desc)
 
-	newSecret, newToken, err := unitTestInsertNewToken()
+	newSecret, newToken, err := unitTestInsertNewAuthToken()
 	assert.Nil(t, err)
 	assert.NotNil(t, newSecret)
 	assert.NotEmpty(t, newToken)
@@ -512,37 +512,37 @@ func TestPairTokenWithSecret(t *testing.T) {
 }
 
 func TestHasActiveSecret(t *testing.T) {
-	err := unitTestDeleteSecretTable()
+	err := unitTestDeleteAuthSecretTable()
 	assert.Nil(t, err)
 
 	desc := "test with no active secret in table"
-	exists, err := hasActiveSecret()
+	exists, err := hasActiveAuthSecret()
 	assert.Nil(t, err, desc)
 	assert.Equal(t, false, exists, desc)
 
 	desc = "test with an active secret in table"
-	err = insertNewSecret()
+	err = insertNewAuthSecret()
 	assert.Nil(t, err)
-	exists, err = hasActiveSecret()
+	exists, err = hasActiveAuthSecret()
 	assert.Nil(t, err, desc)
 	assert.Equal(t, true, exists, desc)
 }
 
 func TestActiveSecretTrigger(t *testing.T) {
-	err := unitTestDeleteSecretTable()
+	err := unitTestDeleteAuthSecretTable()
 	assert.Nil(t, err)
 
 	time.Sleep(10 * time.Second)
-	err = insertNewSecret()
+	err = insertNewAuthSecret()
 	assert.Nil(t, err)
 	time.Sleep(10 * time.Second)
-	err = insertNewSecret()
+	err = insertNewAuthSecret()
 	assert.Nil(t, err)
 	time.Sleep(10 * time.Second)
-	err = insertNewSecret()
+	err = insertNewAuthSecret()
 	assert.Nil(t, err)
 
-	exists, err := hasActiveSecret()
+	exists, err := hasActiveAuthSecret()
 	assert.Nil(t, err)
 	assert.Equal(t, true, exists)
 
