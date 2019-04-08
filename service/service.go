@@ -342,7 +342,7 @@ func (s *Service) AuthenticateUser(ctx context.Context, req *pbsvc.UserRequest) 
 	matchedUser, err := matchEmailAndPassword(user.GetEmail(), user.GetPassword())
 	if err != nil {
 		logger.Error(consts.AuthenticateUserTag, consts.MsgErrMatchEmailPassword, err.Error())
-		return nil, status.Error(codes.Unknown, err.Error())
+		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	logger.Info("Authenticated user:", matchedUser.GetUuid(),
@@ -527,7 +527,7 @@ func (s *Service) GetAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pb
 	retrievedUser, err := getUserRow(user.GetUuid())
 	if err != nil {
 		logger.Error(consts.GetAuthTokenTag, consts.MsgErrAuthenticateUser, err.Error())
-		return nil, status.Error(codes.Unknown, err.Error())
+		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	if retrievedUser.GetEmail() != user.GetEmail() {
