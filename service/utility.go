@@ -11,6 +11,8 @@ import (
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/oklog/ulid"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"math/rand"
 	"regexp"
 	"strings"
@@ -282,4 +284,57 @@ func generateEmailVerifyLink(token string) (string, error) {
 	link := fmt.Sprintf("%s/%s=%s", domainName, verifyEmailLinkStub, token)
 
 	return link, nil
+}
+
+// getAuthIdentification gets or generates the AuthToken for the User.
+// Returns the identification or error.
+func getAuthIdentification(retrievedUser *pblib.User) (*pblib.Identification, error) {
+	if retrievedUser == nil {
+		return nil, consts.ErrStatusNilRequestUser
+	}
+	var identification *pblib.Identification
+
+	existingToken, err := getAuthTokenRow(retrievedUser.GetUuid())
+	if err == nil {
+		if existingToken.permission != retrievedUser.PermissionLevel {
+			return nil, consts.ErrStatusPermissionMismatch
+		}
+		identification = &pblib.Identification{
+			Token:  existingToken.token,
+			Secret: existingToken.secret,
+		}
+	} else {
+		permissionLevel := auth.PermissionEnumMap[retrievedUser.GetPermissionLevel()]
+
+		// build token header, body, secret
+		header := &auth.Header{
+			Alg:      auth.AlgorithmMap[permissionLevel],
+			TokenTyp: auth.Jwt,
+		}
+		body := &auth.Body{
+			UUID:                retrievedUser.GetUuid(),
+			Permission:          permissionLevel,
+			ExpirationTimestamp: time.Now().UTC().Add(time.Hour * time.Duration(authTokenExpirationTime)).Unix(),
+		}
+
+		if err := setCurrentSecretOnce(); err != nil {
+			return nil, status.Error(codes.Unauthenticated, err.Error())
+		}
+		newToken, err := auth.NewToken(header, body, currAuthSecret)
+		if err != nil {
+			return nil, status.Error(codes.Unauthenticated, err.Error())
+		}
+
+		// insert token into db for auditing
+		if err := insertAuthToken(newToken, header, body, currAuthSecret); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		identification = &pblib.Identification{
+			Token:  newToken,
+			Secret: currAuthSecret,
+		}
+	}
+
+	return identification, nil
 }

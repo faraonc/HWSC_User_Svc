@@ -75,4 +75,5 @@ var (
 	ErrStatusNilRequestUser     = status.Error(codes.InvalidArgument, ErrNilRequestUser.Error())
 	ErrStatusUUIDNotFound       = status.Error(codes.NotFound, ErrUUIDNotFound.Error())
 	ErrStatusUUIDInvalid        = status.Error(codes.InvalidArgument, authconst.ErrInvalidUUID.Error())
+	ErrStatusPermissionMismatch = status.Error(codes.Unauthenticated, MsgErrPermissionMismatch)
 )
