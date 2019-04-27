@@ -299,7 +299,7 @@ func (s *Service) UpdateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 }
 
 // AuthenticateUser goes through accounts table and find matching email and password.
-// On success, returns the matched row as user object, setting password to empty.
+// On success, returns the identification, and matched row as user object with password set to empty string.
 func (s *Service) AuthenticateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("AuthenticateUser")
 
@@ -345,14 +345,21 @@ func (s *Service) AuthenticateUser(ctx context.Context, req *pbsvc.UserRequest) 
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
+	identification, err := getAuthIdentification(matchedUser)
+	if err != nil {
+		logger.Error(consts.AuthenticateUserTag, err.Error())
+		return nil, err
+	}
+
 	logger.Info("Authenticated user:", matchedUser.GetUuid(),
 		matchedUser.GetFirstName(), matchedUser.GetLastName())
 
 	matchedUser.Password = ""
 	return &pbsvc.UserResponse{
-		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
-		Message: codes.OK.String(),
-		User:    matchedUser,
+		Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
+		Message:        codes.OK.String(),
+		User:           matchedUser,
+		Identification: identification,
 	}, nil
 }
 
@@ -540,58 +547,16 @@ func (s *Service) GetAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pb
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	var identity *pblib.Identification
-
-	existingToken, err := getAuthTokenRow(retrievedUser.GetUuid())
-	if err == nil {
-		if existingToken.permission != retrievedUser.PermissionLevel {
-			logger.Error(consts.GetAuthTokenTag, consts.MsgErrPermissionMismatch)
-			return nil, status.Error(codes.Unauthenticated, consts.MsgErrPermissionMismatch)
-		}
-		identity = &pblib.Identification{
-			Token:  existingToken.token,
-			Secret: existingToken.secret,
-		}
-	} else {
-		permissionLevel := auth.PermissionEnumMap[retrievedUser.GetPermissionLevel()]
-
-		// build token header, body, secret
-		header := &auth.Header{
-			Alg:      auth.AlgorithmMap[permissionLevel],
-			TokenTyp: auth.Jwt,
-		}
-		body := &auth.Body{
-			UUID:                retrievedUser.GetUuid(),
-			Permission:          permissionLevel,
-			ExpirationTimestamp: time.Now().UTC().Add(time.Hour * time.Duration(authTokenExpirationTime)).Unix(),
-		}
-
-		if err := setCurrentSecretOnce(); err != nil {
-			logger.Error(consts.GetAuthTokenTag, consts.MsgErrGetActiveSecret, err.Error())
-			return nil, status.Error(codes.Unauthenticated, err.Error())
-		}
-		newToken, err := auth.NewToken(header, body, currAuthSecret)
-		if err != nil {
-			logger.Error(consts.GetAuthTokenTag, consts.MsgErrGeneratingAuthToken, err.Error())
-			return nil, status.Error(codes.Unauthenticated, err.Error())
-		}
-
-		// insert token into db for auditing
-		if err := insertAuthToken(newToken, header, body, currAuthSecret); err != nil {
-			logger.Error(consts.GetAuthTokenTag, consts.MsgErrInsertAuthToken, err.Error())
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-
-		identity = &pblib.Identification{
-			Token:  newToken,
-			Secret: currAuthSecret,
-		}
+	identification, err := getAuthIdentification(retrievedUser)
+	if err != nil {
+		logger.Error(consts.GetAuthTokenTag, err.Error())
+		return nil, err
 	}
 
 	return &pbsvc.UserResponse{
 		Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
 		Message:        codes.OK.String(),
-		Identification: identity,
+		Identification: identification,
 	}, nil
 }
 
