@@ -543,7 +543,6 @@ func TestAuthenticateUser(t *testing.T) {
 		} else {
 			assert.Nil(t, err)
 			assert.Equal(t, codes.OK.String(), response.Message)
-			assert.NotNil(t, response.Identification)
 		}
 	}
 
