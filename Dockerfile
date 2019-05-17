@@ -2,7 +2,7 @@
 # later, this image can be ran in a container to run the program
 
 # FROM instruction specifies the base image from which we are building
-FROM golang:1.12.0
+FROM golang:1.12.5
 
 # WORKDIR instruction changes current directory to /go
 WORKDIR $GOPATH/
