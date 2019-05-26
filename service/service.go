@@ -486,11 +486,12 @@ func (s *Service) GetAuthSecret(ctx context.Context, req *pbsvc.UserRequest) (*p
 	}, nil
 }
 
-// GetAuthToken returns a token and secret based on the following criterias:
+// GetNewAuthToken returns a token and secret based on the following criterias:
+// TODO wrong doc and implmentation
 // If a user exists, token isn't expired, and permission matches, returns existing token and matching secret.
 // If a user exists and permission does not match, returns error.
 // Else a new token is generated and returned with current secret.
-func (s *Service) GetAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
+func (s *Service) GetNewAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetAuthToken")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
