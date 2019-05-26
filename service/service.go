@@ -492,10 +492,10 @@ func (s *Service) GetAuthSecret(ctx context.Context, req *pbsvc.UserRequest) (*p
 // If a user exists and permission does not match, returns error.
 // Else a new token is generated and returned with current secret.
 func (s *Service) GetNewAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
-	logger.RequestService("GetAuthToken")
+	logger.RequestService("GetNewAuthToken")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
-		logger.Error(consts.GetAuthTokenTag, consts.ErrServiceUnavailable.Error())
+		logger.Error(consts.GetNewAuthTokenTag, consts.ErrServiceUnavailable.Error())
 		return nil, consts.ErrStatusServiceUnavailable
 	}
 
@@ -514,15 +514,15 @@ func (s *Service) GetNewAuthToken(ctx context.Context, req *pbsvc.UserRequest) (
 
 	// validate uuid, email, password
 	if err := validation.ValidateUserUUID(user.GetUuid()); err != nil {
-		logger.Error(consts.GetAuthTokenTag, authconst.ErrInvalidUUID.Error())
+		logger.Error(consts.GetNewAuthTokenTag, authconst.ErrInvalidUUID.Error())
 		return nil, consts.ErrStatusUUIDInvalid
 	}
 	if err := validateEmail(user.GetEmail()); err != nil {
-		logger.Error(consts.GetAuthTokenTag, consts.ErrInvalidUserEmail.Error())
+		logger.Error(consts.GetNewAuthTokenTag, consts.ErrInvalidUserEmail.Error())
 		return nil, status.Error(codes.InvalidArgument, consts.ErrInvalidUserEmail.Error())
 	}
 	if err := validatePassword(user.GetPassword()); err != nil {
-		logger.Error(consts.GetAuthTokenTag, consts.ErrInvalidPassword.Error())
+		logger.Error(consts.GetNewAuthTokenTag, consts.ErrInvalidPassword.Error())
 		return nil, status.Error(codes.InvalidArgument, consts.ErrInvalidPassword.Error())
 	}
 
@@ -534,23 +534,23 @@ func (s *Service) GetNewAuthToken(ctx context.Context, req *pbsvc.UserRequest) (
 	// look up email and password
 	retrievedUser, err := getUserRow(user.GetUuid())
 	if err != nil {
-		logger.Error(consts.GetAuthTokenTag, consts.MsgErrAuthenticateUser, err.Error())
+		logger.Error(consts.GetNewAuthTokenTag, consts.MsgErrAuthenticateUser, err.Error())
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	if retrievedUser.GetEmail() != user.GetEmail() {
-		logger.Error(consts.GetAuthTokenTag, consts.MsgErrMatchEmail)
+		logger.Error(consts.GetNewAuthTokenTag, consts.MsgErrMatchEmail)
 		return nil, status.Error(codes.InvalidArgument, consts.MsgErrMatchEmail)
 	}
 
 	if err := comparePassword(retrievedUser.GetPassword(), user.GetPassword()); err != nil {
-		logger.Error(consts.GetAuthTokenTag, consts.MsgErrMatchPassword, err.Error())
+		logger.Error(consts.GetNewAuthTokenTag, consts.MsgErrMatchPassword, err.Error())
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	identification, err := getAuthIdentification(retrievedUser)
 	if err != nil {
-		logger.Error(consts.GetAuthTokenTag, err.Error())
+		logger.Error(consts.GetNewAuthTokenTag, err.Error())
 		return nil, err
 	}
 

@@ -9,7 +9,7 @@ const (
 	UpdateUserTag       string = "UpdateUser -"
 	GetUserTag          string = "GetUser -"
 	UserServiceTag      string = "User Service -"
-	GetAuthTokenTag     string = "GetAuthToken -"
+	GetNewAuthTokenTag  string = "GetNewAuthToken -"
 	MakeNewAuthSecret   string = "MakeNewAuthSecret -"
 	GetAuthSecret       string = "GetAuthSecret -"
 	VerifyAuthToken     string = "VerifyAuthToken -"

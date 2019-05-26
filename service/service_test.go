@@ -623,7 +623,7 @@ func TestGetAuthSecret(t *testing.T) {
 	assert.Equal(t, response.Identification.Secret.CreatedTimestamp, retrievedSecret.CreatedTimestamp)
 }
 
-func TestGetAuthToken(t *testing.T) {
+func TestGetNewAuthToken(t *testing.T) {
 	lastName1 := "GetToken-One"
 	lastName2 := "GetToken-Two"
 
@@ -694,7 +694,7 @@ func TestGetAuthToken(t *testing.T) {
 			// test setting of nil currAuthSecret to active secret retrieved from db
 			currAuthSecret = nil
 		}
-		response, err := s.GetAuthToken(context.TODO(), c.request)
+		response, err := s.GetNewAuthToken(context.TODO(), c.request)
 
 		if c.isExpErr {
 			assert.EqualError(t, err, c.expMsg)
@@ -716,7 +716,7 @@ func TestGetAuthToken(t *testing.T) {
 
 	// check for retrieval of same token already in db
 	s := Service{}
-	response, err := s.GetAuthToken(context.TODO(), &pbsvc.UserRequest{User: responseUser1.GetUser()})
+	response, err := s.GetNewAuthToken(context.TODO(), &pbsvc.UserRequest{User: responseUser1.GetUser()})
 	assert.Nil(t, err)
 	assert.Exactly(t, existingIdentification, response.GetIdentification())
 	assert.Equal(t, existingIdentification.GetToken(), response.GetIdentification().GetToken())

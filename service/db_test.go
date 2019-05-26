@@ -437,7 +437,7 @@ func TestInsertAuthToken(t *testing.T) {
 	}
 }
 
-func TestGetAuthTokenRow(t *testing.T) {
+func TestGetNewAuthTokenRow(t *testing.T) {
 	retrievedSecret, err := unitTestDeleteInsertGetAuthSecret()
 	assert.Nil(t, err)
 	assert.NotNil(t, retrievedSecret)
