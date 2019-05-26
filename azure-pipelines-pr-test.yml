@@ -21,8 +21,6 @@ variables:
   - group: hwsc-user-svc-env-vars
   - name: GOBIN # Go binaries path
     value: '$(GOPATH)/bin'
-  - name: GOROOT  # Go installation path
-    value: '/usr/local/go1.11'
   - name: GOPATH # Go workspace path
     value: '$(system.defaultWorkingDirectory)/gopath'
   - name: modulePath # Path to the module's code
@@ -33,6 +31,7 @@ steps:
     displayName: 'Print Environment Variables'
 
   - script: |
+      go version
       mkdir -p '$(GOBIN)'
       mkdir -p '$(GOPATH)/pkg'
       mkdir -p '$(modulePath)'
