@@ -507,57 +507,63 @@ func (s *Service) GetNewAuthToken(ctx context.Context, req *pbsvc.UserRequest) (
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	user := req.GetUser()
-	if user == nil {
-		return nil, consts.ErrStatusNilRequestUser
-	}
+	// TODO check Authenticate()
 
-	// validate uuid, email, password
-	if err := validation.ValidateUserUUID(user.GetUuid()); err != nil {
-		logger.Error(consts.GetNewAuthTokenTag, authconst.ErrInvalidUUID.Error())
-		return nil, consts.ErrStatusUUIDInvalid
-	}
-	if err := validateEmail(user.GetEmail()); err != nil {
-		logger.Error(consts.GetNewAuthTokenTag, consts.ErrInvalidUserEmail.Error())
-		return nil, status.Error(codes.InvalidArgument, consts.ErrInvalidUserEmail.Error())
-	}
-	if err := validatePassword(user.GetPassword()); err != nil {
-		logger.Error(consts.GetNewAuthTokenTag, consts.ErrInvalidPassword.Error())
-		return nil, status.Error(codes.InvalidArgument, consts.ErrInvalidPassword.Error())
-	}
-
-	// write lock b/c we are writing to DB
-	lock, _ := uuidMapLocker.LoadOrStore(user.GetUuid(), &sync.RWMutex{})
-	lock.(*sync.RWMutex).Lock()
-	defer lock.(*sync.RWMutex).Unlock()
-
-	// look up email and password
-	retrievedUser, err := getUserRow(user.GetUuid())
-	if err != nil {
-		logger.Error(consts.GetNewAuthTokenTag, consts.MsgErrAuthenticateUser, err.Error())
-		return nil, status.Error(codes.Unauthenticated, err.Error())
-	}
-
-	if retrievedUser.GetEmail() != user.GetEmail() {
-		logger.Error(consts.GetNewAuthTokenTag, consts.MsgErrMatchEmail)
-		return nil, status.Error(codes.InvalidArgument, consts.MsgErrMatchEmail)
-	}
-
-	if err := comparePassword(retrievedUser.GetPassword(), user.GetPassword()); err != nil {
-		logger.Error(consts.GetNewAuthTokenTag, consts.MsgErrMatchPassword, err.Error())
-		return nil, status.Error(codes.Unauthenticated, err.Error())
-	}
-
-	identification, err := getAuthIdentification(retrievedUser)
-	if err != nil {
-		logger.Error(consts.GetNewAuthTokenTag, err.Error())
-		return nil, err
-	}
-
+	//user := req.GetUser()
+	//if user == nil {
+	//	return nil, consts.ErrStatusNilRequestUser
+	//}
+	//
+	//// validate uuid, email, password
+	//if err := validation.ValidateUserUUID(user.GetUuid()); err != nil {
+	//	logger.Error(consts.GetNewAuthTokenTag, authconst.ErrInvalidUUID.Error())
+	//	return nil, consts.ErrStatusUUIDInvalid
+	//}
+	//if err := validateEmail(user.GetEmail()); err != nil {
+	//	logger.Error(consts.GetNewAuthTokenTag, consts.ErrInvalidUserEmail.Error())
+	//	return nil, status.Error(codes.InvalidArgument, consts.ErrInvalidUserEmail.Error())
+	//}
+	//if err := validatePassword(user.GetPassword()); err != nil {
+	//	logger.Error(consts.GetNewAuthTokenTag, consts.ErrInvalidPassword.Error())
+	//	return nil, status.Error(codes.InvalidArgument, consts.ErrInvalidPassword.Error())
+	//}
+	//
+	//// write lock b/c we are writing to DB
+	//lock, _ := uuidMapLocker.LoadOrStore(user.GetUuid(), &sync.RWMutex{})
+	//lock.(*sync.RWMutex).Lock()
+	//defer lock.(*sync.RWMutex).Unlock()
+	//
+	//// look up email and password
+	//retrievedUser, err := getUserRow(user.GetUuid())
+	//if err != nil {
+	//	logger.Error(consts.GetNewAuthTokenTag, consts.MsgErrAuthenticateUser, err.Error())
+	//	return nil, status.Error(codes.Unauthenticated, err.Error())
+	//}
+	//
+	//if retrievedUser.GetEmail() != user.GetEmail() {
+	//	logger.Error(consts.GetNewAuthTokenTag, consts.MsgErrMatchEmail)
+	//	return nil, status.Error(codes.InvalidArgument, consts.MsgErrMatchEmail)
+	//}
+	//
+	//if err := comparePassword(retrievedUser.GetPassword(), user.GetPassword()); err != nil {
+	//	logger.Error(consts.GetNewAuthTokenTag, consts.MsgErrMatchPassword, err.Error())
+	//	return nil, status.Error(codes.Unauthenticated, err.Error())
+	//}
+	//
+	//identification, err := getAuthIdentification(retrievedUser)
+	//if err != nil {
+	//	logger.Error(consts.GetNewAuthTokenTag, err.Error())
+	//	return nil, err
+	//}
+	//
+	//return &pbsvc.UserResponse{
+	//	Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
+	//	Message:        codes.OK.String(),
+	//	Identification: identification,
+	//}, nil
 	return &pbsvc.UserResponse{
-		Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
-		Message:        codes.OK.String(),
-		Identification: identification,
+		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.Unimplemented)},
+		Message: codes.Unimplemented.String(),
 	}, nil
 }
 
