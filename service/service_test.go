@@ -661,8 +661,8 @@ func TestGetNewAuthToken(t *testing.T) {
 	assert.Nil(t, err, validCase)
 	assert.NotNil(t, resp, validCase)
 
-	time.Sleep(2 * time.Second)
 	// make new auth token
+	time.Sleep(2 * time.Second)
 	resp.GetIdentification().GetToken()
 	resp, err = s.GetNewAuthToken(context.TODO(), &pbsvc.UserRequest{Identification: oldValidIdentification})
 	assert.Nil(t, err, validCase)
