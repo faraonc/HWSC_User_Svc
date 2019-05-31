@@ -554,8 +554,8 @@ func (s *Service) GetNewAuthToken(ctx context.Context, req *pbsvc.UserRequest) (
 	}
 
 	return &pbsvc.UserResponse{
-		Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.Unimplemented)},
-		Message:        codes.Unimplemented.String(),
+		Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
+		Message:        codes.OK.String(),
 		Identification: newIdentity,
 	}, nil
 }
