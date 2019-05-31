@@ -463,16 +463,16 @@ func TestUpdateUser(t *testing.T) {
 func TestAuthenticateUser(t *testing.T) {
 	validPassword := "AuthenticateUser-One"
 
-	response, err := unitTestInsertUser(validPassword)
+	validResponse, err := unitTestInsertUser(validPassword)
 	assert.Nil(t, err)
-	assert.Equal(t, codes.OK.String(), response.Message)
+	assert.Equal(t, codes.OK.String(), validResponse.Message)
 
-	createdUser := response.GetUser()
+	createdUser := validResponse.GetUser()
 	assert.NotNil(t, createdUser)
 
 	validEmail := createdUser.GetEmail()
 
-	// valid user
+	// valid user, but email token has not been validated
 	validUser := &pblib.User{
 		Email:    validEmail,
 		Password: validPassword,
@@ -517,7 +517,7 @@ func TestAuthenticateUser(t *testing.T) {
 		isExpErr bool
 		expMsg   string
 	}{
-		{&pbsvc.UserRequest{User: validUser}, false, ""},
+		{&pbsvc.UserRequest{User: validUser}, true, "rpc error: code = Unauthenticated desc = error in generating auth token"},
 		{nil, true, "rpc error: code = InvalidArgument desc = nil request User"},
 		{&pbsvc.UserRequest{User: nil}, true,
 			"rpc error: code = InvalidArgument desc = nil request User"},
@@ -548,13 +548,21 @@ func TestAuthenticateUser(t *testing.T) {
 		}
 	}
 
+	s := Service{}
+	caseVerifyValidUserEmailToken := "test for authentication after verify email token"
+	resp, err := s.VerifyEmailToken(context.TODO(), &pbsvc.UserRequest{
+		Identification: &pblib.Identification{Token: validResponse.GetIdentification().GetToken()},
+	})
+	assert.Nil(t, err, caseVerifyValidUserEmailToken)
+	assert.NotNil(t, resp, caseVerifyValidUserEmailToken)
+
+	caseDummyUser := "test dummy user for user creation"
 	dummyReq := &pbsvc.UserRequest{
 		User: &conf.DummyAccount,
 	}
-	s := Service{}
-	response, err = s.AuthenticateUser(context.TODO(), dummyReq)
-	assert.Nil(t, err)
-	assert.Equal(t, conf.DummyAccount.Email, response.User.Email)
+	response, err := s.AuthenticateUser(context.TODO(), dummyReq)
+	assert.Nil(t, err, caseDummyUser)
+	assert.Equal(t, conf.DummyAccount.Email, response.User.Email, caseDummyUser)
 }
 
 func TestMakeAuthNewSecret(t *testing.T) {
@@ -684,7 +692,35 @@ func TestGetNewAuthToken(t *testing.T) {
 	assert.Nil(t, err, validCase)
 	assert.Equal(t, codes.OK.String(), resp.GetMessage(), validCase)
 
-	// TODO error cases
+	// error cases
+	nonExistingToken := &pblib.Identification{
+		Token: "TestGetNewAuthToken-DoesNotExist",
+	}
+
+	cases := []struct {
+		desc   string
+		req    *pbsvc.UserRequest
+		expMsg string
+	}{
+		{"test nil request object", nil,
+			"rpc error: code = InvalidArgument desc = nil request User",
+		},
+		{"test nil identity object", &pbsvc.UserRequest{Identification: nil},
+			"rpc error: code = InvalidArgument desc = nil request identification",
+		},
+		{"test non-existent token", &pbsvc.UserRequest{Identification: nonExistingToken},
+			"rpc error: code = Unauthenticated desc = no matching auth token were found with given token",
+		},
+	}
+
+	for _, c := range cases {
+		s := Service{}
+
+		response, err := s.MakeNewAuthSecret(context.TODO(), c.req)
+		assert.EqualError(t, err, c.expMsg, c.desc)
+		assert.Nil(t, response, c.desc)
+	}
+
 }
 
 func TestVerifyAuthToken(t *testing.T) {

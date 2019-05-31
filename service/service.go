@@ -347,7 +347,11 @@ func (s *Service) AuthenticateUser(ctx context.Context, req *pbsvc.UserRequest) 
 		logger.Error(consts.AuthenticateUserTag, consts.MsgErrMatchEmailPassword, err.Error())
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
-	// TODO do not authenticate based on permission level
+
+	if auth.PermissionEnumMap[matchedUser.GetPermissionLevel()] < auth.UserRegistration {
+		logger.Error(consts.AuthenticateUserTag, consts.MsgErrGeneratingAuthToken)
+		return nil, status.Error(codes.Unauthenticated, consts.MsgErrGeneratingAuthToken)
+	}
 	identification, err := getAuthIdentification(matchedUser)
 	if err != nil {
 		logger.Error(consts.AuthenticateUserTag, err.Error())

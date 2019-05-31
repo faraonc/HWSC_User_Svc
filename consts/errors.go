@@ -11,10 +11,9 @@ import (
 const (
 	MsgErrInsertUser                string = "failed to insert new user into db:"
 	MsgErrInsertEmailToken          string = "failed to insert email token into db:"
-	MsgErrInsertAuthToken           string = "failed to insert auth token into db:"
 	MsgErrGeneratingUUID            string = "error in generating uuid:"
 	MsgErrGeneratingEmailToken      string = "error in generating email token:"
-	MsgErrGeneratingAuthToken       string = "error in generating auth token:"
+	MsgErrGeneratingAuthToken       string = "error in generating auth token"
 	MsgErrEmailRequest              string = "failed to make email request object:"
 	MsgErrSendEmail                 string = "failed to send email:"
 	MsgErrDeleteUser                string = "failed to delete user:"
@@ -64,8 +63,6 @@ var (
 	ErrInvalidAddTime               = errors.New("add time is zero")
 	ErrEmailExists                  = errors.New("email already exists")
 	ErrEmailDoesNotExist            = errors.New("email does not exist in db")
-	ErrGeneratingAuthToken          = errors.New(MsgErrGeneratingAuthToken)
-	ErrInsertAuthToken              = errors.New(MsgErrInsertAuthToken)
 	ResponseServiceUnavailable      = &pbsvc.UserResponse{
 		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.Unavailable)},
 		Message: codes.Unavailable.String(),
