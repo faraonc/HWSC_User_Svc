@@ -38,6 +38,9 @@ const (
 
 	// authTokenExpirationTime in hours
 	authTokenExpirationTime = 2
+
+	// authTokenExpirationTime in days
+	authSecretExpirationTime = 7
 )
 
 var (
@@ -486,11 +489,9 @@ func (s *Service) GetAuthSecret(ctx context.Context, req *pbsvc.UserRequest) (*p
 	}, nil
 }
 
-// GetNewAuthToken returns a token and secret based on the following criterias:
-// TODO wrong doc and implmentation
-// If a user exists, token isn't expired, and permission matches, returns existing token and matching secret.
-// If a user exists and permission does not match, returns error.
-// Else a new token is generated and returned with current secret.
+// GetNewAuthToken returns a new auth token and secret based on the following criterias:
+// If current auth token is valid, returns new auth token and matching secret.
+// Else return error code deadline exceeded.
 func (s *Service) GetNewAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
 	logger.RequestService("GetNewAuthToken")
 
@@ -500,70 +501,58 @@ func (s *Service) GetNewAuthToken(ctx context.Context, req *pbsvc.UserRequest) (
 	}
 
 	if req == nil {
-		return nil, consts.ErrStatusNilRequestUser
+		logger.Error(consts.GetNewAuthTokenTag, consts.ErrNilRequest.Error())
+		return nil, consts.ErrNilRequest
 	}
 
 	if err := refreshDBConnection(); err != nil {
+		logger.Error(consts.GetNewAuthTokenTag, consts.ErrDBConnectionError.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	// get identification object
+	identity := req.GetIdentification()
+	if identity == nil {
+		logger.Error(consts.GetNewAuthTokenTag, consts.ErrNilRequestIdentification.Error())
+		return nil, status.Error(codes.DeadlineExceeded, consts.ErrNilRequestIdentification.Error())
+	}
+
+	// verify auth token token against database
+	retrievedIdentity, err := pairTokenWithSecret(identity.GetToken())
+	if err != nil {
+		logger.Error(consts.GetNewAuthTokenTag, consts.MsgErrValidatingToken, err.Error())
+		return nil, status.Error(codes.DeadlineExceeded, err.Error())
+	}
+
+	// auth token requires user level permission to use this service
+	authority := auth.NewAuthority(auth.Jwt, auth.User)
+	if err := authority.Authorize(retrievedIdentity); err != nil {
+		logger.Error(consts.GetNewAuthTokenTag, consts.MsgErrValidatingIdentity, err.Error())
+		return nil, status.Error(codes.DeadlineExceeded, err.Error())
+	}
+	// invalidate authority for security reasons
+	defer authority.Invalidate()
+
+	uuid := auth.ExtractUUID(identity.GetToken())
+	if uuid == "" {
+		logger.Error(consts.GetNewAuthTokenTag, consts.ErrStatusUUIDInvalid.Error())
+		return nil, consts.ErrStatusUUIDInvalid
+	}
+
+	// write lock to prevent race condition in making a new auth token
+	lock, _ := uuidMapLocker.LoadOrStore(uuid, &sync.RWMutex{})
+	lock.(*sync.RWMutex).Lock()
+	defer lock.(*sync.RWMutex).Unlock()
+
+	newIdentity, err := newAuthIdentification(authority.Header(), authority.Body())
+	if err != nil {
+		logger.Error(consts.GetNewAuthTokenTag, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// TODO check Authenticate()
-
-	//user := req.GetUser()
-	//if user == nil {
-	//	return nil, consts.ErrStatusNilRequestUser
-	//}
-	//
-	//// validate uuid, email, password
-	//if err := validation.ValidateUserUUID(user.GetUuid()); err != nil {
-	//	logger.Error(consts.GetNewAuthTokenTag, authconst.ErrInvalidUUID.Error())
-	//	return nil, consts.ErrStatusUUIDInvalid
-	//}
-	//if err := validateEmail(user.GetEmail()); err != nil {
-	//	logger.Error(consts.GetNewAuthTokenTag, consts.ErrInvalidUserEmail.Error())
-	//	return nil, status.Error(codes.InvalidArgument, consts.ErrInvalidUserEmail.Error())
-	//}
-	//if err := validatePassword(user.GetPassword()); err != nil {
-	//	logger.Error(consts.GetNewAuthTokenTag, consts.ErrInvalidPassword.Error())
-	//	return nil, status.Error(codes.InvalidArgument, consts.ErrInvalidPassword.Error())
-	//}
-	//
-	//// write lock b/c we are writing to DB
-	//lock, _ := uuidMapLocker.LoadOrStore(user.GetUuid(), &sync.RWMutex{})
-	//lock.(*sync.RWMutex).Lock()
-	//defer lock.(*sync.RWMutex).Unlock()
-	//
-	//// look up email and password
-	//retrievedUser, err := getUserRow(user.GetUuid())
-	//if err != nil {
-	//	logger.Error(consts.GetNewAuthTokenTag, consts.MsgErrAuthenticateUser, err.Error())
-	//	return nil, status.Error(codes.Unauthenticated, err.Error())
-	//}
-	//
-	//if retrievedUser.GetEmail() != user.GetEmail() {
-	//	logger.Error(consts.GetNewAuthTokenTag, consts.MsgErrMatchEmail)
-	//	return nil, status.Error(codes.InvalidArgument, consts.MsgErrMatchEmail)
-	//}
-	//
-	//if err := comparePassword(retrievedUser.GetPassword(), user.GetPassword()); err != nil {
-	//	logger.Error(consts.GetNewAuthTokenTag, consts.MsgErrMatchPassword, err.Error())
-	//	return nil, status.Error(codes.Unauthenticated, err.Error())
-	//}
-	//
-	//identification, err := getAuthIdentification(retrievedUser)
-	//if err != nil {
-	//	logger.Error(consts.GetNewAuthTokenTag, err.Error())
-	//	return nil, err
-	//}
-	//
-	//return &pbsvc.UserResponse{
-	//	Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.OK)},
-	//	Message:        codes.OK.String(),
-	//	Identification: identification,
-	//}, nil
 	return &pbsvc.UserResponse{
-		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.Unimplemented)},
-		Message: codes.Unimplemented.String(),
+		Status:         &pbsvc.UserResponse_Code{Code: uint32(codes.Unimplemented)},
+		Message:        codes.Unimplemented.String(),
+		Identification: newIdentity,
 	}, nil
 }
 
@@ -571,7 +560,7 @@ func (s *Service) GetNewAuthToken(ctx context.Context, req *pbsvc.UserRequest) (
 // Token is first verified against tokens table, and if token is found, secret is retrieved.
 // On success, returns identity object with token and paired secret.
 func (s *Service) VerifyAuthToken(ctx context.Context, req *pbsvc.UserRequest) (*pbsvc.UserResponse, error) {
-	logger.RequestService("Verify Auth Token")
+	logger.RequestService("VerifyAuthToken")
 
 	if ok := serviceStateLocker.isStateAvailable(); !ok {
 		logger.Error(consts.VerifyAuthToken, consts.ErrServiceUnavailable.Error())

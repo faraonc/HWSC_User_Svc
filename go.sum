@@ -18,6 +18,8 @@ github.com/Microsoft/go-winio v0.4.12 h1:xAfWHN1IrQ0NJ9TBC0KBZoqLjzDTr1ML+4MywiU
 github.com/Microsoft/go-winio v0.4.12/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=
 github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 h1:TngWCqHvy9oXAN6lEVMRuU21PR1EtLVZJmdB18Gu3Rw=
 github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5/go.mod h1:lmUJ/7eu/Q8D7ML55dXQrVaamCz2vxCfdQBasLZfHKk=
+github.com/Pallinder/go-randomdata v1.1.0 h1:gUubB1IEUliFmzjqjhf+bgkg1o6uoFIkRsP3VrhEcx8=
+github.com/Pallinder/go-randomdata v1.1.0/go.mod h1:yHmJgulpD2Nfrm0cR9tI/+oAgRqCQQixsA8HyRZfV9Y=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
 github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da/go.mod h1:Q73ZrmVTwzkszR9V5SSuryQ31EELlFMUz1kKyl939pY=
 github.com/armon/go-radix v0.0.0-20180808171621-7fddfc383310/go.mod h1:ufUuZ+zHj4x4TnLV4JWEpy2hxWSpsRywHrMgIH9cCH8=
@@ -166,10 +168,10 @@ github.com/hashicorp/serf v0.8.2/go.mod h1:6hOLApaqBFA1NXqRQAsxw9QxuDEvNxSQRwA/J
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190310103314-d5245c3ac7ad h1:fWzDe74AMENol7oBM5beu8A6gr2MZDVfRDBlYuFnHBM=
 github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190310103314-d5245c3ac7ad/go.mod h1:/iVVgMsaXIOevC15fCsGWI0Dx2p6POFJQxeYbyjGst0=
-github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190526172357-abc2d60dfb0b h1:/8FfkgykFOKateOMlGJjb4XUC9VDevQHdDTmWg9f5qs=
-github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190526172357-abc2d60dfb0b/go.mod h1:/iVVgMsaXIOevC15fCsGWI0Dx2p6POFJQxeYbyjGst0=
-github.com/hwsc-org/hwsc-lib v0.0.0-20190401004322-783e42349378 h1:J2ADkUKYjEvOiwacTm8RXjpBThtd75Cg9Trv4zaORXE=
-github.com/hwsc-org/hwsc-lib v0.0.0-20190401004322-783e42349378/go.mod h1:x+Jk9oHb+7qbcHBKNUkJogQdM2D2BuLXbQ5wsGIiK4E=
+github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190529032140-8ac00fb03e5d h1:v46iIf6EWClh/yyKtn14VeygrFVzuF8Fyi7Jbpiaj2k=
+github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190529032140-8ac00fb03e5d/go.mod h1:/iVVgMsaXIOevC15fCsGWI0Dx2p6POFJQxeYbyjGst0=
+github.com/hwsc-org/hwsc-lib v0.0.0-20190530220902-02694c12c0be h1:c/+DcQb66rOkzxIGm//S/VaHLwpI/Sy5htGpnTK3Myk=
+github.com/hwsc-org/hwsc-lib v0.0.0-20190530220902-02694c12c0be/go.mod h1:x+Jk9oHb+7qbcHBKNUkJogQdM2D2BuLXbQ5wsGIiK4E=
 github.com/imdario/mergo v0.3.7 h1:Y+UAYTZ7gDEuOfhxKWy+dvb5dRQ6rJjFSdX2HZY1/gI=
 github.com/imdario/mergo v0.3.7/go.mod h1:2EnlNZ0deacrJVfApfmtdGgDfMuh/nq6Ok1EcJh5FfA=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=

@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/protobuf/lib"
+	"github.com/hwsc-org/hwsc-lib/auth"
 	authconst "github.com/hwsc-org/hwsc-lib/consts"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/stretchr/testify/assert"
@@ -455,7 +456,7 @@ func TestSetCurrentSecretOnce(t *testing.T) {
 	currAuthSecret = &pblib.Secret{
 		Key:                 "alksjdklasdjf",
 		CreatedTimestamp:    time.Now().Unix(),
-		ExpirationTimestamp: time.Now().Unix(),
+		ExpirationTimestamp: time.Now().Unix(), // TODO fix expiration in 1 week
 	}
 	err = setCurrentSecretOnce()
 	assert.Nil(t, err, desc)
@@ -485,7 +486,7 @@ func TestGenerateEmailVerifyLink(t *testing.T) {
 	assert.Nil(t, err, desc)
 }
 
-func TestMakeAuthIdentification(t *testing.T) {
+func TestGetAuthIdentification(t *testing.T) {
 	lastName1 := "GetToken-One"
 	lastName2 := "GetToken-Two"
 
@@ -529,4 +530,58 @@ func TestMakeAuthIdentification(t *testing.T) {
 			assert.NotNil(t, identification)
 		}
 	}
+}
+
+func TestNewAuthIdentification(t *testing.T) {
+	err := insertNewAuthSecret()
+	assert.Nil(t, err, "generate auth secret")
+	err = setCurrentSecretOnce()
+	assert.Nil(t, err, "set auth secret")
+	cases := []struct {
+		desc     string
+		header   *auth.Header
+		body     *auth.Body
+		isExpErr bool
+		expMsg   string
+	}{
+		{"test nil header", nil, validAuthTokenBody, true, authconst.ErrNilHeader.Error()},
+		{"test nil body", validAuthTokenHeader, nil, true, authconst.ErrNilBody.Error()},
+		{"test for valid input", validAuthTokenHeader, validAuthTokenBody, false, ""},
+	}
+	for _, c := range cases {
+		identification, err := newAuthIdentification(c.header, c.body)
+		if c.isExpErr {
+			assert.EqualError(t, err, c.expMsg, c.desc)
+			assert.Nil(t, identification, c.desc)
+		} else {
+			assert.Nil(t, err)
+			assert.NotNil(t, identification, c.desc)
+		}
+	}
+
+	// sleep is needed to ensure expiration timestamps are different
+	time.Sleep(2 * time.Second)
+	caseNewAuthToken := "test to generate new auth token"
+	validID1, err := newAuthIdentification(validAuthTokenHeader, validAuthTokenBody)
+	assert.NotNil(t, validID1, caseNewAuthToken)
+	assert.Nil(t, err, caseNewAuthToken)
+	time.Sleep(2 * time.Second)
+	validID2, err := newAuthIdentification(validAuthTokenHeader, validAuthTokenBody)
+	assert.NotNil(t, validID1, caseNewAuthToken)
+	assert.Nil(t, err, caseNewAuthToken)
+
+	// ensure the old auth token is different with the new auth token
+	assert.NotEqual(t, validID1.Token, validID2.Token, caseNewAuthToken)
+
+	// ensure we get the new auth token and not the old auth token
+	retrievedToken, err := getAuthTokenRow(validAuthTokenBody.UUID)
+	assert.Nil(t, err, caseNewAuthToken)
+	assert.Equal(t, validID2.Token, retrievedToken.token, caseNewAuthToken)
+
+	caseNewAuthSecret := "test new auth secret"
+	err = insertNewAuthSecret()
+	assert.Nil(t, err, caseNewAuthSecret)
+	retrievedToken, err = getAuthTokenRow(validAuthTokenBody.UUID)
+	assert.Nil(t, err, caseNewAuthSecret)
+	assert.Equal(t, validID2.Token, retrievedToken.token, caseNewAuthSecret)
 }

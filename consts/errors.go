@@ -20,10 +20,7 @@ const (
 	MsgErrDeleteUser                string = "failed to delete user:"
 	MsgErrGetUserRow                string = "failed to get user row:"
 	MsgErrUpdateUserRow             string = "failed to update user row:"
-	MsgErrAuthenticateUser          string = "failed to authenticate user:"
 	MsgErrMatchEmailPassword        string = "failed to match email and password in db:"
-	MsgErrMatchPassword             string = "failed to match password:"
-	MsgErrMatchEmail                string = "email does not match"
 	MsgErrSecret                    string = "failed to insert new secret into db:"
 	MsgErrGetActiveSecret           string = "failed to get active secret row from db:"
 	MsgErrLookUpActiveSecret        string = "failed to look up active secret from db"
@@ -67,6 +64,8 @@ var (
 	ErrInvalidAddTime               = errors.New("add time is zero")
 	ErrEmailExists                  = errors.New("email already exists")
 	ErrEmailDoesNotExist            = errors.New("email does not exist in db")
+	ErrGeneratingAuthToken          = errors.New(MsgErrGeneratingAuthToken)
+	ErrInsertAuthToken              = errors.New(MsgErrInsertAuthToken)
 	ResponseServiceUnavailable      = &pbsvc.UserResponse{
 		Status:  &pbsvc.UserResponse_Code{Code: uint32(codes.Unavailable)},
 		Message: codes.Unavailable.String(),

@@ -18,12 +18,20 @@ var (
 		Organization: "Unit Testing",
 	}
 
-	validTokenHeader = &auth.Header{
+	validAuthTokenHeader = &auth.Header{
 		Alg:      auth.Hs256,
 		TokenTyp: auth.Jwt,
 	}
 
-	validTokenBody = &auth.Body{
+	validUUID, _ = generateUUID()
+
+	validAuthTokenBody = &auth.Body{
+		UUID:                validUUID,
+		Permission:          auth.User,
+		ExpirationTimestamp: time.Now().UTC().Add(time.Hour * time.Duration(authTokenExpirationTime)).Unix(),
+	}
+
+	validNoUUIDAuthTokenBody = &auth.Body{
 		Permission:          auth.User,
 		ExpirationTimestamp: time.Now().UTC().Add(time.Hour * time.Duration(authTokenExpirationTime)).Unix(),
 	}
@@ -97,16 +105,16 @@ func unitTestInsertNewAuthToken() (*pblib.Secret, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	validTokenBody.UUID = validUUID
+	validNoUUIDAuthTokenBody.UUID = validUUID
 
 	// generate new token
-	newToken, err := auth.NewToken(validTokenHeader, validTokenBody, newSecret)
+	newToken, err := auth.NewToken(validAuthTokenHeader, validNoUUIDAuthTokenBody, newSecret)
 	if err != nil {
 		return nil, "", err
 	}
 
 	// insert a token
-	if err := insertAuthToken(newToken, validTokenHeader, validTokenBody, newSecret); err != nil {
+	if err := insertAuthToken(newToken, validAuthTokenHeader, validNoUUIDAuthTokenBody, newSecret); err != nil {
 		return nil, "", err
 	}
 

@@ -2,6 +2,7 @@ module github.com/hwsc-org/hwsc-user-svc
 
 require (
 	github.com/Microsoft/go-winio v0.4.12 // indirect
+	github.com/Pallinder/go-randomdata v1.1.0
 	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
 	github.com/containerd/continuity v0.0.0-20181203112020-004b46473808 // indirect
 	github.com/gogo/protobuf v1.2.1 // indirect
@@ -9,8 +10,8 @@ require (
 	github.com/google/go-cmp v0.3.0 // indirect
 	github.com/gorilla/mux v1.7.0 // indirect
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
-	github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190526172357-abc2d60dfb0b
-	github.com/hwsc-org/hwsc-lib v0.0.0-20190401004322-783e42349378
+	github.com/hwsc-org/hwsc-api-blocks v0.0.0-20190529032140-8ac00fb03e5d
+	github.com/hwsc-org/hwsc-lib v0.0.0-20190530220902-02694c12c0be
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/lib/pq v1.0.0
 	github.com/micro/go-config v0.14.0
