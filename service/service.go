@@ -506,7 +506,7 @@ func (s *Service) GetNewAuthToken(ctx context.Context, req *pbsvc.UserRequest) (
 
 	if req == nil {
 		logger.Error(consts.GetNewAuthTokenTag, consts.ErrNilRequest.Error())
-		return nil, consts.ErrNilRequest
+		return nil, consts.ErrStatusNilRequestUser
 	}
 
 	if err := refreshDBConnection(); err != nil {
@@ -572,10 +572,12 @@ func (s *Service) VerifyAuthToken(ctx context.Context, req *pbsvc.UserRequest) (
 	}
 
 	if req == nil {
+		logger.Error(consts.VerifyAuthToken, consts.ErrNilRequest.Error())
 		return nil, consts.ErrStatusNilRequestUser
 	}
 
 	if err := refreshDBConnection(); err != nil {
+		logger.Error(consts.VerifyAuthToken, consts.ErrDBConnectionError.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -621,6 +623,7 @@ func (s *Service) MakeNewAuthSecret(ctx context.Context, req *pbsvc.UserRequest)
 	}
 
 	if err := refreshDBConnection(); err != nil {
+		logger.Error(consts.MakeNewAuthSecret, consts.ErrDBConnectionError.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 

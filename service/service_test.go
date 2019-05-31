@@ -706,10 +706,10 @@ func TestGetNewAuthToken(t *testing.T) {
 			"rpc error: code = InvalidArgument desc = nil request User",
 		},
 		{"test nil identity object", &pbsvc.UserRequest{Identification: nil},
-			"rpc error: code = InvalidArgument desc = nil request identification",
+			"rpc error: code = DeadlineExceeded desc = nil request identification",
 		},
 		{"test non-existent token", &pbsvc.UserRequest{Identification: nonExistingToken},
-			"rpc error: code = Unauthenticated desc = no matching auth token were found with given token",
+			"rpc error: code = DeadlineExceeded desc = no matching auth token were found with given token",
 		},
 	}
 
