@@ -715,8 +715,7 @@ func TestGetNewAuthToken(t *testing.T) {
 
 	for _, c := range cases {
 		s := Service{}
-
-		response, err := s.MakeNewAuthSecret(context.TODO(), c.req)
+		response, err := s.GetNewAuthToken(context.TODO(), c.req)
 		assert.EqualError(t, err, c.expMsg, c.desc)
 		assert.Nil(t, response, c.desc)
 	}
