@@ -512,12 +512,13 @@ func getAuthTokenRow(uuid string) (*tokenAuthRow, error) {
 		return nil, authconst.ErrInvalidUUID
 	}
 
-	command := `SELECT uuid, permission, token, user_security.auth_tokens.secret_key, 
+	command := `SELECT DISTINCT ON (uuid) uuid, permission, token, user_security.auth_tokens.secret_key, 
        				user_security.secrets.created_timestamp, user_security.secrets.expiration_timestamp
 				FROM user_security.auth_tokens
 				INNER JOIN user_security.secrets
 				ON user_security.secrets.secret_key = user_security.auth_tokens.secret_key
 				WHERE uuid = $1 AND NOW() AT TIME ZONE 'UTC' < user_security.auth_tokens.expiration_timestamp
+				ORDER BY uuid, user_security.auth_tokens.expiration_timestamp DESC
 				`
 
 	row, err := postgresDB.Query(command, uuid)

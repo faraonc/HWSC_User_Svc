@@ -286,7 +286,7 @@ func generateEmailVerifyLink(token string) (string, error) {
 	return link, nil
 }
 
-// getAuthIdentification gets or generates the AuthToken for the User.
+// getAuthIdentification gets or generates the latest AuthToken for the User.
 // Returns the identification or error.
 func getAuthIdentification(retrievedUser *pblib.User) (*pblib.Identification, error) {
 	if retrievedUser == nil {
@@ -334,6 +334,49 @@ func getAuthIdentification(retrievedUser *pblib.User) (*pblib.Identification, er
 			Token:  newToken,
 			Secret: currAuthSecret,
 		}
+	}
+
+	return identification, nil
+}
+
+// newAuthIdentification generates a new AuthToken for user.
+// Returns the new identification or error.
+func newAuthIdentification(oldHeader *auth.Header, oldBody *auth.Body) (*pblib.Identification, error) {
+	if err := auth.ValidateHeader(oldHeader); err != nil {
+		return nil, err
+	}
+	if err := auth.ValidateBody(oldBody); err != nil {
+		return nil, err
+	}
+
+	header := &auth.Header{
+		Alg:      oldHeader.Alg,
+		TokenTyp: oldHeader.TokenTyp,
+	}
+
+	body := &auth.Body{
+		UUID:                oldBody.UUID,
+		Permission:          oldBody.Permission,
+		ExpirationTimestamp: time.Now().UTC().Add(time.Hour * time.Duration(authTokenExpirationTime)).Unix(),
+	}
+
+	if err := setCurrentSecretOnce(); err != nil {
+		return nil, err
+	}
+
+	newToken, err := auth.NewToken(header, body, currAuthSecret)
+	if err != nil {
+		return nil, err
+	}
+
+	// insert token into db for auditing
+	if err := insertAuthToken(newToken, header, body, currAuthSecret); err != nil {
+		return nil, err
+	}
+
+	identification := &pblib.Identification{
+		Token:  newToken,
+		Secret: currAuthSecret,
 	}
 
 	return identification, nil
