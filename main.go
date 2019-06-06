@@ -31,4 +31,5 @@ func main() {
 	if err := grpcServer.Serve(lis); err != nil {
 		logger.Fatal(consts.UserServiceTag, "Failed to serve:", err.Error())
 	}
+	//test email
 }
