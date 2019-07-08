@@ -1,13 +1,10 @@
 package service
 
 import (
-	cryptorand "crypto/rand"
-	"encoding/base64"
 	"fmt"
 	pblib "github.com/hwsc-org/hwsc-api-blocks/protobuf/lib"
 	"github.com/hwsc-org/hwsc-lib/auth"
 	authconst "github.com/hwsc-org/hwsc-lib/consts"
-	"github.com/hwsc-org/hwsc-lib/validation"
 	"github.com/hwsc-org/hwsc-user-svc/consts"
 	"github.com/oklog/ulid"
 	"golang.org/x/crypto/bcrypt"
@@ -23,10 +20,7 @@ import (
 const (
 	maxFirstNameLength  = 32
 	maxLastNameLength   = 32
-	emailTokenByteSize  = 32
 	daysInOneWeek       = 7
-	daysInTwoWeeks      = 14
-	utc                 = "UTC"
 	domainName          = "localhost"
 	verifyEmailLinkStub = "verify-email?token"
 )
@@ -159,101 +153,6 @@ func comparePassword(hashedPassword string, password string) error {
 	}
 
 	return nil
-}
-
-// generateEmailToken takes the user's uuid and permission to generate an email token for verification.
-// Returns an identification containing the secret and token string.
-func generateEmailToken(uuid string, permission string) (*pblib.Identification, error) {
-	if err := validation.ValidateUserUUID(uuid); err != nil {
-		return nil, err
-	}
-	permissionLevel, ok := auth.PermissionEnumMap[permission]
-	if !ok {
-		return nil, authconst.ErrInvalidPermission
-	}
-	emailSecretKey, err := generateSecretKey(emailTokenByteSize)
-	if err != nil {
-		return nil, err
-	}
-	// subtract a second because the test runs fast causing our check to fail
-	emailTokenCreationTime := time.Now().UTC().Add(time.Duration(-1) * time.Second)
-	emailTokenExpirationTime, err := generateExpirationTimestamp(emailTokenCreationTime, daysInTwoWeeks)
-	if err != nil {
-		return nil, err
-	}
-
-	header := &auth.Header{
-		Alg:      auth.AlgorithmMap[auth.UserRegistration],
-		TokenTyp: auth.Jet,
-	}
-	body := &auth.Body{
-		UUID:                uuid,
-		Permission:          permissionLevel,
-		ExpirationTimestamp: emailTokenExpirationTime.Unix(),
-	}
-	secret := &pblib.Secret{
-		Key:                 emailSecretKey,
-		CreatedTimestamp:    emailTokenCreationTime.Unix(),
-		ExpirationTimestamp: emailTokenExpirationTime.Unix(),
-	}
-	emailToken, err := auth.NewToken(header, body, secret)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pblib.Identification{
-		Token:  emailToken,
-		Secret: secret,
-	}, nil
-}
-
-// generateRandomToken generates a base64 URL-safe string
-// built from securely generated random bytes.
-// Number of bytes is determined by tokenSize.
-// Return error if system's secure random number generator fails.
-func generateSecretKey(tokenSize int) (string, error) {
-	if tokenSize <= 0 {
-		return "", consts.ErrInvalidTokenSize
-	}
-
-	keyGenLocker.Lock()
-	defer keyGenLocker.Unlock()
-
-	randomBytes := make([]byte, tokenSize)
-	_, err := cryptorand.Read(randomBytes)
-	if err != nil {
-		return "", err
-	}
-
-	return base64.URLEncoding.EncodeToString(randomBytes), nil
-}
-
-// generateExpirationTimestamp returns the expiration date set with addDays parameter.
-// Currently only adds number of days to currentTimestamp.
-// Returns error if date object is nil or error with loading location.
-func generateExpirationTimestamp(currentTimestamp time.Time, addDays int) (*time.Time, error) {
-	if currentTimestamp.IsZero() {
-		return nil, consts.ErrInvalidTimeStamp
-	}
-
-	if addDays <= 0 {
-		return nil, consts.ErrInvalidNumberOfDays
-	}
-
-	timeZonedTimestamp := currentTimestamp
-	if currentTimestamp.Location().String() != utc {
-		timeZonedTimestamp = currentTimestamp.UTC()
-	}
-
-	// addDays to current weekday to get to addDays later
-	// ie: adding 7 days to current weekday gets you one week later timestamp
-	modifiedTimestamp := timeZonedTimestamp.AddDate(0, 0, addDays)
-
-	// reset time to 3 AM
-	expirationTimestamp := time.Date(modifiedTimestamp.Year(), modifiedTimestamp.Month(), modifiedTimestamp.Day(),
-		3, 0, 0, 0, timeZonedTimestamp.Location())
-
-	return &expirationTimestamp, nil
 }
 
 // setCurrentSecretOnce checks if currAuthSecret is set, if not,
