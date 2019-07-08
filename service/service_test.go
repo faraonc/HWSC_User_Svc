@@ -797,11 +797,11 @@ func TestVerifyEmailToken(t *testing.T) {
 	err = deleteEmailTokenRow(user2.GetUser().GetUuid())
 	assert.Nil(t, err)
 
-	user1EmailID, err := generateEmailToken(user1.GetUser().GetUuid(), user1.GetUser().GetPermissionLevel())
+	user1EmailID, err := auth.GenerateEmailIdentification(user1.GetUser().GetUuid(), user1.GetUser().GetPermissionLevel())
 	assert.Nil(t, err)
 	assert.NotNil(t, user1EmailID)
 
-	user2EmailID, err := generateEmailToken(user2.GetUser().GetUuid(), user2.GetUser().GetPermissionLevel())
+	user2EmailID, err := auth.GenerateEmailIdentification(user2.GetUser().GetUuid(), user2.GetUser().GetPermissionLevel())
 	assert.Nil(t, err)
 	assert.NotNil(t, user2EmailID)
 

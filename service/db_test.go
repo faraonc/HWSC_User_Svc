@@ -132,7 +132,7 @@ func TestInsertEmailToken(t *testing.T) {
 	err = deleteEmailTokenRow(user2.GetUser().GetUuid())
 	assert.Nil(t, err)
 
-	validID1, err := generateEmailToken(user1.GetUser().GetUuid(), user1.GetUser().GetPermissionLevel())
+	validID1, err := auth.GenerateEmailIdentification(user1.GetUser().GetUuid(), user1.GetUser().GetPermissionLevel())
 	assert.Nil(t, err)
 	assert.NotNil(t, validID1)
 
@@ -611,7 +611,7 @@ func TestGetEmailTokenRow(t *testing.T) {
 	err = deleteEmailTokenRow(user1.GetUser().GetUuid())
 	assert.Nil(t, err)
 
-	emailID, err := generateEmailToken(user1.GetUser().GetUuid(), user1.GetUser().GetPermissionLevel())
+	emailID, err := auth.GenerateEmailIdentification(user1.GetUser().GetUuid(), user1.GetUser().GetPermissionLevel())
 	assert.Nil(t, err)
 	assert.NotNil(t, emailID)
 

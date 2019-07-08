@@ -303,7 +303,7 @@ func updateUserRow(uuid string, svcDerived *pblib.User, dbDerived *pblib.User) (
 		}
 
 		// create unique email token
-		id, err := generateEmailToken(dbDerived.GetUuid(), dbDerived.GetPermissionLevel())
+		id, err := auth.GenerateEmailIdentification(dbDerived.GetUuid(), dbDerived.GetPermissionLevel())
 		if err != nil {
 			// does not return error because we can regen a token and thus resend email
 			logger.Error(consts.UpdatingUserRowTag, consts.MsgErrGeneratingEmailToken, err.Error())
@@ -415,7 +415,7 @@ func getActiveSecretRow() (*pblib.Secret, error) {
 // Returns err if secret is empty or error with database.
 func insertNewAuthSecret() error {
 	// generate a new secret
-	secretKey, err := generateSecretKey(auth.SecretByteSize)
+	secretKey, err := auth.GenerateSecretKey(auth.SecretByteSize)
 	if err != nil {
 		return err
 	}
@@ -426,7 +426,7 @@ func insertNewAuthSecret() error {
 				`
 
 	createdTimestamp := time.Now().UTC()
-	expirationTimestamp, err := generateExpirationTimestamp(createdTimestamp, daysInOneWeek)
+	expirationTimestamp, err := auth.GenerateExpirationTimestamp(createdTimestamp, daysInOneWeek)
 	if err != nil {
 		return err
 	}

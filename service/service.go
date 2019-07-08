@@ -139,7 +139,7 @@ func (s *Service) CreateUser(ctx context.Context, req *pbsvc.UserRequest) (*pbsv
 	// from here on: do not return an error because we can always regenerate tokens and resend verification emails
 
 	// create identification for email token
-	emailID, err := generateEmailToken(user.GetUuid(), user.PermissionLevel)
+	emailID, err := auth.GenerateEmailIdentification(user.GetUuid(), user.PermissionLevel)
 	if err != nil {
 		logger.Error(consts.CreateUserTag, consts.MsgErrGeneratingEmailToken, err.Error())
 		return userCreatedResponse, nil
